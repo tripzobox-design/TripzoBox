@@ -1,10 +1,12 @@
 # Dependencies
 node_modules/
+Frontend/node_modules/
 .pnp
 .pnp.js
 
 # Production build
 dist/
+Frontend/dist/
 build/
 
 # Environment files
