@@ -1,3 +1,4 @@
+import { confirmAction } from '../lib/confirmAction';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -111,7 +112,8 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
     setNewGalleryUrl('');
   };
 
-  const handleRemoveGalleryPhoto = (index: number) => {
+  const handleRemoveGalleryPhoto = async (index: number) => {
+    if (!await confirmAction('delete', 'this gallery photo')) return;
     setGalleryPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -123,7 +125,8 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
     setNewAttraction('');
   };
 
-  const handleRemoveAttraction = (tag: string) => {
+  const handleRemoveAttraction = async (tag: string) => {
+    if (!await confirmAction('delete', tag + ' from attractions')) return;
     setAttractions((prev) => prev.filter((t) => t !== tag));
   };
 

@@ -21,26 +21,29 @@ export const StoriesPage: React.FC = () => {
   const createPath = '/app/diary/create-story';
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 text-left">
+    <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-12 space-y-4 lg:space-y-8 text-left">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">From the travel community</p>
           <h1 className="font-heading font-bold text-3xl sm:text-4xl text-text">Travel Stories</h1>
           <p className="text-sm text-text-muted mt-3">Discover journeys shared by fellow travellers and share your own.</p>
         </div>
-        <Button variant="primary" icon={<PenLine className="w-4 h-4" />} onClick={() => navigate(isLoggedIn ? createPath : `/login?redirect=${encodeURIComponent(createPath)}`, { state: { from: { pathname: createPath } } })}>Write a Story</Button>
+        <Button className="hidden lg:inline-flex" variant="primary" icon={<PenLine className="w-4 h-4" />} onClick={() => navigate(isLoggedIn ? createPath : `/login?redirect=${encodeURIComponent(createPath)}`, { state: { from: { pathname: createPath } } })}>Write a Story</Button>
       </div>
 
       <div className="space-y-4">
-        <label className="flex items-center gap-3 bg-white rounded-xl border border-border px-4 py-3 max-w-xl">
+        <div className="flex items-stretch gap-2 sm:gap-3">
+        <Button size="sm" className="lg:hidden shrink-0 min-h-[44px] px-3" variant="primary" icon={<PenLine className="w-4 h-4" />} onClick={() => navigate(isLoggedIn ? createPath : `/login?redirect=${encodeURIComponent(createPath)}`, { state: { from: { pathname: createPath } } })}>Write a Story</Button>
+        <label className="flex items-center gap-2 bg-white rounded-xl border border-border px-3 py-2.5 flex-1 min-w-0 max-w-xl">
           <Search className="w-4 h-4 text-text-muted shrink-0" />
-          <input type="search" aria-label="Search stories" placeholder="Search stories, destinations, or authors" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 bg-transparent outline-none text-sm" />
+          <input type="search" aria-label="Search stories" placeholder="Search stories..." value={query} onChange={(event) => setQuery(event.target.value)} className="w-full min-w-0 bg-transparent outline-none text-sm" />
         </label>
+        </div>
         <Tabs tabs={[{ id: 'all', label: 'All Stories', badge: stories.length }, ...(isLoggedIn ? [{ id: 'mine', label: 'My Stories', badge: stories.filter((story) => story.author.id === user.id).length }] : [])]} activeTab={activeTab} onChange={setActiveTab} />
       </div>
 
       {visibleStories.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
           {visibleStories.map((story) => <StoryCard key={story.id} story={story} />)}
         </div>
       ) : (

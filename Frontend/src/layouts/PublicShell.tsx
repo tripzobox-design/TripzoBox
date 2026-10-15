@@ -5,6 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { useAuth } from '../context/AuthContext';
 import { AccountNav } from '../components/common/AccountNav';
+import { MobileNavigation } from '../components/common/MobileNavigation';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 export const PublicShell: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -27,6 +29,12 @@ export const PublicShell: React.FC = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, []);
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'Explore', path: '/explore' },
@@ -42,9 +50,9 @@ export const PublicShell: React.FC = () => {
       <header className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border transition-all duration-200 ${
         isScrolled ? 'shadow-subtle' : 'shadow-xs'
       }`}>
-        <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
+        <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* Logo: Consistent light theme with brand colors */}
-          <Logo asLink to="/" size="md" variant="horizontal" inverted={false} />
+          <Logo asLink to="/" size="md" variant="horizontal" inverted={false} className="min-w-0 shrink-0 [&>img]:h-auto [&>img]:w-[156px] sm:[&>img]:w-[180px]" />
 
           {/* Desktop Center Nav Links with active indicator */}
           <nav className="hidden lg:flex items-center gap-8" aria-label="Main Navigation">
@@ -104,101 +112,34 @@ export const PublicShell: React.FC = () => {
 
           {/* Mobile Right */}
           <div className="flex lg:hidden items-center gap-2">
-            {isLoggedIn ? <AccountNav /> : (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => navigate('/signup')}
-              className="text-xs px-3.5 py-1.5 rounded-full"
-            >
-              Get Started
-            </Button>
-            )}
+            {isLoggedIn && <NotificationBell />}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-xl text-text hover:bg-light-bg transition-colors"
               aria-label="Toggle Navigation Menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Slide-Over Drawer */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-b border-border px-6 py-6 flex flex-col gap-3 text-left shadow-float animate-in fade-in slide-in-from-top-2 duration-200">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.label}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={() =>
-                  `text-sm font-medium py-2 transition-colors ${
-                    isNavActive(link.path) ? 'text-primary font-semibold' : 'text-text hover:text-primary'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            <div className="pt-3 border-t border-border flex flex-col gap-2">
-              <Link
-                to="/explore"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium text-text-muted hover:text-primary py-2 flex items-center justify-between"
-              >
-                <span>Explore Search</span>
-                <Search className="w-4 h-4" />
-              </Link>
-              {isLoggedIn ? (
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    navigate('/');
-                  }}
-                  className="w-full rounded-xl py-2.5"
-                >
-                  Back to Home
-                </Button>
-              ) : (
-                <>
-                  <Link
-                    to="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-center py-2.5 text-sm font-semibold text-text border border-border rounded-xl hover:bg-light-bg"
-                  >
-                    Login
-                  </Link>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      navigate('/signup');
-                    }}
-                    className="w-full rounded-xl py-2.5"
-                  >
-                    Create Account
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+        <MobileNavigation isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       </header>
 
       {/* Main Page Canvas */}
-      <main className="flex-1">
+      <main>
         <Outlet />
       </main>
 
       {/* Public Footer */}
-      <footer className="bg-white border-t border-border mt-20 pt-16 pb-12 text-left">
+      <footer className="bg-white border-t border-border mt-3 lg:mt-20 pt-4 lg:pt-16 pb-4 lg:pb-12 text-left">
         <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-10">
             {/* Brand column */}
-            <div className="md:col-span-2 flex flex-col gap-4">
+            <div className="col-span-2 flex flex-col gap-3 lg:gap-4">
               <Logo asLink to="/" size="md" variant="horizontal" />
               <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-sm">
                 The travel-community platform to discover trips, connect with compatible travellers, keep travel documents safe, and publish real travel stories.
@@ -247,8 +188,8 @@ export const PublicShell: React.FC = () => {
             </div>
 
             {/* Links Column 3: Legal & Support */}
-            <div className="flex flex-col gap-3">
-              <h4 className="text-xs font-bold text-text uppercase tracking-wider font-heading">
+            <div className="col-span-2 lg:col-span-1 flex flex-wrap lg:flex-col gap-x-4 gap-y-2 lg:gap-3">
+              <h4 className="w-full text-xs font-bold text-text uppercase tracking-wider font-heading">
                 Legal & Support
               </h4>
               <Link to="/terms" className="text-xs sm:text-sm text-text-muted hover:text-primary transition-colors">
@@ -263,7 +204,7 @@ export const PublicShell: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-t border-border mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-muted">
+          <div className="border-t border-border mt-4 lg:mt-12 pt-3 lg:pt-8 flex flex-col sm:flex-row items-center justify-between gap-2 lg:gap-4 text-xs text-text-muted">
             <p>© {new Date().getFullYear()} Tripzobox. All rights reserved.</p>
             <p className="flex items-center gap-1">
               Crafted with <Heart className="w-3.5 h-3.5 text-primary fill-primary" /> for travellers everywhere.

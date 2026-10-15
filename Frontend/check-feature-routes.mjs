@@ -13,7 +13,7 @@ console.error = (...args) => { if (!String(args[0]).includes('useLayoutEffect do
 try {
   const { AppRoutes } = await server.ssrLoadModule('/src/App.tsx');
   const providers = [];
-  for (const name of ['Toast', 'Auth', 'Trips', 'Diary', 'Vault', 'Destinations']) {
+  for (const name of ['Toast', 'Auth', 'Trips', 'Diary', 'Vault', 'Destinations', 'Notifications']) {
     providers.push((await server.ssrLoadModule(`/src/context/${name}Context.tsx`))[`${name}Provider`]);
   }
   for (const [tool, expected] of [['diary/create-story', 'Compose Travel Story'], ['diary', 'Published Stories'], ['vault', 'Travel Vault'], ['messages', 'Messages'], ['notifications', 'Notifications'], ['profile', 'Profile'], ['trips/my', 'My Adventures'], ['explore', 'Explore destinations'], ['trips', 'Find Your Next Trip'], ['trips/trip_munnar_1', 'Munnar'], ['explore/munnar', 'Munnar']]) {

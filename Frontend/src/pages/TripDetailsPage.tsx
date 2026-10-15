@@ -33,6 +33,8 @@ import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
 import { Avatar, AvatarGroup } from '../components/ui/Avatar';
 import { StarRating } from '../components/ui/StarRating';
+import { Modal } from '../components/ui/Modal';
+import { User } from '../types';
 
 export const TripDetailsPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -56,6 +58,8 @@ export const TripDetailsPage: React.FC = () => {
   const isLeader = Boolean(user && trip && trip.leader.id === user.id);
 
   const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact'>('about');
+  const [infoTab, setInfoTab] = useState<'reviews' | 'images' | 'contact'>('reviews');
+  const [selectedTraveller, setSelectedTraveller] = useState<User | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
 
@@ -117,9 +121,6 @@ export const TripDetailsPage: React.FC = () => {
     { id: 'itinerary', label: 'Itinerary' },
     { id: 'members', label: `Members (${trip.members.length}/${trip.maxMembers})` },
     { id: 'chat', label: 'Chat' },
-    { id: 'reviews', label: 'Reviews' },
-    { id: 'images', label: 'Images' },
-    { id: 'contact', label: 'Contact Information' },
   ];
 
   const getHighlightIcon = (highlight: string) => {
@@ -140,7 +141,7 @@ export const TripDetailsPage: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
+    <div className={`flex flex-col gap-3 sm:gap-4 lg:gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
       {/* 1. HERO BANNER WITH OVERLAID BACK BUTTON (Matching Reference Screen 7) */}
       <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[250px] max-h-[440px] w-full bg-text shadow-float">
         <img
@@ -251,27 +252,16 @@ export const TripDetailsPage: React.FC = () => {
       {isLeader && (
         <div className="bg-gradient-to-r from-emerald-950 via-gray-900 to-emerald-900 text-white rounded-2xl p-5 sm:p-6 border border-emerald-700/40 shadow-xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
-                <Crown className="w-5 h-5" />
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0"><Crown className="w-5 h-5" /></div>
+                <h3 className="min-w-0 flex-1 font-heading font-bold text-base sm:text-lg text-white leading-snug"><span className="sm:hidden">Trip Leader Console</span><span className="hidden sm:inline">Trip Leader Room Console</span></h3>
+                <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"><span className="sm:hidden">Host</span><span className="hidden sm:inline">Host Control</span></span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-heading font-bold text-base sm:text-lg text-white">
-                    Trip Leader Room Console
-                  </h3>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    Host Control
-                  </span>
-                </div>
-                <p className="text-xs text-gray-300 mt-0.5">
-                  You are the trip leader. Manage join requests, room privacy, and companion approvals.
-                </p>
-              </div>
+              <p className="text-xs text-gray-300 leading-relaxed">Manage join requests, room privacy, and companion approvals.</p>
             </div>
-
             {/* Room Type Toggle & Room Code */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -285,12 +275,12 @@ export const TripDetailsPage: React.FC = () => {
                 {trip.roomType === 'private' ? (
                   <>
                     <Lock className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Private Room (Click to make Public)</span>
+                    <span><span className="sm:hidden">Private room</span><span className="hidden sm:inline">Private Room (Click to make Public)</span></span>
                   </>
                 ) : (
                   <>
                     <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Public Space (Click to make Private)</span>
+                    <span><span className="sm:hidden">Public space</span><span className="hidden sm:inline">Public Space (Click to make Private)</span></span>
                   </>
                 )}
               </button>
@@ -306,14 +296,14 @@ export const TripDetailsPage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-xs cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5" />
-                <span>Room Code: {trip.roomCode || 'ROOM-8492'}</span>
+                <span><span className="hidden sm:inline">Room Code: </span>{trip.roomCode || 'ROOM-8492'}</span>
               </button>
             </div>
           </div>
 
           {/* Pending Applications from Travellers */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-emerald-400" />
                 <span>
@@ -340,7 +330,7 @@ export const TripDetailsPage: React.FC = () => {
                         size="sm"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-1">
                           <h5 className="font-semibold text-xs sm:text-sm text-white truncate">
                             {req.user.name}
                           </h5>
@@ -359,14 +349,14 @@ export const TripDetailsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
                       <button
                         type="button"
                         onClick={() => {
                           declineJoinRequest(trip.id, req.user.id);
                           info(`Declined join request from ${req.user.name}`);
                         }}
-                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         <span>Decline</span>
@@ -381,7 +371,7 @@ export const TripDetailsPage: React.FC = () => {
                             'Member Approved'
                           );
                         }}
-                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                        className="px-2 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Accept to Room</span>
@@ -402,18 +392,18 @@ export const TripDetailsPage: React.FC = () => {
       )}
 
       {/* 3. MAIN CONTENT: STAT CARDS + TABS (LEFT 2 COLS) & SIDEBAR (RIGHT 1 COL) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
         {/* Left 2 Columns */}
-        <div className="lg:col-span-2 min-w-0 space-y-6">
+        <div className="lg:col-span-2 min-w-0 space-y-3 lg:space-y-6">
           {/* THREE STAT CARDS (Matching Reference Screen 7: Members, Difficulty, Type) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 lg:gap-4">
             {/* Stat Card 1: Members */}
-            <div className="bg-white rounded-2xl border border-border p-4 sm:p-5 shadow-card flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
+            <div className="bg-white rounded-2xl border border-border p-2 sm:p-4 lg:p-5 shadow-card flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 lg:gap-4 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
                 <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="min-w-0">
-                <div className="font-heading font-bold text-base sm:text-lg text-text truncate">
+                <div className="font-heading font-bold text-xs sm:text-base lg:text-lg text-text truncate">
                   {trip.members.length}/{trip.maxMembers}
                 </div>
                 <div className="text-[11px] sm:text-xs text-text-muted font-medium">Members</div>
@@ -421,12 +411,12 @@ export const TripDetailsPage: React.FC = () => {
             </div>
 
             {/* Stat Card 2: Difficulty */}
-            <div className="bg-white rounded-2xl border border-border p-4 sm:p-5 shadow-card flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
+            <div className="bg-white rounded-2xl border border-border p-2 sm:p-4 lg:p-5 shadow-card flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 lg:gap-4 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
                 <Mountain className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="min-w-0">
-                <div className="font-heading font-bold text-base sm:text-lg text-text capitalize truncate">
+                <div className="font-heading font-bold text-xs sm:text-base lg:text-lg text-text capitalize truncate">
                   {trip.difficulty || 'Medium'}
                 </div>
                 <div className="text-[11px] sm:text-xs text-text-muted font-medium">Difficulty</div>
@@ -434,13 +424,13 @@ export const TripDetailsPage: React.FC = () => {
             </div>
 
             {/* Stat Card 3: Type */}
-            <div className="bg-white rounded-2xl border border-border p-4 sm:p-5 shadow-card flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
+            <div className="bg-white rounded-2xl border border-border p-2 sm:p-4 lg:p-5 shadow-card flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 lg:gap-4 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
                 <Compass className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="min-w-0">
-                <div className="font-heading font-bold text-base sm:text-lg text-text truncate">
-                  Solo/Group
+                <div className="font-heading font-bold text-xs sm:text-base lg:text-lg text-text truncate">
+                  {trip.tripType === 'solo' ? 'Solo' : trip.tripType === 'couple' ? 'Couple' : 'Group'}
                 </div>
                 <div className="text-[11px] sm:text-xs text-text-muted font-medium">Type</div>
               </div>
@@ -448,56 +438,21 @@ export const TripDetailsPage: React.FC = () => {
           </div>
 
           {/* TABS CONTAINER */}
-          <div className="bg-white rounded-2xl border border-border p-6 shadow-subtle">
+          <div id="trip-main-details" className="scroll-mt-24 bg-white rounded-2xl border border-border p-3 sm:p-4 lg:p-6 shadow-subtle">
             {/* Tabs */}
-            <Tabs
+            <div className="hidden sm:block"><Tabs
               tabs={tabs}
               activeTab={activeTab}
               onChange={(tabId) => setActiveTab(tabId as any)}
               variant="underline"
-            />
-
-            {activeTab === 'images' && (
-              <div className="pt-6 space-y-4">
-                <h4 className="font-heading font-semibold text-base text-text">Trip Images</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])].map((src, index) => (
-                    <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-border focus-visible:outline-primary">
-                      <img src={src} alt={`${trip.name} — photo ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform hover:scale-105" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'contact' && (
-              <div className="pt-6 space-y-4">
-                <h4 className="font-heading font-semibold text-base text-text">Contact Information</h4>
-                <div className="rounded-xl bg-light-bg border border-border p-4 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
-                    <div>
-                      <p className="font-semibold text-sm text-text">{trip.leader.name}</p>
-                      <p className="text-xs text-text-muted">Trip leader · {trip.leader.city}, {trip.leader.country || 'India'}</p>
-                    </div>
-                  </div>
-                  {trip.contactInformation?.email && (
-                    <p className="text-sm text-text-muted">Email: <a href={`mailto:${trip.contactInformation.email}`} className="text-primary break-all hover:underline">{trip.contactInformation.email}</a></p>
-                  )}
-                  {trip.contactInformation?.phone && (
-                    <p className="text-sm text-text-muted">Phone: <a href={`tel:${trip.contactInformation.phone}`} className="text-primary hover:underline">{trip.contactInformation.phone}</a></p>
-                  )}
-                  {!trip.contactInformation?.email && !trip.contactInformation?.phone && (
-                    <p className="text-sm text-text-muted">The trip leader hasn't shared an email or phone number. Ask your questions in the trip chat.</p>
-                  )}
-                  <Button variant="secondary" size="sm" onClick={() => setActiveTab('chat')} icon={<Send className="w-4 h-4" />}>Open Trip Chat</Button>
-                </div>
-              </div>
-            )}
+            /></div>
+            <div className="grid grid-cols-4 gap-1 border-b border-border sm:hidden" aria-label="Trip details">
+              {tabs.map((tab) => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as any)} className={`min-w-0 py-3 text-[11px] font-semibold border-b-2 ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted'}`}>{tab.id === 'members' ? 'Members' : tab.label}</button>)}
+            </div>
 
             {/* TAB: ABOUT */}
             {activeTab === 'about' && (
-              <div className="pt-6 space-y-6">
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-6">
                 <div>
                   <h4 className="font-heading font-semibold text-base text-text mb-2">
                     About this trip
@@ -549,7 +504,7 @@ export const TripDetailsPage: React.FC = () => {
 
             {/* TAB: ITINERARY */}
             {activeTab === 'itinerary' && (
-              <div className="pt-6 space-y-4">
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <h4 className="font-heading font-semibold text-base text-text mb-3">
                   Day-by-Day Plan
                 </h4>
@@ -576,15 +531,18 @@ export const TripDetailsPage: React.FC = () => {
 
             {/* TAB: MEMBERS */}
             {activeTab === 'members' && (
-              <div className="pt-6 space-y-4">
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <h4 className="font-heading font-semibold text-base text-text mb-3">
                   Trip Travellers ({trip.members.length}/{trip.maxMembers})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {trip.members.map((member) => (
-                    <div
+                    <button
                       key={member.id}
-                      className="p-3.5 rounded-xl bg-light-bg border border-border flex items-center gap-3"
+                      type="button"
+                      onClick={() => setSelectedTraveller(member)}
+                      aria-label={`View ${member.name}'s profile`}
+                      className="w-full p-3.5 rounded-xl bg-light-bg border border-border flex items-center gap-3 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
                     >
                       <Avatar src={member.avatarUrl} name={member.name} size="md" />
                       <div className="min-w-0 text-left">
@@ -598,7 +556,7 @@ export const TripDetailsPage: React.FC = () => {
                         </div>
                         <p className="text-xs text-text-muted truncate">{member.city}, {member.country || 'India'}</p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -606,7 +564,7 @@ export const TripDetailsPage: React.FC = () => {
 
             {/* TAB: CHAT */}
             {activeTab === 'chat' && (
-              <div className="pt-6 space-y-4">
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <div className="bg-light-bg rounded-xl p-4 border border-border h-64 overflow-y-auto space-y-3 flex flex-col">
                   {localMessages.map((msg) => (
                     <div
@@ -648,9 +606,14 @@ export const TripDetailsPage: React.FC = () => {
               </div>
             )}
 
-            {/* TAB: REVIEWS */}
-            {activeTab === 'reviews' && (
-              <div className="pt-6 space-y-4">
+          </div>
+          <section className="rounded-2xl border border-border bg-white p-3 sm:p-4 lg:p-6 shadow-subtle" aria-labelledby="trip-info-heading">
+            <h3 id="trip-info-heading" className="font-heading font-bold text-base text-text mb-3">More about this trip</h3>
+            <div className="grid grid-cols-3 gap-2" aria-label="Additional trip information">
+              {([{ id: 'reviews', label: 'Reviews' }, { id: 'images', label: 'Photos' }, { id: 'contact', label: 'Contact' }] as const).map((item) => <button key={item.id} type="button" aria-pressed={infoTab === item.id} onClick={() => setInfoTab(item.id)} className={`rounded-xl py-2.5 text-xs sm:text-sm font-semibold border transition-colors ${infoTab === item.id ? 'bg-primary text-white border-primary' : 'bg-light-bg text-text-muted border-border hover:border-primary'}`}>{item.label}</button>)}
+            </div>            {/* TAB: REVIEWS */}
+            {infoTab === 'reviews' && (
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <h4 className="font-heading font-semibold text-base text-text mb-3">
                   Past Traveller Feedback
                 </h4>
@@ -670,7 +633,46 @@ export const TripDetailsPage: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
+            {infoTab === 'images' && (
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
+                <h4 className="font-heading font-semibold text-base text-text">Trip Images</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])].map((src, index) => (
+                    <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-border focus-visible:outline-primary">
+                      <img src={src} alt={`${trip.name} — photo ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform hover:scale-105" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {infoTab === 'contact' && (
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
+                <h4 className="font-heading font-semibold text-base text-text">Contact Information</h4>
+                <div className="rounded-xl bg-light-bg border border-border p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
+                    <div>
+                      <p className="font-semibold text-sm text-text">{trip.leader.name}</p>
+                      <p className="text-xs text-text-muted">Trip leader · {trip.leader.city}, {trip.leader.country || 'India'}</p>
+                    </div>
+                  </div>
+                  {trip.contactInformation?.email && (
+                    <p className="text-sm text-text-muted">Email: <a href={`mailto:${trip.contactInformation.email}`} className="text-primary break-all hover:underline">{trip.contactInformation.email}</a></p>
+                  )}
+                  {trip.contactInformation?.phone && (
+                    <p className="text-sm text-text-muted">Phone: <a href={`tel:${trip.contactInformation.phone}`} className="text-primary hover:underline">{trip.contactInformation.phone}</a></p>
+                  )}
+                  {!trip.contactInformation?.email && !trip.contactInformation?.phone && (
+                    <p className="text-sm text-text-muted">The trip leader hasn't shared an email or phone number. Ask your questions in the trip chat.</p>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={() => { setActiveTab('chat'); document.getElementById('trip-main-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} icon={<Send className="w-4 h-4" />}>Open Trip Chat</Button>
+                </div>
+              </div>
+            )}
+
+
+          </section>
         </div>
 
         {/* Right Column: Leader Card & Members Sidebar (Matching Screen 7) */}
@@ -697,7 +699,7 @@ export const TripDetailsPage: React.FC = () => {
 
           {/* Members Stack Card */}
           <div className="bg-white rounded-2xl border border-border p-5 shadow-card text-left">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
               <h4 className="font-heading font-bold text-base text-text">
                 Members ({trip.members.length}/{trip.maxMembers})
               </h4>
@@ -722,6 +724,27 @@ export const TripDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      <Modal isOpen={selectedTraveller !== null} onClose={() => setSelectedTraveller(null)} title="Traveller profile">
+        {selectedTraveller && <div className="space-y-4 text-left">
+          <div className="flex items-center gap-3">
+            <Avatar src={selectedTraveller.avatarUrl} name={selectedTraveller.name} size="lg" />
+            <div className="min-w-0">
+              <h3 className="font-heading font-bold text-lg text-text break-words">{selectedTraveller.name}</h3>
+              <p className="text-xs text-text-muted">@{selectedTraveller.username}</p>
+              <p className="text-sm text-text-muted mt-1">{selectedTraveller.city}, {selectedTraveller.country || 'India'}</p>
+              {selectedTraveller.id === trip.leader.id && <span className="text-xs font-semibold text-primary">Trip leader</span>}
+            </div>
+          </div>
+          {selectedTraveller.bio && <p className="text-sm text-text leading-relaxed">{selectedTraveller.bio}</p>}
+          <div className="flex flex-wrap gap-2">{selectedTraveller.travelInterests.map((interest) => <span key={interest} className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">{interest}</span>)}</div>
+          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-light-bg p-3 text-sm">
+            <div><dt className="text-xs text-text-muted">Trips</dt><dd className="font-semibold text-text">{selectedTraveller.stats.trips}</dd></div>
+            <div><dt className="text-xs text-text-muted">Stories</dt><dd className="font-semibold text-text">{selectedTraveller.stats.stories}</dd></div>
+            <div><dt className="text-xs text-text-muted">Budget style</dt><dd className="font-semibold text-text capitalize">{selectedTraveller.budgetStyle}</dd></div>
+            <div><dt className="text-xs text-text-muted">Languages</dt><dd className="font-semibold text-text">{selectedTraveller.languages.join(', ') || 'Not shared'}</dd></div>
+          </dl>
+        </div>}
+      </Modal>
     </div>
   );
 };

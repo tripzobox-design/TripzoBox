@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MobileHeroShowcase } from './MobileHeroShowcase';
 import { Link } from 'react-router-dom';
 import { Flame, Heart, MapPin, Users, Calendar, ArrowRight, Plane, ChevronRight } from 'lucide-react';
 
@@ -19,6 +20,9 @@ export const HeroInteractiveShowcase: React.FC = () => {
   };
 
   return (
+    <>
+    <MobileHeroShowcase liked={liked} onToggleLike={toggleLike} />
+    <div className="hidden lg:block">
     <div className="relative w-full max-w-[800px] mx-auto text-white pt-3 lg:pt-6">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[280px] pointer-events-none hidden sm:block">
         <svg viewBox="0 0 800 300" fill="none" className="absolute inset-0 w-full h-full overflow-visible"><path d="M350 50 C420 -35 515 20 460 40 C420 55 440 -20 510 0 M660 85 C780 50 815 155 780 215" stroke="white" strokeOpacity=".65" strokeWidth="1.5" strokeDasharray="5 5" /></svg>
@@ -63,5 +67,7 @@ export const HeroInteractiveShowcase: React.FC = () => {
         </div>
       </div>
     </div>
+    </div>
+    </>
   );
 };

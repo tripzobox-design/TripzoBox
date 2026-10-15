@@ -66,9 +66,9 @@ export const VaultSecurityPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-14 space-y-4 lg:space-y-12">
       {/* 1. HERO */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-8 sm:p-12 border border-border">
+      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-5 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase font-heading mb-4">
             <Shield className="w-4 h-4" />
@@ -80,7 +80,7 @@ export const VaultSecurityPage: React.FC = () => {
           <p className="text-sm sm:text-base text-text-muted mt-4 leading-relaxed font-body">
             Keep your critical travel identity documents, boarding passes, and emergency numbers safe in one protected, offline-ready vault.
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
+          <div className="mt-4 lg:mt-8 flex flex-wrap gap-3 lg:gap-4">
             <Link to="/app/vault">
               <Button variant="primary" size="md">
                 Open My Travel Vault
@@ -96,7 +96,7 @@ export const VaultSecurityPage: React.FC = () => {
       </div>
 
       {/* 2. SECURITY STATS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4">
         <div className="bg-white rounded-2xl border border-border p-5 text-center shadow-card">
           <span className="font-heading font-extrabold text-2xl sm:text-3xl text-primary block">
             AES-256
@@ -124,7 +124,7 @@ export const VaultSecurityPage: React.FC = () => {
       </div>
 
       {/* 3. CORE ARCHITECTURE PILLARS */}
-      <div className="space-y-6">
+      <div className="space-y-3 lg:space-y-6">
         <div>
           <h2 className="font-heading font-bold text-2xl sm:text-3xl text-text">
             How Your Documents Are Protected
@@ -134,19 +134,19 @@ export const VaultSecurityPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
           {securityPillars.map((pillar) => {
             const Icon = pillar.icon;
             return (
               <div
                 key={pillar.title}
-                className="bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-card flex flex-col gap-4"
+                className="min-w-0 bg-white rounded-2xl lg:rounded-3xl border border-border p-3 sm:p-4 lg:p-8 shadow-card flex flex-col gap-3 lg:gap-4"
               >
-                <div className="w-12 h-12 rounded-2xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
-                  <Icon className="w-6 h-6 stroke-[1.75]" />
+                <div className="w-9 h-9 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5 lg:w-6 lg:h-6 stroke-[1.75]" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-bold text-lg text-text">
+                  <h3 className="font-heading font-bold text-sm sm:text-base lg:text-lg text-text leading-snug">
                     {pillar.title}
                   </h3>
                   <p className="text-xs sm:text-sm text-text-muted leading-relaxed mt-2">

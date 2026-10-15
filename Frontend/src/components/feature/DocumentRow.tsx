@@ -128,7 +128,7 @@ export const DocumentRow: React.FC<DocumentRowProps> = ({
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-light-bg hover:text-primary transition-colors"
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  View Details
+                  View Original
                 </button>
                 <button
                   type="button"

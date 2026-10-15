@@ -1,11 +1,10 @@
+import { confirmAction } from '../lib/confirmAction';
 import React, { useState } from 'react';
 import {
   Shield,
   Plus,
-  Lock,
   PhoneCall,
   UserCheck,
-  WifiOff,
   AlertTriangle,
   Info,
   CheckCircle,
@@ -17,7 +16,7 @@ import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
 import { Modal } from '../components/ui/Modal';
 import { Input, Select } from '../components/ui/Input';
-import { Dropzone } from '../components/ui/Dropzone';
+import { VaultFileViewer } from '../components/feature/VaultFileViewer';
 import { DocumentRow } from '../components/feature/DocumentRow';
 import { VaultDocument } from '../types';
 
@@ -26,18 +25,16 @@ export const TravelVaultPage: React.FC = () => {
     documents,
     emergencyContacts,
     trustedContacts,
-    offlineAccessSettings,
-    addDocument,
+    addDocumentWithFile,
     deleteDocument,
     addEmergencyContact,
     deleteEmergencyContact,
     toggleTrustedContactVaultAccess,
-    toggleOfflineDocType,
   } = useVault();
 
   const { success, error: showErrorToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'documents' | 'emergency' | 'contacts' | 'offline'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'emergency' | 'contacts'>('documents');
 
   // Modals state
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
@@ -50,8 +47,9 @@ export const TravelVaultPage: React.FC = () => {
   const [docName, setDocName] = useState('');
   const [validTill, setValidTill] = useState('');
   const [refNumber, setRefNumber] = useState('');
-  const [fileUrls, setFileUrls] = useState<string[]>([]);
-  const [docErrors, setDocErrors] = useState<{ name?: string }>({});
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [savingDocument, setSavingDocument] = useState(false);
+  const [docErrors, setDocErrors] = useState<{ name?: string; file?: string }>({});
 
   // Form State for Add Emergency Contact
   const [contactName, setContactName] = useState('');
@@ -62,24 +60,26 @@ export const TravelVaultPage: React.FC = () => {
     { id: 'documents', label: 'Documents', badge: documents.length },
     { id: 'emergency', label: 'Emergency', badge: emergencyContacts.length },
     { id: 'contacts', label: 'Contacts', badge: trustedContacts.length },
-    { id: 'offline', label: 'Offline Access' },
   ];
 
-  const handleSaveDocument = (e: React.FormEvent) => {
+  const handleSaveDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!docName.trim()) {
       setDocErrors({ name: 'Document name is required' });
       return;
     }
 
-    addDocument({
+    if (!documentFile) { setDocErrors({ file: 'Please choose an ID image or PDF.' }); return; }
+    setSavingDocument(true);
+    try {
+    await addDocumentWithFile({
       type: docType,
       name: docName.trim(),
       validTill: validTill || undefined,
       referenceNumber: refNumber || undefined,
-      fileUrl: fileUrls[0] || undefined,
+
       visibility: 'private',
-    });
+    }, documentFile);
 
     success(`${docName} added to your Travel Vault!`, 'Document Secured');
     setIsAddDocOpen(false);
@@ -88,8 +88,10 @@ export const TravelVaultPage: React.FC = () => {
     setDocName('');
     setValidTill('');
     setRefNumber('');
-    setFileUrls([]);
+    setDocumentFile(null);
     setDocErrors({});
+    } catch (error) { setDocErrors({ file: error instanceof Error ? error.message : 'Could not save the document.' }); }
+    finally { setSavingDocument(false); }
   };
 
   const handleSaveContact = (e: React.FormEvent) => {
@@ -133,29 +135,19 @@ export const TravelVaultPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* 2. SUB-TABS (Documents, Emergency, Contacts, Offline Access) */}
+      {/* 2. SUB-TABS (Documents, Emergency, Contacts) */}
       <Tabs
         tabs={subTabs}
         activeTab={activeTab}
         onChange={(tabId) => setActiveTab(tabId as any)}
         variant="pills"
+        className="!grid grid-cols-3 !gap-1.5 [&>button]:!min-w-0 [&>button]:!px-1.5 [&>button]:!gap-1 [&>button]:justify-center [&>button]:!text-[11px] sm:[&>button]:!text-sm"
       />
 
       {/* 3. TAB CONTENT */}
       {/* TAB 1: DOCUMENTS */}
       {activeTab === 'documents' && (
         <div className="space-y-4">
-          {/* Privacy Disclaimer Banner */}
-          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex items-start gap-3 text-left">
-            <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div className="text-xs sm:text-sm">
-              <span className="font-semibold text-primary-dark">Private & Client-Encrypted:</span>{' '}
-              <span className="text-text-muted">
-                Documents are stored on your device and private by default. You explicitly decide which items are cached offline or shared with trusted travel contacts.
-              </span>
-            </div>
-          </div>
-
           <div className="flex items-center justify-between pt-2">
             <h3 className="font-heading font-semibold text-base sm:text-lg text-text">
               My Documents ({documents.length})
@@ -172,7 +164,8 @@ export const TravelVaultPage: React.FC = () => {
                   setSelectedDoc(item);
                   setIsViewDocOpen(true);
                 }}
-                onDelete={(id) => {
+                onDelete={async (id) => {
+                  if (!await confirmAction('delete', 'this document and its saved original')) return;
                   deleteDocument(id);
                   success('Document removed from your vault.');
                 }}
@@ -213,8 +206,8 @@ export const TravelVaultPage: React.FC = () => {
 
           {/* Emergency Contacts List */}
           <div className="bg-white rounded-2xl border border-border p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-heading font-bold text-base sm:text-lg text-text">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="min-w-0 font-heading font-bold text-base sm:text-lg text-text">
                 Designated Emergency Contacts
               </h3>
               <Button
@@ -222,6 +215,7 @@ export const TravelVaultPage: React.FC = () => {
                 size="sm"
                 onClick={() => setIsAddContactOpen(true)}
                 icon={<Plus className="w-3.5 h-3.5" />}
+                className="shrink-0 whitespace-nowrap"
               >
                 Add Contact
               </Button>
@@ -253,7 +247,8 @@ export const TravelVaultPage: React.FC = () => {
                     </a>
                     {!c.isPrimary && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          if (!await confirmAction('delete', c.name + ' from emergency contacts')) return;
                           deleteEmergencyContact(c.id);
                           success('Contact removed.');
                         }}
@@ -321,62 +316,12 @@ export const TravelVaultPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: OFFLINE ACCESS */}
-      {activeTab === 'offline' && (
-        <div className="bg-white rounded-2xl border border-border p-6 space-y-6">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/40 text-primary flex items-center justify-center shrink-0">
-              <WifiOff className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-heading font-bold text-base sm:text-lg text-text">
-                Offline Document Cache
-              </h3>
-              <p className="text-xs sm:text-sm text-text-muted mt-0.5">
-                Keep vital travel proofs cached locally in your browser so you can display them even without an active network connection on remote mountain trails.
-              </p>
-            </div>
-          </div>
-
-          <div className="divide-y divide-border pt-2">
-            {Object.entries(offlineAccessSettings).map(([docType, isEnabled]) => (
-              <div key={docType} className="py-3.5 flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-sm text-text">{docType}</h4>
-                  <p className="text-xs text-text-muted">
-                    {isEnabled ? 'Cached on this device for offline review' : 'Online access only'}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleOfflineDocType(docType);
-                    success(`${docType} offline caching ${!isEnabled ? 'enabled' : 'disabled'}.`);
-                  }}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${
-                    isEnabled ? 'bg-primary' : 'bg-gray-300'
-                  }`}
-                  aria-label={`Toggle offline access for ${docType}`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                      isEnabled ? 'translate-x-6' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ADD DOCUMENT MODAL */}
       <Modal
         isOpen={isAddDocOpen}
         onClose={() => setIsAddDocOpen(false)}
         title="Add Document to Vault"
-        description="Documents stay strictly in your local session and are never uploaded to any server."
+        description="Save the original file on this device to open it without an internet connection."
       >
         <form onSubmit={handleSaveDocument} className="space-y-4 pt-2">
           <Select
@@ -421,19 +366,18 @@ export const TravelVaultPage: React.FC = () => {
             />
           </div>
 
-          <Dropzone
-            label="Select Document File"
-            subtext="Accepts PDF, JPG, PNG (Local storage only)"
-            multiple={false}
-            onFilesSelected={setFileUrls}
-          />
-
+          <label className="block rounded-xl border border-dashed border-primary/30 bg-emerald-50/40 p-4">
+            <span className="block text-sm font-semibold text-text mb-2">Original ID image or PDF</span>
+            <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" aria-label="Select document file" onChange={(event) => { setDocumentFile(event.target.files?.[0] || null); setDocErrors({}); }} className="block w-full text-xs text-text-muted" />
+            <span className="block text-xs text-text-muted mt-2">Stored on this device for offline access · Up to 20 MB</span>
+          </label>
+          {docErrors.file && <p role="alert" className="text-xs text-red-600">{docErrors.file}</p>}
           <div className="flex justify-end gap-3 pt-3">
             <Button variant="secondary" type="button" onClick={() => setIsAddDocOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
-              Save Document
+            <Button variant="primary" type="submit" disabled={savingDocument}>
+              {savingDocument ? 'Saving original…' : 'Save Document'}
             </Button>
           </div>
         </form>
@@ -444,45 +388,11 @@ export const TravelVaultPage: React.FC = () => {
         <Modal
           isOpen={isViewDocOpen}
           onClose={() => setIsViewDocOpen(false)}
+          maxWidth="2xl"
           title={selectedDoc.name}
           description={`Type: ${selectedDoc.type} · Uploaded: ${selectedDoc.uploadedAt}`}
         >
-          <div className="space-y-4 pt-2">
-            <div className="bg-light-bg rounded-xl p-4 border border-border space-y-2 text-xs sm:text-sm">
-              <div className="flex justify-between">
-                <span className="text-text-muted">Status:</span>
-                <span className="font-semibold text-emerald-600">Active & Verified</span>
-              </div>
-              {selectedDoc.validTill && (
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Valid Till:</span>
-                  <span className="font-semibold text-text">{selectedDoc.validTill}</span>
-                </div>
-              )}
-              {selectedDoc.referenceNumber && (
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Reference:</span>
-                  <span className="font-semibold text-text">{selectedDoc.referenceNumber}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-text-muted">Visibility:</span>
-                <span className="font-semibold capitalize text-primary">{selectedDoc.visibility}</span>
-              </div>
-            </div>
-
-            {selectedDoc.fileUrl && (
-              <div className="rounded-xl overflow-hidden border border-border">
-                <img src={selectedDoc.fileUrl} alt={selectedDoc.name} className="w-full max-h-60 object-contain bg-black/5" />
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="primary" onClick={() => setIsViewDocOpen(false)}>
-                Done
-              </Button>
-            </div>
-          </div>
+          <VaultFileViewer document={documents.find((doc) => doc.id === selectedDoc.id) || selectedDoc} />
         </Modal>
       )}
 

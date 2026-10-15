@@ -24,10 +24,10 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
   return (
     <div
       onClick={() => navigate(targetPath)}
-      className="group bg-white rounded-2xl border border-border overflow-hidden shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col text-left"
+      className="group bg-white rounded-2xl border border-border overflow-hidden shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row sm:flex-col text-left"
     >
       {/* Cover Image */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+      <div className="relative w-[105px] shrink-0 sm:w-full sm:aspect-[16/10] overflow-hidden bg-gray-100">
         <img
           src={trip.coverImageUrl}
           alt={trip.name}
@@ -56,7 +56,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
         )}
 
         {/* Badges: Trip Leader & Room Type */}
-        <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-1.5">
+        <div className="absolute bottom-3 left-3 hidden sm:flex flex flex-wrap items-center gap-1.5">
           {isLeader ? (
             <span className="backdrop-blur-md bg-emerald-700/95 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-400/50 shadow-xs flex items-center gap-1">
               👑 Trip Leader
@@ -76,13 +76,13 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
       </div>
 
       {/* Card Content */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+      <div className="min-w-0 p-3 sm:p-4 lg:p-5 flex-1 flex flex-col justify-between">
         <div>
           <h3 className="font-heading font-semibold text-base sm:text-lg text-text group-hover:text-primary transition-colors line-clamp-1">
             {trip.name}
           </h3>
 
-          <div className="flex items-center gap-3 text-xs text-text-muted mt-2">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-text-muted mt-1.5">
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-text-subtle" />
               {trip.startDate}
@@ -96,7 +96,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
         </div>
 
         {/* Price Row */}
-        <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-border">
+        <div className="flex items-center justify-between pt-2 mt-2 lg:pt-3.5 lg:mt-3.5 border-t border-border">
           <div>
             <span className="text-xs text-text-subtle block">Starts from</span>
             <span className="text-sm sm:text-base font-bold text-primary">
@@ -104,7 +104,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
             </span>
             <span className="text-xs text-text-muted"> / person</span>
           </div>
-          <span className="text-xs font-semibold text-primary group-hover:translate-x-1 transition-transform inline-flex items-center">
+          <span className="hidden sm:inline-flex text-xs font-semibold text-primary group-hover:translate-x-1 transition-transform inline-flex items-center">
             View Details →
           </span>
         </div>

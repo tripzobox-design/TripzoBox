@@ -52,9 +52,9 @@ export const SafetyPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-5 sm:pt-3 sm:pb-7 lg:py-14 space-y-6 lg:space-y-12">
       {/* 1. HERO */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-8 sm:p-12 border border-border">
+      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-4 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase font-heading mb-4">
             <Shield className="w-4 h-4" />
@@ -66,15 +66,15 @@ export const SafetyPage: React.FC = () => {
           <p className="text-sm sm:text-base text-text-muted mt-4 leading-relaxed font-body">
             At Tripzobox, traveller safety is our foundational architecture. Learn how our verification, group matching, and emergency protocols safeguard every journey.
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link to="/community-rules">
-              <Button variant="primary" size="md">
-                Read Community Rules
+          <div className="mt-5 lg:mt-8 grid grid-cols-2 lg:flex gap-2 lg:gap-4">
+            <Link to="/community-rules" className="min-w-0">
+              <Button variant="primary" size="md" className="w-full h-full px-2 sm:px-4 text-[11px] sm:text-sm">
+                <span className="lg:hidden">Community Rules</span><span className="hidden lg:inline">Read Community Rules</span>
               </Button>
             </Link>
-            <Link to="/vault-security">
-              <Button variant="secondary" size="md">
-                Travel Vault Security
+            <Link to="/vault-security" className="min-w-0">
+              <Button variant="secondary" size="md" className="w-full h-full px-2 sm:px-4 text-[11px] sm:text-sm">
+                <span className="lg:hidden">Vault Security</span><span className="hidden lg:inline">Travel Vault Security</span>
               </Button>
             </Link>
           </div>
@@ -98,7 +98,7 @@ export const SafetyPage: React.FC = () => {
             return (
               <div
                 key={protocol.title}
-                className="bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-card flex flex-col gap-3"
+                className="bg-white rounded-3xl border border-border p-4 sm:p-5 lg:p-8 shadow-card flex flex-col gap-3"
               >
                 <div className="w-12 h-12 rounded-2xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
                   <Icon className="w-6 h-6 stroke-[1.75]" />

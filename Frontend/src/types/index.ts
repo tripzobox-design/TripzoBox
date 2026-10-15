@@ -4,6 +4,7 @@ export interface User {
   username: string;
   avatarUrl: string;
   coverUrl?: string;
+  gender?: 'female' | 'male' | 'non-binary' | 'prefer-not-to-say';
   city: string;
   country?: string;
   languages: string[];
@@ -122,6 +123,9 @@ export interface VaultDocument {
   validTill?: string;
   referenceNumber?: string;
   fileUrl?: string;
+  fileKey?: string;
+  fileName?: string;
+  fileMime?: string;
   visibility: 'private' | 'trusted-contacts' | 'offline-available';
   uploadedAt: string;
 }

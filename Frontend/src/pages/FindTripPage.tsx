@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Compass,
@@ -36,6 +36,7 @@ import { TripCard } from '../components/feature/TripCard';
 import { Tabs } from '../components/ui/Tabs';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
+import { Drawer } from '../components/ui/Drawer';
 
 // Quick destination shortcuts
 const QUICK_DESTINATIONS = [
@@ -185,6 +186,14 @@ export const FindTripPage: React.FC = () => {
 
   // Create Room Modal State
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  useEffect(() => {
+    if (!isCreateRoomOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsCreateRoomOpen(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
+  }, [isCreateRoomOpen]);
   const [newRoomName, setNewRoomName] = useState('Munnar Misty Peaks Trek');
   const [newDestination, setNewDestination] = useState('Munnar, Kerala');
   const [newStartCity, setNewStartCity] = useState('Kochi');
@@ -531,8 +540,8 @@ export const FindTripPage: React.FC = () => {
 
   return (
     <div
-      className={`flex flex-col gap-8 text-left w-full max-w-[1536px] mx-auto ${
-        isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-8 sm:py-10'
+      className={`flex flex-col gap-3 lg:gap-8 text-left w-full max-w-[1536px] mx-auto ${
+        isInApp ? '' : 'px-4 sm:px-6 lg:px-8 pt-2 pb-4 lg:py-10'
       }`}
     >
       {/* 1. HERO & DISCOVERY SEARCH CONSOLE */}
@@ -547,9 +556,9 @@ export const FindTripPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-950/65 to-emerald-950/30" />
         </div>
 
-        <div className="relative z-10 p-5 sm:p-8 lg:p-10">
+        <div className="relative z-10 p-3 sm:p-5 lg:p-10">
           {/* Header Title & Create Room CTA Button */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-8 sm:mb-10 text-left">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-6 lg:mb-10 text-left">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-accent text-xs font-semibold mb-3">
                 <Sparkles className="w-3.5 h-3.5" />
@@ -579,11 +588,12 @@ export const FindTripPage: React.FC = () => {
           </div>
 
           {/* Elevated Search & Filter Console Card */}
-          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-text border border-border/70">
+          <div className="trip-search-console bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-text border border-border/70">
+            <h2 className="lg:hidden text-sm font-bold text-text mb-3">Plan your route</h2>
             {/* Primary Search Inputs Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-stretch">
+            <div className="grid grid-cols-2 xl:grid-cols-12 gap-3 items-stretch">
               {/* Destination Search */}
-              <div className="lg:col-span-3 flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
+              <div className="trip-search-field col-span-2 sm:col-span-1 xl:col-span-3 flex items-center gap-2 px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex flex-col text-left w-full min-w-0">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
@@ -612,7 +622,7 @@ export const FindTripPage: React.FC = () => {
               </div>
 
               {/* Departure Hub / From City */}
-              <div className="lg:col-span-3 flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
+              <div className="trip-search-field col-span-2 sm:col-span-1 xl:col-span-3 flex items-center gap-2 px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
                 <Compass className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex flex-col text-left w-full min-w-0">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
@@ -641,7 +651,7 @@ export const FindTripPage: React.FC = () => {
                     else openEndDatePicker();
                   }
                 }}
-                className="lg:col-span-3 flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px] cursor-pointer"
+                className="trip-search-dates col-span-2 xl:col-span-3 flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px] cursor-pointer"
               >
                 <Calendar
                   className="w-5 h-5 text-primary shrink-0 hover:scale-110 transition-transform cursor-pointer"
@@ -672,7 +682,9 @@ export const FindTripPage: React.FC = () => {
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="trip-date-inputs flex items-center gap-1.5 mt-0.5">
+                    <label onClick={(event) => event.stopPropagation()} className="date-control group relative min-w-0 flex flex-col gap-1 lg:contents"><span className="lg:hidden text-[10px] font-semibold text-text-muted">From</span>
+                      <span className="lg:hidden flex items-center justify-between gap-1 min-h-[46px] rounded-xl border border-border bg-light-bg px-3 text-xs font-medium text-text group-focus-within:ring-2 group-focus-within:ring-primary/20"><span className="truncate">{startDateQuery ? new Date(startDateQuery + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Start date'}</span><Calendar className="w-4 h-4 text-primary shrink-0" /></span>
                     <input
                       ref={startDateInputRef}
                       type="date"
@@ -685,6 +697,7 @@ export const FindTripPage: React.FC = () => {
                       aria-label="Trip start date"
                       className="w-full text-xs font-semibold text-text bg-transparent outline-none cursor-pointer"
                     />
+                    </label>
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
@@ -694,6 +707,8 @@ export const FindTripPage: React.FC = () => {
                     >
                       →
                     </span>
+                    <label onClick={(event) => event.stopPropagation()} className="date-control group relative min-w-0 flex flex-col gap-1 lg:contents"><span className="lg:hidden text-[10px] font-semibold text-text-muted">Until</span>
+                      <span className="lg:hidden flex items-center justify-between gap-1 min-h-[46px] rounded-xl border border-border bg-light-bg px-3 text-xs font-medium text-text group-focus-within:ring-2 group-focus-within:ring-primary/20"><span className="truncate">{endDateQuery ? new Date(endDateQuery + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'End date'}</span><Calendar className="w-4 h-4 text-primary shrink-0" /></span>
                     <input
                       ref={endDateInputRef}
                       type="date"
@@ -707,12 +722,13 @@ export const FindTripPage: React.FC = () => {
                       aria-label="Trip end date"
                       className="w-full text-xs font-semibold text-text bg-transparent outline-none cursor-pointer"
                     />
+                    </label>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons: Filter Toggle & Search */}
-              <div className="lg:col-span-3 flex items-center gap-2.5 min-h-[50px]">
+              <div className="trip-search-actions col-span-2 xl:col-span-3 flex items-center gap-2.5 min-h-[50px]">
                 <button
                   type="button"
                   onClick={() => setShowMoreFilters((prev) => !prev)}
@@ -722,6 +738,7 @@ export const FindTripPage: React.FC = () => {
                       : 'bg-light-bg hover:bg-gray-100 text-text border-border'
                   }`}
                   aria-expanded={showMoreFilters}
+                  aria-haspopup="dialog"
                 >
                   <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" />
                   <span>Filters</span>
@@ -737,27 +754,22 @@ export const FindTripPage: React.FC = () => {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = document.getElementById('trips-catalog-view');
-                    if (target) {
-                      target.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
-                  className="h-full min-h-[50px] px-6 rounded-xl bg-primary hover:bg-primary-hover text-white font-heading font-bold text-sm shadow-subtle hover:shadow-hover hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Search className="w-4 h-4 shrink-0 stroke-[2.5]" />
-                  <span>Search</span>
-                </button>
+
               </div>
             </div>
 
+            <Drawer isOpen={showMoreFilters} onClose={() => setShowMoreFilters(false)} title="Filter trips" footer={
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="secondary" onClick={handleClearAllFilters} className="shrink-0">Reset all</Button>
+                <Button type="button" onClick={() => { setShowMoreFilters(false); document.getElementById('trips-catalog-view')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex-1">Show {filteredTrips.length} {filteredTrips.length === 1 ? 'trip' : 'trips'}</Button>
+              </div>
+            }>
+              <div className="space-y-5">
             {/* Quick Destination Chips Row */}
-            <div className="mt-4 pt-3 border-t border-border/60 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-text-muted mr-1 flex items-center gap-1">
+            <div className="rounded-2xl border border-border/70 bg-light-bg/60 p-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-text-muted w-full mb-1 flex items-center gap-1 shrink-0">
                 <Sparkles className="w-3 h-3 text-primary" />
-                <span>Trending:</span>
+                <span>Trending destinations</span>
               </span>
               {QUICK_DESTINATIONS.map((dest) => {
                 const isActive =
@@ -767,8 +779,9 @@ export const FindTripPage: React.FC = () => {
                   <button
                     key={dest}
                     type="button"
+                    aria-pressed={isActive}
                     onClick={() => setDestinationQuery(dest === 'All' ? '' : dest)}
-                    className={`text-xs px-3 py-1 rounded-full font-medium transition-all ${
+                    className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
                       isActive
                         ? 'bg-primary text-white shadow-xs'
                         : 'bg-light-bg hover:bg-gray-200 text-text border border-border/80'
@@ -780,27 +793,7 @@ export const FindTripPage: React.FC = () => {
               })}
             </div>
 
-            {/* EXPANDABLE EXTENDED FILTERS DRAWER */}
-            {showMoreFilters && (
-              <div className="mt-6 pt-6 border-t border-border/70 space-y-6">
-                <div className="flex items-center justify-between pb-1">
-                  <h4 className="font-heading font-bold text-sm text-text flex items-center gap-2">
-                    <SlidersHorizontal className="w-4 h-4 text-primary" />
-                    <span>Make it your kind of trip</span>
-                  </h4>
-                  {activeFiltersCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearAllFilters}
-                      className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset All Filters</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   {/* Filter 1: Budget Range */}
                   <div className="space-y-3 rounded-2xl border border-border/70 bg-light-bg/60 p-4">
                     <label className="text-xs font-semibold text-text flex items-center gap-1.5">
@@ -987,8 +980,9 @@ export const FindTripPage: React.FC = () => {
                     <span>Only show trips with open spots for joining</span>
                   </label>
                 </div>
+
               </div>
-            )}
+            </Drawer>
           </div>
         </div>
       </div>
@@ -1138,47 +1132,27 @@ export const FindTripPage: React.FC = () => {
       )}
 
       {/* 3. SUB-TABS & SORT CONTROL ROW */}
-      <div id="trips-catalog-view" className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-border pb-3 scroll-mt-24">
-        {/* Left: Filter Tabs */}
-        {!isMyTripsRoute ? (
-          <Tabs
-            tabs={filterTabs}
-            activeTab={activeTab}
-            onChange={(id) => setActiveTab(id as any)}
-            variant="underline"
-          />
-        ) : (
-          <div className="text-sm font-semibold text-text">
-            Showing your registered and created itineraries
+      <div id="trips-catalog-view" className="space-y-2 scroll-mt-24">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 border-b border-border">
+          <div className="flex-1 min-w-0">
+            {!isMyTripsRoute ? <>
+              <div className="hidden sm:block"><Tabs tabs={filterTabs} activeTab={activeTab} onChange={(id) => setActiveTab(id as any)} variant="underline" /></div>
+              <div className="flex items-center gap-4 sm:hidden" aria-label="Trip categories">
+                {filterTabs.map((tab) => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as any)} className={`py-3 text-[11px] font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-primary'}`}>{tab.id === 'popular' ? 'Popular' : tab.label}</button>)}
+              </div>
+            </> : <p className="text-xs sm:text-sm font-semibold text-text py-3">Your joined & hosted trips</p>}
           </div>
-        )}
-
-        {/* Right: Results Count, Sort Dropdown & Host Button */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-          <span className="text-xs text-text-muted font-semibold">
-            {sortedAndFilteredTrips.length}{' '}
-            {sortedAndFilteredTrips.length === 1 ? 'trip found' : 'trips found'}
-          </span>
-
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-border shadow-xs">
-            <ArrowUpDown className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-xs font-semibold text-text-muted hidden md:inline">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="text-xs font-bold text-text bg-transparent outline-none cursor-pointer pr-1"
-              aria-label="Sort trips by"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+          <div title={SORT_OPTIONS.find((option) => option.value === sortBy)?.label} className="relative shrink-0 flex items-center gap-1.5 bg-white px-2.5 sm:px-3 py-2 rounded-lg border border-primary/20 shadow-xs text-primary mb-1">
+            <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden text-xs font-semibold">Sort</span>
+            <ChevronDown className="sm:hidden w-3 h-3" />
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortOption)} aria-label="Sort trips by" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer sm:static sm:opacity-100 sm:w-auto sm:h-auto sm:max-w-[235px] text-xs font-semibold text-text bg-transparent outline-none">
+              {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
         </div>
+        <p className="text-xs text-text-muted font-medium">{sortedAndFilteredTrips.length} {sortedAndFilteredTrips.length === 1 ? 'trip found' : 'trips found'}</p>
       </div>
-
       {/* 4. RESPONSIVE TRIP CARDS GRID */}
       {sortedAndFilteredTrips.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -1206,10 +1180,10 @@ export const FindTripPage: React.FC = () => {
 
       {/* 5. CREATE TRIP ROOM & PUBLIC SPACE MODAL */}
       {isCreateRoomOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div role="dialog" aria-modal="true" aria-labelledby="create-trip-room-title" className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-border overflow-hidden text-left my-auto max-h-[94dvh] flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div role="dialog" aria-modal="true" aria-labelledby="create-trip-room-title" className="bg-white rounded-2xl sm:rounded-3xl max-w-5xl w-full shadow-2xl border border-border overflow-y-auto lg:overflow-hidden overscroll-contain text-left my-auto max-h-[calc(100dvh-16px)] sm:max-h-[94dvh] lg:flex lg:flex-col">
             {/* Modal Header */}
-            <div className="p-5 sm:p-8 bg-gradient-to-r from-emerald-900 via-primary-dark to-emerald-800 text-white flex items-start justify-between shrink-0">
+            <div className="p-4 sm:p-5 lg:p-8 bg-gradient-to-r from-emerald-900 via-primary-dark to-emerald-800 text-white flex items-start justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-7 h-7 rounded-lg bg-amber-400 text-text font-bold text-sm flex items-center justify-center">
@@ -1219,11 +1193,13 @@ export const FindTripPage: React.FC = () => {
                     Host a Space · Trip Leader
                   </span>
                 </div>
-                <h3 id="create-trip-room-title" className="font-heading font-extrabold text-2xl sm:text-3xl text-white">
-                  Create a Trip Room & Public Space
+                <h3 id="create-trip-room-title" className="font-heading font-extrabold text-xl sm:text-2xl lg:text-3xl text-white">
+                  <span className="lg:hidden">Create a trip room</span>
+                  <span className="hidden lg:inline">Create a Trip Room & Public Space</span>
                 </h3>
                 <p className="text-xs text-gray-200 mt-1 max-w-md">
-                  Set the itinerary, choose who travels with you, and become the Trip Leader for this adventure.
+                  <span className="lg:hidden">Set your plans and choose who travels with you.</span>
+                  <span className="hidden lg:inline">Set the itinerary, choose who travels with you, and become the Trip Leader for this adventure.</span>
                 </p>
               </div>
 
@@ -1238,7 +1214,7 @@ export const FindTripPage: React.FC = () => {
             </div>
 
             {/* Modal Scrollable Body */}
-            <form onSubmit={handleCreateRoomSubmit} className="p-5 sm:p-8 overflow-y-auto space-y-6 flex-1 min-h-0">
+            <form onSubmit={handleCreateRoomSubmit} className="p-4 sm:p-5 lg:p-8 overflow-visible lg:overflow-y-auto space-y-5 lg:space-y-6 lg:flex-1 min-h-0">
               {formError && (
                 <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
                   {formError}

@@ -8,6 +8,7 @@ import { TripsProvider } from './context/TripsContext';
 import { DiaryProvider } from './context/DiaryContext';
 import { VaultProvider } from './context/VaultContext';
 import { DestinationsProvider } from './context/DestinationsContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 
 // Layout Shells
 import { PublicShell } from './layouts/PublicShell';
@@ -53,7 +54,7 @@ export const App: React.FC = () => {
             <DiaryProvider>
               <VaultProvider>
                 <DestinationsProvider>
-                  <AppRoutes />
+                  <NotificationsProvider><AppRoutes /></NotificationsProvider>
                 </DestinationsProvider>
               </VaultProvider>
             </DiaryProvider>
@@ -83,6 +84,7 @@ export const AppRoutes: React.FC = () => (
                         <Route path="diary/add" element={<AddExperiencePage />} />
                         <Route path="diary/create-story" element={<CreateStoryPage />} />
                         <Route path="profile" element={<ProfilePage />} />
+                        <Route path="profile/settings" element={<ProfilePage settingsOnly />} />
                         <Route path="messages" element={<MessagesPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="explore" element={<ExplorePage />} />

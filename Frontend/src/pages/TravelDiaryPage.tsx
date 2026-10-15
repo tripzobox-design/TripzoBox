@@ -1,3 +1,4 @@
+import { confirmAction } from '../lib/confirmAction';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Globe, Lock, Sparkles } from 'lucide-react';
@@ -29,7 +30,8 @@ export const TravelDiaryPage: React.FC = () => {
     { id: 'stories', label: 'Published Stories', badge: stories.length },
   ];
 
-  const handleOpenEdit = (entry: DiaryEntry) => {
+  const handleOpenEdit = async (entry: DiaryEntry) => {
+    if (!await confirmAction('edit', 'this experience')) return;
     setEditingEntry(entry);
     setEditPlace(entry.place);
     setEditCategory(entry.category);
@@ -53,9 +55,9 @@ export const TravelDiaryPage: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 text-left max-w-5xl mx-auto">
       {/* 1. HEADER (Matching Screen 8) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="font-heading font-bold text-2xl sm:text-3xl text-text">
+      <div className="flex items-center justify-between gap-3 pb-0 sm:pb-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-heading font-bold text-xl sm:text-3xl text-text">
             My Travel Diary
           </h1>
           <p className="text-xs sm:text-sm text-text-muted mt-0.5">
@@ -63,15 +65,16 @@ export const TravelDiaryPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center">
           <Button
             variant="primary"
             size="md"
             onClick={() => navigate('/app/diary/add')}
             icon={<Plus className="w-4 h-4" />}
-            className="shadow-subtle hover:shadow-hover font-semibold px-5"
+            className="!rounded-full !min-h-[40px] !gap-1.5 !px-3 sm:!px-4 !text-xs sm:!text-sm !font-semibold whitespace-nowrap shadow-subtle hover:shadow-hover border border-emerald-600/20"
+            aria-label="Add experience"
           >
-            Add Experience
+            <span className="sm:hidden">Add entry</span><span className="hidden sm:inline">Add Experience</span>
           </Button>
         </div>
       </div>
@@ -119,7 +122,8 @@ export const TravelDiaryPage: React.FC = () => {
                 key={entry.id}
                 entry={entry}
                 onEdit={handleOpenEdit}
-                onDelete={(id) => {
+                onDelete={async (id) => {
+                  if (!await confirmAction('delete', 'this diary entry')) return;
                   deleteEntry(id);
                   success('Entry deleted.');
                 }}

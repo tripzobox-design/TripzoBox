@@ -1,5 +1,6 @@
+import { confirmAction } from '../lib/confirmAction';
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
   MapPin,
   Calendar,
@@ -11,11 +12,14 @@ import {
   Globe,
   Sparkles,
   Check,
+  WifiOff,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTrips } from '../context/TripsContext';
 import { useDiary } from '../context/DiaryContext';
 import { useToast } from '../context/ToastContext';
+import { useVault } from '../context/VaultContext';
+import { VaultFileViewer } from '../components/feature/VaultFileViewer';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
 import { TripCard } from '../components/feature/TripCard';
@@ -23,11 +27,13 @@ import { StoryCard } from '../components/feature/StoryCard';
 import { Modal } from '../components/ui/Modal';
 import { Input, Textarea, Select } from '../components/ui/Input';
 
-export const ProfilePage: React.FC = () => {
+export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly = false }) => {
   const { user, updateProfile } = useAuth();
   const { trips, savedTripIds } = useTrips();
   const { stories } = useDiary();
   const { success } = useToast();
+  const { documents } = useVault();
+  const [offlineDocumentId, setOfflineDocumentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
   const initialTab = (searchParams.get('tab') as any) || 'trips';
@@ -42,6 +48,23 @@ export const ProfilePage: React.FC = () => {
   const [bio, setBio] = useState(user.bio);
   const [city, setCity] = useState(user.city);
   const [budgetStyle, setBudgetStyle] = useState<typeof user.budgetStyle>(user.budgetStyle);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [photoError, setPhotoError] = useState('');
+  const [photoLoading, setPhotoLoading] = useState(false);
+
+  const chooseProfilePhoto = (file?: File) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setPhotoError('Choose a JPG, PNG, or WebP image up to 2 MB.');
+      return;
+    }
+    setPhotoError('');
+    setPhotoLoading(true);
+    const reader = new FileReader();
+    reader.onload = () => { setAvatarUrl(reader.result as string); setPhotoLoading(false); };
+    reader.onerror = () => { setPhotoError('Could not read this photo. Try another image.'); setPhotoLoading(false); };
+    reader.readAsDataURL(file);
+  };
 
   // Privacy Settings State
   const [profileVisibility, setProfileVisibility] = useState<'public' | 'members_only' | 'private'>('public');
@@ -51,7 +74,6 @@ export const ProfilePage: React.FC = () => {
     { id: 'trips', label: 'My Trips', badge: user.stats.trips },
     { id: 'stories', label: 'My Stories', badge: user.stats.stories },
     { id: 'saved', label: 'Saved', badge: savedTripIds.length },
-    { id: 'settings', label: 'Settings' },
   ];
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -61,6 +83,7 @@ export const ProfilePage: React.FC = () => {
       bio,
       city,
       budgetStyle,
+      avatarUrl,
     });
     success('Profile details updated successfully!');
     setIsEditProfileOpen(false);
@@ -70,12 +93,16 @@ export const ProfilePage: React.FC = () => {
   const myTrips = trips.filter(
     (t) => t.leader.id === user.id || t.members.some((m) => m.id === user.id)
   );
+  const showAllTrips = searchParams.get('view') === 'all-trips';
+  const visibleTrips = showAllTrips ? myTrips : myTrips.slice(0, 3);
   const myStories = stories.filter((s) => s.author.id === user.id || s.author.name === user.name);
 
+  if (!settingsOnly && searchParams.get('tab') === 'settings') return <Navigate to="/app/profile/settings" replace />;
+
   return (
-    <div className="flex flex-col gap-6 text-left max-w-5xl mx-auto">
+    <div className="flex flex-col gap-3 lg:gap-6 text-left max-w-5xl mx-auto">
       {/* 1. COVER BANNER & PROFILE CARD (Matching Screen 12) */}
-      <div className="bg-white rounded-3xl border border-border overflow-hidden shadow-card">
+      {!settingsOnly && <div className="bg-white rounded-3xl border border-border overflow-hidden shadow-card">
         {/* Cover Image */}
         <div className="relative h-44 sm:h-56 w-full bg-text">
           <img
@@ -87,8 +114,8 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Profile Header Details */}
-        <div className="px-6 sm:px-8 pb-6 pt-0 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-16 sm:-mt-20 mb-4">
+        <div className="px-4 sm:px-5 lg:px-8 pb-3 lg:pb-6 pt-0 relative">
+          <div className="flex items-end justify-between gap-3 -mt-12 sm:-mt-16 lg:-mt-20 mb-2 lg:mb-4">
             {/* Avatar overlapping cover banner */}
             <div className="relative">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-card overflow-hidden bg-white">
@@ -100,22 +127,36 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex items-center gap-2 self-end mb-1">
+            <Link to="/app/profile/settings" aria-label="Profile settings" className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border text-primary hover:bg-light-bg">
+              <SettingsIcon className="w-4 h-4" />
+            </Link>
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setIsEditProfileOpen(true)}
+              onClick={async () => {
+                if (!await confirmAction('edit', 'your profile')) return;
+                setAvatarUrl(user.avatarUrl);
+                setPhotoError('');
+                setName(user.name);
+                setCity(user.city);
+                setBio(user.bio);
+                setBudgetStyle(user.budgetStyle);
+                setIsEditProfileOpen(true);
+              }}
               icon={<Edit3 className="w-3.5 h-3.5" />}
-              className="text-xs self-start sm:self-end"
+              className="text-xs self-end bg-white mb-1"
             >
               Edit Profile
             </Button>
+            </div>
           </div>
 
           <div>
             <h1 className="font-heading font-bold text-2xl text-text">
               {user.name}
             </h1>
-            <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5">
+            <p className="text-xs text-text-muted mt-0.5 flex flex-wrap items-center gap-1.5">
               <span>@{user.username}</span>
               <span>·</span>
               <span className="flex items-center gap-1">
@@ -129,7 +170,7 @@ export const ProfilePage: React.FC = () => {
             </p>
 
             {/* Travel Interest Tags */}
-            <div className="flex flex-wrap gap-1.5 mt-3.5">
+            <div className="flex flex-wrap gap-1.5 mt-2 lg:mt-3.5">
               {user.travelInterests.map((interest) => (
                 <span
                   key={interest}
@@ -141,7 +182,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Stats Row (Screen 12: Trips / Stories / Followers / Following) */}
-            <div className="flex items-center gap-6 sm:gap-10 pt-5 mt-5 border-t border-border">
+            <div className="grid grid-cols-4 gap-2 pt-3 mt-3 lg:pt-4 lg:mt-4 border-t border-border [&>div]:min-w-0 [&>div]:text-center [&>div.w-px]:hidden">
               <div>
                 <span className="font-heading font-bold text-lg text-text block leading-none">
                   {user.stats.trips}
@@ -172,34 +213,40 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
+
+      {settingsOnly && <div>
+        <Link to="/app/profile" className="text-xs font-semibold text-primary">← Back to profile</Link>
+        <h1 className="font-heading font-bold text-2xl text-text mt-2">Profile Settings</h1>
+        <p className="text-sm text-text-muted mt-1">Manage offline access and your preferences.</p>
+      </div>}
 
       {/* 2. PROFILE TABS (My Trips, My Stories, Saved, Settings) */}
-      <div className="bg-white rounded-2xl border border-border p-6 shadow-subtle">
-        <Tabs
+      <div className="bg-white rounded-2xl border border-border p-3 sm:p-4 lg:p-6 shadow-subtle">
+        {!settingsOnly && <Tabs
           tabs={tabs}
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline"
-        />
+        />}
 
         {/* TAB 1: MY TRIPS (Matching Screen 12) */}
-        {activeTab === 'trips' && (
-          <div className="pt-6 space-y-4">
+        {!settingsOnly && activeTab === 'trips' && (
+          <div className="pt-3 lg:pt-6 space-y-3 lg:space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-heading font-bold text-lg text-text">
-                Recent Trips
+                {showAllTrips ? 'All My Trips' : 'Recent Trips'}
               </h3>
-              <a
-                href="/app/trips"
+              <Link
+                to={showAllTrips ? '/app/profile?tab=trips' : '/app/trips/my'}
                 className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
               >
-                View all →
-              </a>
+                {showAllTrips ? 'Show recent' : 'View all →'}
+              </Link>
             </div>
             {myTrips.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {myTrips.map((trip) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5">
+                {visibleTrips.map((trip) => (
                   <TripCard key={trip.id} trip={trip} />
                 ))}
               </div>
@@ -210,7 +257,7 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* TAB 2: MY STORIES */}
-        {activeTab === 'stories' && (
+        {!settingsOnly && activeTab === 'stories' && (
           <div className="pt-6 space-y-4">
             <h3 className="font-heading font-bold text-lg text-text">
               Published Stories
@@ -230,7 +277,7 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* TAB 3: SAVED TRIPS */}
-        {activeTab === 'saved' && (
+        {!settingsOnly && activeTab === 'saved' && (
           <div className="pt-6 space-y-4">
             <h3 className="font-heading font-bold text-lg text-text">
               Saved Trips ({savedTrips.length})
@@ -250,8 +297,30 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* TAB 4: SETTINGS */}
-        {activeTab === 'settings' && (
-          <div className="pt-6 space-y-8 max-w-2xl">
+        {settingsOnly && (
+          <div className="space-y-6 max-w-2xl mx-auto">
+            <section className="rounded-2xl border border-border bg-white p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <WifiOff className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <h4 className="font-heading font-bold text-base text-text">Offline Access</h4>
+                  <p className="text-xs sm:text-sm text-text-muted mt-1">Uploaded ID images and PDFs are saved on this device. Open the app online once to prepare it for offline use.</p>
+                </div>
+              </div>
+              <div className="divide-y divide-border mt-3">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text break-words">{doc.name}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{doc.fileKey ? 'Original saved on this device' : 'No original attached'}</p>
+                    </div>
+                    <Button size="sm" variant="secondary" className="shrink-0 whitespace-nowrap" onClick={() => setOfflineDocumentId(doc.id)}>{doc.fileKey ? 'Open' : 'Attach file'}</Button>
+                  </div>
+                ))}
+                {documents.length === 0 && <p className="text-sm text-text-muted py-3">Add a document in Travel Vault to access it offline.</p>}
+              </div>
+              <p className="text-xs text-text-muted mt-2">Available in this browser only. Clearing site data removes saved copies.</p>
+            </section>
             {/* Account Settings */}
             <div className="space-y-4">
               <h4 className="font-heading font-bold text-base text-text flex items-center gap-2">
@@ -338,6 +407,10 @@ export const ProfilePage: React.FC = () => {
         )}
       </div>
 
+      <Modal isOpen={offlineDocumentId !== null} onClose={() => setOfflineDocumentId(null)} title={documents.find((doc) => doc.id === offlineDocumentId)?.name || 'Original document'} maxWidth="2xl">
+        {documents.find((doc) => doc.id === offlineDocumentId) && <VaultFileViewer document={documents.find((doc) => doc.id === offlineDocumentId)!} />}
+      </Modal>
+
       {/* EDIT PROFILE MODAL */}
       <Modal
         isOpen={isEditProfileOpen}
@@ -345,6 +418,16 @@ export const ProfilePage: React.FC = () => {
         title="Edit Profile"
       >
         <form onSubmit={handleSaveProfile} className="space-y-4 pt-2">
+          <div className="flex items-center gap-4">
+            <img src={avatarUrl} alt="Profile photo preview" className="w-16 h-16 rounded-full object-cover border border-border shrink-0" />
+            <div className="min-w-0">
+              <label className="inline-flex cursor-pointer rounded-lg border border-primary px-3 py-2 text-xs font-semibold text-primary">Change photo
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { chooseProfilePhoto(event.target.files?.[0]); event.target.value = ''; }} />
+              </label>
+              <p className="text-xs text-text-muted mt-1">JPG, PNG, WebP · Up to 2 MB</p>
+              {photoError && <p role="alert" className="text-xs text-red-600 mt-1">{photoError}</p>}
+            </div>
+          </div>
           <Input
             label="Full Name"
             value={name}
@@ -378,7 +461,7 @@ export const ProfilePage: React.FC = () => {
             <Button variant="secondary" type="button" onClick={() => setIsEditProfileOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" disabled={photoLoading || !!photoError}>
               Save Profile
             </Button>
           </div>

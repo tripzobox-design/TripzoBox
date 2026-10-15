@@ -89,9 +89,9 @@ export const CommunityRulesPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10">
+    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-10 space-y-5 sm:space-y-6 lg:space-y-10">
       {/* 1. HEADER HERO */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-6 sm:p-10 border border-border grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-8 lg:gap-12 items-center">
+      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-6 sm:p-10 border border-border grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5 lg:gap-8 lg:gap-12 items-center">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase font-heading mb-4">
             <ShieldCheck className="w-4 h-4" />
@@ -164,7 +164,7 @@ export const CommunityRulesPage: React.FC = () => {
           {coreRules.map((rule, idx) => (
             <div
               key={rule.title}
-              className="bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-card flex flex-col justify-between"
+              className="bg-white rounded-3xl border border-border p-4 sm:p-5 lg:p-8 shadow-card flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center gap-3 mb-3">
@@ -222,7 +222,7 @@ export const CommunityRulesPage: React.FC = () => {
       </div>
 
       {/* 4. ENFORCEMENT & REPORTING */}
-      <div className="bg-white rounded-3xl border border-border p-8 sm:p-10 shadow-card grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <div className="bg-white rounded-3xl border border-border p-8 sm:p-10 shadow-card grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8 items-center">
         <div>
           <span className="text-xs font-bold text-primary tracking-wider uppercase font-heading">
             Accountability & Safety

@@ -24,14 +24,14 @@ export const Tabs: React.FC<TabsProps> = ({
 }) => {
   if (variant === 'pills') {
     return (
-      <div className={`flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar ${className}`}>
+      <div className={`flex items-center min-w-0 max-w-full gap-2 overflow-x-auto pb-1 no-scrollbar ${className}`}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
           return (
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`inline-flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200
+              className={`inline-flex shrink-0 items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200
                 ${
                   isActive
                     ? 'bg-primary text-white shadow-subtle'
@@ -82,7 +82,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
   // Underline variant
   return (
-    <div className={`flex items-center gap-6 border-b border-border overflow-x-auto no-scrollbar ${className}`}>
+    <div className={`flex items-center min-w-0 max-w-full gap-4 sm:gap-6 border-b border-border overflow-x-auto no-scrollbar ${className}`}>
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab;
         return (

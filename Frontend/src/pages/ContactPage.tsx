@@ -61,9 +61,9 @@ export const ContactPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-14 space-y-4 lg:space-y-12">
       {/* 1. HERO */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-8 sm:p-12 border border-border">
+      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-5 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase font-heading mb-4">
             <HelpCircle className="w-4 h-4" />
@@ -79,23 +79,23 @@ export const ContactPage: React.FC = () => {
       </div>
 
       {/* 2. CHANNELS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-6">
         {contactChannels.map((channel) => {
           const Icon = channel.icon;
           return (
             <div
               key={channel.title}
-              className="bg-white rounded-3xl border border-border p-6 shadow-card flex flex-col justify-between"
+              className="bg-white rounded-3xl border border-border p-4 lg:p-6 shadow-card flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-accent/35 text-primary flex items-center justify-center mb-4">
+                <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-accent/35 text-primary flex items-center justify-center mb-3 lg:mb-4">
                   <Icon className="w-6 h-6 stroke-[1.75]" />
                 </div>
                 <h3 className="font-heading font-bold text-base text-text">{channel.title}</h3>
                 <p className="text-xs text-text-muted mt-1.5 leading-relaxed">{channel.desc}</p>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-border/80">
+              <div className="mt-3 pt-3 lg:mt-6 lg:pt-4 border-t border-border/80">
                 <a
                   href={`mailto:${channel.email}`}
                   className="text-xs sm:text-sm font-semibold text-primary hover:underline block truncate"
@@ -113,9 +113,9 @@ export const ContactPage: React.FC = () => {
       </div>
 
       {/* 3. SUPPORT FORM & FAQS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
         {/* Support Form */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-card">
+        <div className="lg:col-span-7 bg-white rounded-3xl border border-border p-4 sm:p-5 lg:p-8 shadow-card">
           <h3 className="font-heading font-bold text-xl sm:text-2xl text-text mb-2">
             Send Us a Message
           </h3>

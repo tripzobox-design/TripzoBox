@@ -28,9 +28,12 @@ export const Stepper: React.FC<StepperProps> = ({
 
         return (
           <React.Fragment key={step.id}>
-            <div
+            <button
+              type="button"
+              disabled={!isClickable}
+              aria-current={isCurrent ? 'step' : undefined}
               onClick={() => isClickable && onStepClick(step.id)}
-              className={`flex items-center gap-2.5 ${
+              className={`min-w-0 flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5 ${
                 isClickable ? 'cursor-pointer' : 'cursor-default'
               }`}
             >
@@ -47,15 +50,15 @@ export const Stepper: React.FC<StepperProps> = ({
                 {isCompleted ? <Check className="w-4 h-4" /> : step.id}
               </div>
               <span
-                className={`text-xs sm:text-sm font-medium whitespace-nowrap
+                className={`max-w-[72px] sm:max-w-none text-[11px] sm:text-sm font-medium text-center sm:text-left sm:whitespace-nowrap
                   ${isCurrent ? 'text-text font-semibold' : 'text-text-muted'}`}
               >
                 {step.label}
               </span>
-            </div>
+            </button>
 
             {idx < steps.length - 1 && (
-              <div className="flex-1 mx-3 sm:mx-4 h-0.5 bg-border rounded-full overflow-hidden">
+              <div className="flex-1 min-w-2 mx-2 sm:mx-4 h-0.5 bg-border rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-300 ${
                     currentStep > step.id ? 'bg-primary w-full' : 'w-0'
