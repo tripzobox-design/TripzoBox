@@ -18,6 +18,13 @@ import {
   Utensils,
   Footprints,
   Sparkles,
+  Crown,
+  Globe,
+  Lock,
+  Copy,
+  CheckCircle2,
+  XCircle,
+  UserCheck,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
@@ -32,13 +39,23 @@ export const TripDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
-  const { getTripById, isTripSaved, toggleSaveTrip, requestJoinTrip, joinRequests } = useTrips();
+  const {
+    getTripById,
+    isTripSaved,
+    toggleSaveTrip,
+    requestJoinTrip,
+    joinRequests,
+    acceptJoinRequest,
+    declineJoinRequest,
+    updateTripRoomType,
+  } = useTrips();
   const { user, isLoggedIn } = useAuth();
   const { success, info } = useToast();
 
   const trip = getTripById(tripId || '');
+  const isLeader = Boolean(user && trip && trip.leader.id === user.id);
 
-  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact'>('about');
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
 
@@ -101,6 +118,8 @@ export const TripDetailsPage: React.FC = () => {
     { id: 'members', label: `Members (${trip.members.length}/${trip.maxMembers})` },
     { id: 'chat', label: 'Chat' },
     { id: 'reviews', label: 'Reviews' },
+    { id: 'images', label: 'Images' },
+    { id: 'contact', label: 'Contact Information' },
   ];
 
   const getHighlightIcon = (highlight: string) => {
@@ -121,15 +140,15 @@ export const TripDetailsPage: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col gap-6 text-left max-w-6xl mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-8 sm:py-10'}`}>
+    <div className={`flex flex-col gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
       {/* 1. HERO BANNER WITH OVERLAID BACK BUTTON (Matching Reference Screen 7) */}
-      <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[220px] max-h-[360px] w-full bg-text shadow-float">
+      <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[250px] max-h-[440px] w-full bg-text shadow-float">
         <img
           src={trip.coverImageUrl}
           alt={trip.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30" />
         
         {/* Floating Back to Trips button (Matching Reference Screen 7) */}
         <Link
@@ -199,9 +218,14 @@ export const TripDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Join CTA */}
+        {/* Join CTA or Leader Badge */}
         <div className="shrink-0">
-          {joinStatus === 'accepted' ? (
+          {isLeader ? (
+            <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-sm shadow-md border border-emerald-500">
+              <Crown className="w-4 h-4 text-amber-300" />
+              <span>Trip Leader (Host)</span>
+            </div>
+          ) : joinStatus === 'accepted' ? (
             <div className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-sm border border-emerald-200">
               <Check className="w-4 h-4 stroke-[3]" />
               Joined ✓
@@ -223,10 +247,164 @@ export const TripDetailsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* 2.5 TRIP LEADER ROOM CONTROL CENTER (Visible if current user is the Trip Leader) */}
+      {isLeader && (
+        <div className="bg-gradient-to-r from-emerald-950 via-gray-900 to-emerald-900 text-white rounded-2xl p-5 sm:p-6 border border-emerald-700/40 shadow-xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+                <Crown className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-bold text-base sm:text-lg text-white">
+                    Trip Leader Room Console
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    Host Control
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  You are the trip leader. Manage join requests, room privacy, and companion approvals.
+                </p>
+              </div>
+            </div>
+
+            {/* Room Type Toggle & Room Code */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  updateTripRoomType(
+                    trip.id,
+                    trip.roomType === 'private' ? 'public' : 'private'
+                  )
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer"
+              >
+                {trip.roomType === 'private' ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Private Room (Click to make Public)</span>
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Public Space (Click to make Private)</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(
+                    `${window.location.origin}/trips/${trip.id}?code=${trip.roomCode || 'ROOM'}`
+                  );
+                  success(`Room code #${trip.roomCode || 'ROOM'} & link copied to clipboard!`);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-xs cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Room Code: {trip.roomCode || 'ROOM-8492'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Pending Applications from Travellers */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span>
+                  Pending Join Requests (
+                  {trip.pendingJoinRequests?.length || 0})
+                </span>
+              </h4>
+              <span className="text-[11px] text-gray-400">
+                {trip.maxMembers - trip.members.length} spots remaining in room
+              </span>
+            </div>
+
+            {trip.pendingJoinRequests && trip.pendingJoinRequests.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {trip.pendingJoinRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        src={req.user.avatarUrl}
+                        name={req.user.name}
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-semibold text-xs sm:text-sm text-white truncate">
+                            {req.user.name}
+                          </h5>
+                          <span className="text-[10px] text-gray-400">
+                            {req.requestedAt}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-300">
+                          {req.user.city} · {req.user.travelInterests?.join(', ')}
+                        </p>
+                        {req.message && (
+                          <p className="text-xs text-gray-200 mt-1 italic bg-black/20 p-2 rounded-lg border border-white/5">
+                            "{req.message}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          declineJoinRequest(trip.id, req.user.id);
+                          info(`Declined join request from ${req.user.name}`);
+                        }}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>Decline</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          acceptJoinRequest(trip.id, req.user.id);
+                          success(
+                            `Accepted ${req.user.name} into the trip room!`,
+                            'Member Approved'
+                          );
+                        }}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Accept to Room</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-white/5 border border-dashed border-white/15 text-center text-xs text-gray-300">
+                <p>
+                  🌐 Your Public Space is live on Tripzobox! Any traveller can request to join. When someone applies, you can review and accept them right here.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 3. MAIN CONTENT: STAT CARDS + TABS (LEFT 2 COLS) & SIDEBAR (RIGHT 1 COL) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Columns */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 min-w-0 space-y-6">
           {/* THREE STAT CARDS (Matching Reference Screen 7: Members, Difficulty, Type) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {/* Stat Card 1: Members */}
@@ -278,6 +456,44 @@ export const TripDetailsPage: React.FC = () => {
               onChange={(tabId) => setActiveTab(tabId as any)}
               variant="underline"
             />
+
+            {activeTab === 'images' && (
+              <div className="pt-6 space-y-4">
+                <h4 className="font-heading font-semibold text-base text-text">Trip Images</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])].map((src, index) => (
+                    <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-border focus-visible:outline-primary">
+                      <img src={src} alt={`${trip.name} — photo ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform hover:scale-105" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'contact' && (
+              <div className="pt-6 space-y-4">
+                <h4 className="font-heading font-semibold text-base text-text">Contact Information</h4>
+                <div className="rounded-xl bg-light-bg border border-border p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
+                    <div>
+                      <p className="font-semibold text-sm text-text">{trip.leader.name}</p>
+                      <p className="text-xs text-text-muted">Trip leader · {trip.leader.city}, {trip.leader.country || 'India'}</p>
+                    </div>
+                  </div>
+                  {trip.contactInformation?.email && (
+                    <p className="text-sm text-text-muted">Email: <a href={`mailto:${trip.contactInformation.email}`} className="text-primary break-all hover:underline">{trip.contactInformation.email}</a></p>
+                  )}
+                  {trip.contactInformation?.phone && (
+                    <p className="text-sm text-text-muted">Phone: <a href={`tel:${trip.contactInformation.phone}`} className="text-primary hover:underline">{trip.contactInformation.phone}</a></p>
+                  )}
+                  {!trip.contactInformation?.email && !trip.contactInformation?.phone && (
+                    <p className="text-sm text-text-muted">The trip leader hasn't shared an email or phone number. Ask your questions in the trip chat.</p>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={() => setActiveTab('chat')} icon={<Send className="w-4 h-4" />}>Open Trip Chat</Button>
+                </div>
+              </div>
+            )}
 
             {/* TAB: ABOUT */}
             {activeTab === 'about' && (

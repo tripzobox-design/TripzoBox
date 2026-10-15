@@ -10,11 +10,23 @@
   body {
     color: #1F2037;
     background-color: #F8FAF9;
-    font-family: 'Inter', sans-serif;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    font-optical-sizing: auto;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  h1, h2 {
+    letter-spacing: -0.035em;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
   }
 }
 

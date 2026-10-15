@@ -6,9 +6,13 @@ import { useLocation } from 'react-router-dom';
  * the viewport resets to the top of the page.
  */
 export const ScrollToTop: React.FC = () => {
-  const { pathname, search, key } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    if (hash) {
+      const frame = requestAnimationFrame(() => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' }));
+      return () => cancelAnimationFrame(frame);
+    }
     // Temporarily bypass smooth scrolling to instantly position at page top on navigation
     const prevScrollBehavior = document.documentElement.style.scrollBehavior;
     document.documentElement.style.scrollBehavior = 'auto';
@@ -22,7 +26,7 @@ export const ScrollToTop: React.FC = () => {
     });
 
     return () => cancelAnimationFrame(raf);
-  }, [pathname, search, key]);
+  }, [pathname, hash]);
 
   useEffect(() => {
     // If user clicks a link pointing to the same page they are already on, scroll to top
@@ -31,6 +35,9 @@ export const ScrollToTop: React.FC = () => {
       if (target && target.href) {
         try {
           const url = new URL(target.href, window.location.origin);
+          if (url.origin === window.location.origin && url.pathname === window.location.pathname && url.hash) {
+            document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
           if (
             url.origin === window.location.origin &&
             url.pathname === window.location.pathname &&

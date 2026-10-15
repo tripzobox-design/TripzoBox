@@ -142,9 +142,25 @@ export const mockTrips: Trip[] = [
     ],
     maxMembers: 6,
     difficulty: 'easy',
-    coverImageUrl: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1200&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1558025638-565ae7710b3f?auto=format&fit=crop&w=1600&q=85',
     status: 'open',
-    compatibilityScore: 96
+    compatibilityScore: 96,
+    itinerary: [
+      { day: 1, title: 'Arrival & Fort Kochi Heritage Walk', desc: 'Check in at Fort Kochi heritage stay. Stroll past colonial bungalows, Vasco da Gama Square, and watch the massive Chinese Fishing Nets dip against sunset.' },
+      { day: 2, title: 'Jew Town, Synagogue & Spice Bazaars', desc: 'Explore Mattancherry Palace (Dutch Palace), walk through ancient Jew Town antique alleys, Paradesi Synagogue, and sample freshly ground Malabar spices.' },
+      { day: 3, title: 'Kathakali Performance & Marine Promenade', desc: 'Afternoon traditional Kerala art museum visit followed by live Kathakali makeup and dance drama. Evening harbor walk along Marine Drive.' },
+      { day: 4, title: 'Vypin Island Ferry & Coastal Farewell', desc: 'Scenic morning public ferry to Vypin Island and Cherai beach. Farewell group lunch with authentic Karimeen Pollichathu and Malabar parotta before departure.' },
+    ],
+    chatMessages: [
+      { id: 'km1', sender: mockUsers[4], text: 'Namaste everyone! Thrilled to explore Fort Kochi together next week. Bring comfortable walking sandals for the cobblestone lanes.', time: '09:15 AM' },
+      { id: 'km2', sender: currentUser, text: 'Looking forward to the Chinese Fishing Nets at sunset! Is the Kathakali theatre within walking distance?', time: '10:05 AM' },
+      { id: 'km3', sender: mockUsers[4], text: 'Yes, just a 7-minute walk from our heritage homestay!', time: '10:12 AM' },
+      { id: 'km4', sender: mockUsers[2], text: 'Can not wait for the spice market tour and coastal food!', time: '11:30 AM' }
+    ],
+    reviews: [
+      { id: 'kr1', author: mockUsers[2], rating: 5, date: '10 April 2025', comment: 'Priya is an incredible guide who knows every historic corner of Fort Kochi. The sunset by the fishing nets was unforgettable.' },
+      { id: 'kr2', author: mockUsers[1], rating: 5, date: '02 March 2025', comment: 'Loved every minute of the heritage walk and local seafood tasting. Kochi has unmatched soul!' }
+    ]
   },
   {
     id: 'trip_ooty_1',
@@ -252,7 +268,7 @@ export const mockTrips: Trip[] = [
     ],
     maxMembers: 8,
     difficulty: 'easy',
-    coverImageUrl: 'https://images.unsplash.com/photo-1600100397608-f010f443b7d4?auto=format&fit=crop&w=1200&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1200&q=80',
     status: 'open',
     compatibilityScore: 94
   },

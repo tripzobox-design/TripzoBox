@@ -42,7 +42,7 @@ export const mockDiaryEntries: DiaryEntry[] = [
     category: 'Culture',
     text: 'Fort Kochi is a blend of history, art and amazing food. Walking through Princess Street feels like stepping back 200 years. The Chinese fishing nets against the sunset was breathtaking.',
     photos: [
-      'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1558025638-565ae7710b3f?auto=format&fit=crop&w=800&q=85'
     ],
     price: 450,
     rating: 4,

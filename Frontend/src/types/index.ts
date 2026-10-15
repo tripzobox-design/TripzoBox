@@ -10,6 +10,9 @@ export interface User {
   bio: string;
   travelInterests: string[];
   budgetStyle: 'budget' | 'mid-range' | 'comfort';
+  travelPace?: 'Relaxed' | 'Balanced' | 'Action-packed' | string;
+  preferredGroupSize?: string;
+  dreamDestination?: string;
   stats: {
     trips: number;
     stories: number;
@@ -36,7 +39,12 @@ export interface Trip {
   maxMembers: number;
   difficulty: 'easy' | 'medium' | 'hard';
   coverImageUrl: string;
+  galleryImages?: string[];
+  contactInformation?: { email?: string; phone?: string };
   status: 'open' | 'full' | 'closed';
+  roomType?: 'public' | 'private';
+  roomCode?: string;
+  pendingJoinRequests?: { id: string; user: User; message?: string; requestedAt: string }[];
   compatibilityScore?: number;
   itinerary?: { day: number; title: string; desc: string; icon?: string }[];
   chatMessages?: { id: string; sender: User; text: string; time: string }[];
@@ -89,12 +97,22 @@ export interface Destination {
   slug: string;
   name: string;
   state: string;
-  category: 'Mountains' | 'Beaches' | 'Cities' | 'Culture' | 'Nature';
+  category: 'Mountains' | 'Beaches' | 'Cities' | 'Culture' | 'Nature' | 'Hidden Spots';
   imageUrl: string;
+  galleryImages?: string[];
   shortDescription: string;
   longDescription?: string;
   bestTimeToVisit?: string;
   topAttractions?: string[];
+  isHiddenSpot?: boolean;
+  isPublic?: boolean;
+  createdBy?: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  createdAt?: string;
+  locationDetails?: string;
 }
 
 export interface VaultDocument {

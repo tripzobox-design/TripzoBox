@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Compass, BookOpen, ArrowRight, Search } from 'lucide-react';
+import { Shield, Compass, BookOpen, ArrowRight, Search, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTrips } from '../context/TripsContext';
+import { useDestinations } from '../context/DestinationsContext';
 import { Button } from '../components/ui/Button';
 import { TripCard } from '../components/feature/TripCard';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const { trips } = useTrips();
+  const { destinations } = useDestinations();
   const navigate = useNavigate();
 
   const [searchDestination, setSearchDestination] = useState('');
@@ -31,6 +33,9 @@ export const DashboardPage: React.FC = () => {
   };
 
   const recentTrips = trips.slice(0, 3);
+  const hiddenSpots = destinations.filter(
+    (d) => d.category === 'Hidden Spots' || d.isHiddenSpot
+  ).slice(0, 3);
 
   return (
     <div className="flex flex-col gap-7 text-left max-w-6xl mx-auto">
@@ -178,6 +183,67 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {recentTrips.map((trip) => (
             <TripCard key={trip.id} trip={trip} />
+          ))}
+        </div>
+      </div>
+
+      {/* 4. HIDDEN SPOTS SECTION */}
+      <div>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-heading font-bold text-xl sm:text-2xl text-text">
+              Hidden Spots to Explore
+            </h3>
+            <p className="text-xs sm:text-sm text-text-muted mt-0.5">
+              Offbeat destinations and secret escapes recommended by fellow travellers.
+            </p>
+          </div>
+          <Link
+            to="/explore?category=Hidden+Spots"
+            className="text-xs sm:text-sm font-semibold text-primary hover:text-primary-hover inline-flex items-center gap-1 group"
+          >
+            <span>View all</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {hiddenSpots.map((dest) => (
+            <div
+              key={dest.id}
+              onClick={() => navigate(`/explore/${dest.slug}`)}
+              className="bg-white rounded-2xl p-3 border border-border/80 shadow-subtle hover:shadow-card hover:border-primary/40 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+            >
+              <div>
+                <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={dest.imageUrl}
+                    alt={dest.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-accent" />
+                    <span>Hidden Spot</span>
+                  </div>
+                </div>
+                <div className="pt-3 px-1">
+                  <h4 className="font-heading font-bold text-base text-text group-hover:text-primary transition-colors">
+                    {dest.name}
+                  </h4>
+                  <p className="text-xs text-text-muted font-medium mt-0.5">
+                    {dest.state}
+                  </p>
+                  <p className="text-xs text-text-muted mt-1.5 line-clamp-2 leading-relaxed">
+                    {dest.shortDescription}
+                  </p>
+                </div>
+              </div>
+              <div className="pt-3 px-1 mt-2 border-t border-gray-100 flex items-center justify-between text-xs text-primary font-semibold group-hover:text-primary-hover">
+                <span>View destination</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
           ))}
         </div>
       </div>

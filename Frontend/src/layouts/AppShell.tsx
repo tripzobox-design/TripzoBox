@@ -38,11 +38,11 @@ export const AppShell: React.FC = () => {
 
   // Primary navigation items
   const sidebarItems = [
-    { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
+    { label: 'Home', path: '/', icon: LayoutDashboard },
     { label: 'Travel Vault', path: '/app/vault', icon: Shield },
     { label: 'Trips', path: '/app/trips', icon: Compass },
     { label: 'Travel Diary', path: '/app/diary', icon: BookOpen },
-    { label: 'Explore', path: '/app/explore', icon: MapPin },
+    { label: 'Explore', path: '/explore', icon: MapPin },
     { label: 'Messages', path: '/app/messages', icon: MessageSquare, badge: 2 },
     { label: 'Notifications', path: '/app/notifications', icon: Bell, badge: 1 },
     { label: 'Profile', path: '/app/profile', icon: User },
@@ -50,7 +50,7 @@ export const AppShell: React.FC = () => {
 
   // Mobile Bottom Tab Bar items (5 items max)
   const bottomNavItems = [
-    { label: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
+    { label: 'Home', path: '/', icon: LayoutDashboard },
     { label: 'Trips', path: '/app/trips', icon: Compass },
     // Center element is elevated Create CTA
     { label: 'Diary', path: '/app/diary', icon: BookOpen },
@@ -277,7 +277,7 @@ export const AppShell: React.FC = () => {
       >
         {/* Item 1: Dashboard */}
         <NavLink
-          to="/app/dashboard"
+          to="/"
           className={({ isActive }) =>
             `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
               isActive ? 'text-primary' : 'text-text-muted hover:text-text'

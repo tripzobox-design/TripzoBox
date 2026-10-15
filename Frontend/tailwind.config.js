@@ -35,8 +35,9 @@ export default {
         }
       },
       fontFamily: {
-        heading: ['Poppins', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', '"Segoe UI"', 'sans-serif'],
+        body: ['"DM Sans"', '"Segoe UI"', 'sans-serif'],
+        sans: ['"DM Sans"', '"Segoe UI"', 'sans-serif'],
       },
       borderRadius: {
         'xl': '12px',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Shield,
@@ -7,156 +7,159 @@ import {
   ArrowRight,
   Compass,
   CheckCircle2,
+  Sparkles,
+  MapPin,
+  Flame,
+  Lock,
+  Star,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { mockDestinations } from '../data/mockDestinations';
-import { DestinationCard } from '../components/feature/DestinationCard';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { HeroInteractiveShowcase } from '../components/feature/HeroInteractiveShowcase';
+import { MemberHome } from '../components/feature/MemberHome';
+
+const communityHighlights = [
+  {
+    image: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=1000&q=80',
+    alt: 'Mountain valley surrounded by forest',
+    quote: 'Find your trail. Share the adventure. Make memories together.',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+    alt: 'Turquoise waves along a tropical beach',
+    quote: 'Chase new horizons with people who share your sense of wonder.',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80',
+    alt: 'Peaceful river beneath dramatic mountain cliffs',
+    quote: 'Great journeys begin with a place to explore and someone to go with.',
+  },
+];
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const popularDestinations = mockDestinations.slice(0, 4);
+  const { isLoggedIn } = useAuth();
+  const { showToast } = useToast();
+  const [communitySlide, setCommunitySlide] = useState(0);
 
-  const heroSlides = [
-    {
-      url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=2400&q=85',
-      location: 'Dolomites Alps, Italy',
-      tag: 'Alpine Wilderness',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=2400&q=85',
-      location: 'Yosemite Valley, California',
-      tag: 'Majestic Peaks',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2400&q=85',
-      location: 'Lofoten Fjords, Norway',
-      tag: 'Nordic Horizons',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=2400&q=85',
-      location: 'Munnar Tea Hills, Kerala',
-      tag: 'Emerald Highlands',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2400&q=85',
-      location: 'Bali Coastal Cliffs, Indonesia',
-      tag: 'Sunset Escapes',
-    },
-  ];
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCommunitySlide((previous) => (previous + 1) % communityHighlights.length);
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, []);
 
-  const [currentSlide, setCurrentSlide] = React.useState(0);
-  const [isHovered, setIsHovered] = React.useState(false);
 
-  // Auto-advance hero background every 1.8 seconds for fast, dynamic transitions unless hovered
-  React.useEffect(() => {
-    if (isHovered) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 1800);
-    return () => clearInterval(timer);
-  }, [isHovered, heroSlides.length]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  const handleVaultClick = () => {
+    if (!isLoggedIn) {
+      showToast('Please log in to access your offline Travel Vault', 'info');
+      navigate('/login?redirect=/app/vault');
+    } else {
+      navigate('/app/vault');
+    }
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  const handleDiaryClick = () => {
+    if (!isLoggedIn) {
+      showToast('Please log in to read or write in your Travel Diary', 'info');
+      navigate('/login?redirect=/app/diary');
+    } else {
+      navigate('/app/diary');
+    }
   };
 
   return (
     <div className="flex flex-col text-left">
       {/* 1. HERO SECTION (Dark Background Image Carousel) */}
+
       <section
         className="relative min-h-[620px] sm:min-h-[660px] lg:min-h-[720px] flex items-center overflow-hidden bg-text"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         aria-label="Tripzobox Hero Showcase"
       >
-        {/* Full-bleed background images with fast crossfade */}
-        <div className="absolute inset-0 z-0">
-          {heroSlides.map((slide, index) => (
-            <div
-              key={slide.url}
-              className={`absolute inset-0 transition-opacity duration-400 ease-in-out ${index === currentSlide ? 'opacity-100 z-1' : 'opacity-0 z-0 pointer-events-none'
-                }`}
-            >
-              <img
-                src={slide.url}
-                alt={slide.location}
-                className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-10000 ease-out"
-              />
-            </div>
-          ))}
-
-          {/* Cinematic Dark Gradient Overlays for High Legibility & Vibrant Image Depth */}
-          <div className="absolute inset-0 z-2 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
-          <div className="absolute inset-0 z-2 bg-gradient-to-t from-black/75 via-transparent to-black/25" />
+        <div className="absolute inset-0 pointer-events-none">
+          <img src="https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=2400&q=90" alt="" className="w-full h-full object-cover object-center" fetchPriority="high" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-slate-950/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-slate-950/20" />
         </div>
+        {/* Hero Content (Spacious, balanced 2-column layout matching reference design) */}
+        <div className="relative z-10 w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-14 pb-20 sm:pb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+            {/* Left Column (6 cols): Brand Headline, CTAs, & Trust Badges */}
+            <div className="lg:col-span-5 text-left">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-accent text-xs font-bold tracking-wide uppercase mb-4">
+                <Sparkles className="w-3.5 h-3.5 text-accent" />
+                <span>Next-Gen Travel Community</span>
+              </div>
 
-        {/* Hero Content (Clean Left Alignment with High Contrast, padded for transparent navbar) */}
-        <div className="relative z-10 w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-36 pb-24 sm:pb-28">
-          <div className="max-w-2xl text-left">
-            <h1 className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.08] drop-shadow-sm">
-              <span className="block text-white">Your Journey.</span>
-              <span className="block text-white">
-                Your <span className="text-accent">People.</span>
-              </span>
-              <span className="block text-white">
-                Your <span className="text-secondary">Story.</span>
-              </span>
-            </h1>
+              <h1 className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-[58px] xl:text-[64px] text-white tracking-tight leading-[1.08] drop-shadow-sm">
+                <span className="block text-white">Your Journey.</span>
+                <span className="block text-white">
+                  Your <span className="text-[#a5f3d4]">People.</span>
+                </span>
+                <span className="block text-white">
+                  Your <span className="text-[#00D285]">Story.</span>
+                </span>
+              </h1>
 
-            <p className="mt-5 text-sm sm:text-base lg:text-lg text-gray-200 font-body leading-relaxed max-w-xl drop-shadow-sm">
-              Plan your trip, connect with travellers, keep important information safe, and share your real travel experiences with an authentic community.
-            </p>
+              <p className="mt-5 text-sm sm:text-base lg:text-lg text-gray-200 font-body leading-relaxed max-w-xl drop-shadow-sm">
+                Plan your trip, connect with compatible travellers, keep important documents safe offline, and discover untouched secret spots with an authentic community.
+              </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => navigate('/explore')}
-                className="px-8 py-3.5 rounded-full font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 text-sm sm:text-base transition-transform hover:-translate-y-0.5"
-              >
-                Start Exploring
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => navigate('/how-it-works')}
-                className="px-8 py-3.5 rounded-full font-semibold text-sm sm:text-base bg-white/20 hover:bg-white/30 text-white border border-white/40 backdrop-blur-md hover:border-white/60 transition-all hover:-translate-y-0.5"
-              >
-                How It Works
-              </Button>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => navigate('/explore')}
+                  className="px-8 py-3.5 rounded-xl font-bold bg-[#00B074] hover:bg-[#009864] text-white shadow-lg shadow-emerald-950/40 text-sm sm:text-base transition-transform hover:-translate-y-0.5"
+                >
+                  Start Exploring
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/how-it-works')}
+                  className="px-8 py-3.5 rounded-xl font-bold text-sm sm:text-base bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-md transition-all hover:-translate-y-0.5 cursor-pointer shadow-md"
+                >
+                  How It Works
+                </button>
+              </div>
+
+              {/* Social Proof Tags with Divider */}
+              <div className="mt-8 pt-6 border-t border-white/20 flex flex-wrap items-center gap-6 text-xs text-gray-200">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Verified Identity Trips</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Shield className="w-4 h-4 text-emerald-400" />
+                  <span>256-Bit Encrypted Vault</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Curated Hidden Spots</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Right Column (6 cols): Rich Hero Showcase with Trending Bali, Destinations & Travel Crew */}
+            <div className="lg:col-span-7 w-full">
+              <HeroInteractiveShowcase />
             </div>
           </div>
         </div>
 
-        {/* Slide Indicator Dots (Compact, subtle and lower opacity for refined background harmony) */}
-        <div className="absolute bottom-16 sm:bottom-20 right-6 sm:right-10 lg:right-14 z-20 flex items-center gap-1.5 sm:gap-2">
-          {heroSlides.map((slide, idx) => (
-            <button
-              key={slide.location}
-              type="button"
-              onClick={() => setCurrentSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}: ${slide.location}`}
-              className={`transition-all duration-300 rounded-full cursor-pointer ${idx === currentSlide
-                  ? 'w-5 sm:w-6 h-1.5 bg-accent/80'
-                  : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
-                }`}
-            />
-          ))}
-        </div>
       </section>
 
-      {/* Floating 3-Card Strip (Liquid Glass Floating Dock) */}
-      <div className="relative -mt-10 sm:-mt-14 md:-mt-16 z-20 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-6xl 2xl:max-w-[1536px] mx-auto bg-white/88 backdrop-blur-2xl backdrop-saturate-200 rounded-2xl sm:rounded-3xl border border-white/80 shadow-[0_16px_50px_-10px_rgba(15,144,88,0.1),0_4px_20px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,1)] p-2 sm:p-3">
+      {/* Floating 3-Card Strip (Clean Solid White Card) */}
+      <div className="relative -mt-10 sm:-mt-14 z-20 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1216px] 2xl:max-w-[1472px] mx-auto bg-white rounded-2xl sm:rounded-3xl border border-border shadow-float p-2 sm:p-3">
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
             {/* Strip Card 1: Travel Vault */}
-            <div
-              onClick={() => navigate('/app/vault')}
-              className="p-4 sm:p-5 rounded-2xl hover:bg-light-bg/90 transition-all duration-200 cursor-pointer flex items-center gap-4 text-left group"
+            <button
+              type="button"
+              onClick={handleVaultClick}
+              className="p-4 sm:p-5 rounded-2xl hover:bg-light-bg/80 transition-all duration-200 cursor-pointer flex items-center gap-4 text-left group"
             >
               <div className="w-12 h-12 rounded-full bg-accent/35 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                 <Shield className="w-6 h-6 stroke-[1.75]" />
@@ -169,10 +172,11 @@ export const LandingPage: React.FC = () => {
                   Keep your important information safe.
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Strip Card 2: Find Your People */}
-            <div
+            <button
+              type="button"
               onClick={() => navigate('/trips')}
               className="p-4 sm:p-5 rounded-2xl hover:bg-light-bg/90 transition-all duration-200 cursor-pointer flex items-center gap-4 text-left group"
             >
@@ -187,11 +191,12 @@ export const LandingPage: React.FC = () => {
                   Create or join trips with compatible travelers.
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Strip Card 3: Travel Diary */}
-            <div
-              onClick={() => navigate('/app/diary')}
+            <button
+              type="button"
+              onClick={handleDiaryClick}
               className="p-4 sm:p-5 rounded-2xl hover:bg-light-bg/90 transition-all duration-200 cursor-pointer flex items-center gap-4 text-left group"
             >
               <div className="w-12 h-12 rounded-full bg-accent/35 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
@@ -205,42 +210,18 @@ export const LandingPage: React.FC = () => {
                   Turn your journey into useful stories and tips.
                 </p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
 
 
-      {/* 2. POPULAR DESTINATIONS (Matching Screen 1) */}
-      <section className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-8">
-          <div>
-            <h2 className="font-heading font-bold text-2xl sm:text-3xl text-text">
-              Popular Destinations
-            </h2>
-            <p className="text-xs sm:text-sm text-text-muted mt-1 max-w-xl">
-              Explore beautiful places, hidden gems and real travel stories from our community.
-            </p>
-          </div>
-          <Link
-            to="/explore"
-            className="text-sm font-semibold text-primary hover:text-primary-hover inline-flex items-center gap-1 group"
-          >
-            <span>View all</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
+      {isLoggedIn && <div className="mt-8"><MemberHome /></div>}
 
-        {/* 4-Card Responsive Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {popularDestinations.map((dest) => (
-            <DestinationCard key={dest.id} destination={dest} />
-          ))}
-        </div>
-      </section>
+
 
       {/* 3. TRUST, SAFETY & COMMUNITY VALUE SECTION */}
-      <section className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 mt-24">
+      <section className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 mt-4">
         <div className="bg-white rounded-3xl p-8 sm:p-12 border border-border shadow-card grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
             <span className="text-xs font-bold text-primary tracking-wider uppercase font-heading">
@@ -271,23 +252,34 @@ export const LandingPage: React.FC = () => {
             </div>
 
             <div className="mt-8">
-              <Button variant="secondary" onClick={() => navigate('/safety')}>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/safety')}
+                className="group motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-hover hover:bg-primary hover:text-white motion-reduce:transform-none"
+                iconRight={
+                  <ArrowRight className="w-4 h-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1" />
+                }
+              >
                 Read Our Safety Principles
               </Button>
             </div>
           </div>
 
           <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-subtle">
-            <img
-              src="https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&w=1000&q=80"
-              alt="Group of friends hiking together"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+            {communityHighlights.map((highlight, index) => (
+              <img
+                key={highlight.image}
+                src={highlight.image}
+                alt={index === communitySlide ? highlight.alt : ''}
+                aria-hidden={index !== communitySlide}
+                className={`absolute inset-0 w-full h-full object-cover motion-safe:transition-opacity motion-safe:duration-500 ${index === communitySlide ? 'opacity-100' : 'opacity-0'}`}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
             <div className="absolute bottom-5 left-5 right-5 text-white">
               <p className="text-xs font-medium text-accent">Community Highlight</p>
               <h4 className="font-heading font-bold text-lg mt-0.5">
-                "We met on Tripzobox in Munnar and planned three more treks together."
+                &ldquo;{communityHighlights[communitySlide].quote}&rdquo;
               </h4>
             </div>
           </div>
@@ -308,10 +300,10 @@ export const LandingPage: React.FC = () => {
             <Button
               variant="outline-white"
               size="lg"
-              onClick={() => navigate('/signup')}
+              onClick={() => navigate(isLoggedIn ? '/app/trips/create' : '/signup')}
               className="bg-white text-primary border-transparent hover:bg-gray-100 shadow-md font-semibold"
             >
-              Create Free Account
+              {isLoggedIn ? 'Host a Trip' : 'Create Free Account'}
             </Button>
             <Button
               variant="outline-white"

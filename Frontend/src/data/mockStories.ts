@@ -63,7 +63,7 @@ export const mockStories: Story[] = [
     fullContent: [
       'Kochi smells of pepper, cardamom, and sea salt. Walking along the waterfront as the colossal Chinese fishing nets are hoisted in synchrony is pure visual poetry.'
     ],
-    coverImageUrl: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1200&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1558025638-565ae7710b3f?auto=format&fit=crop&w=1200&q=85',
     author: mockUsers[4], // Priya
     likes: 245,
     comments: 15,

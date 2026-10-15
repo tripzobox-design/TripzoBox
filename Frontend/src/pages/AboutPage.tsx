@@ -1,64 +1,81 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Compass, Users } from 'lucide-react';
+import { Heart, Compass, Users, Shield, BookOpen, ArrowRight, MapPin, Sparkles } from 'lucide-react';
+import { useDestinations } from '../context/DestinationsContext';
+
+const values = [
+  { icon: Users, title: 'Good company matters', description: 'Talk about your interests, budget, and travel pace before you set out. Shared expectations make space for better experiences together.' },
+  { icon: Heart, title: 'Respect comes along', description: 'Be considerate of personal boundaries, local cultures, and the places you visit. Ask before sharing someone else’s photo or story.' },
+  { icon: Compass, title: 'Stay curious', description: 'Take the quieter trail, learn from local perspectives, and share the practical details that help the next traveller explore thoughtfully.' },
+];
 
 export const AboutPage: React.FC = () => {
+  const { destinations } = useDestinations();
   return (
-    <div className="flex flex-col text-left max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-      <div>
-        <span className="text-xs font-bold text-primary tracking-wider uppercase font-heading">
-          Our Story
-        </span>
-        <h1 className="font-heading font-extrabold text-3xl sm:text-4xl text-text mt-2">
-          About Tripzobox
-        </h1>
-        <p className="text-base text-text-muted mt-3 leading-relaxed">
-          Tripzobox was founded with a singular conviction: travel is profoundly transformed not just by where you go, but by who you meet along the way.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-3xl border border-border p-8 shadow-card space-y-6 text-sm text-text-muted leading-relaxed">
-        <h3 className="font-heading font-bold text-xl text-text">
-          Our Brand Mission
-        </h3>
-        <p>
-          Too many travel platforms focus solely on commercial bookings, luxury ads, and anonymous reviews. Tripzobox brings travel back to authentic human connection: small groups of compatible wanderers discovering misty mountain plantations in Munnar, shared cliffside dinners in Varkala, and real stories that give practical, truthful advice.
-        </p>
-        <p>
-          Whether you are a solo traveler seeking like-minded companions, a seasoned trekker eager to lead small expeditions, or someone who loves journaling private moments and sharing them with the world, Tripzobox is your travel home.
-        </p>
-
-        <div className="pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-          <div>
-            <span className="font-heading font-extrabold text-3xl text-primary block">
-              100%
-            </span>
-            <span className="text-xs text-text-muted mt-1 block">Community Powered</span>
-          </div>
-          <div>
-            <span className="font-heading font-extrabold text-3xl text-primary block">
-              8+
-            </span>
-            <span className="text-xs text-text-muted mt-1 block">Curated Destinations</span>
-          </div>
-          <div>
-            <span className="font-heading font-extrabold text-3xl text-primary block">
-              Private
-            </span>
-            <span className="text-xs text-text-muted mt-1 block">Default Vault Privacy</span>
-          </div>
-        </div>
-      </div>
-
-      <div id="contact" className="bg-light-bg rounded-2xl border border-border p-6 text-xs sm:text-sm text-text-muted flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10 text-left">
+      <section className="grid lg:grid-cols-[1.3fr_1fr] gap-6 lg:gap-10 items-center rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 sm:p-9 lg:p-10">
         <div>
-          <h4 className="font-heading font-bold text-base text-text mb-1">Get in Touch</h4>
-          <p>Have questions, ideas or feedback? Reach our team at <a href="mailto:hello@tripzobox.com" className="text-primary font-semibold hover:underline">hello@tripzobox.com</a>.</p>
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-primary tracking-widest uppercase"><Sparkles className="w-4 h-4" />Our story</span>
+          <h1 className="font-heading font-extrabold text-3xl sm:text-5xl text-text tracking-tight mt-4">About Tripzobox</h1>
+          <p className="font-heading font-semibold text-xl sm:text-2xl text-primary mt-4">A place to find your people and your next adventure.</p>
+          <p className="text-sm sm:text-base text-text-muted mt-4 leading-relaxed max-w-2xl">We believe the people you meet can become as memorable as the places you visit. Tripzobox brings discovery, shared travel plans, and personal stories together so you can spend more time looking forward to the journey.</p>
+          <div className="flex flex-wrap gap-3 mt-6">
+            <Link to="/explore" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors">Explore places <ArrowRight className="w-4 h-4" /></Link>
+            <Link to="/trips" className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-white px-5 py-3 text-sm font-semibold text-primary hover:bg-emerald-50 transition-colors">Find travel companions <Users className="w-4 h-4" /></Link>
+          </div>
         </div>
-        <Link to="/contact" className="shrink-0 text-xs font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-hover shadow-subtle transition-all">
-          Contact Support Desk
-        </Link>
-      </div>
+        <div className="relative rounded-2xl overflow-hidden min-h-[260px] sm:min-h-[310px] lg:h-full">
+          <img src="https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&w=1000&q=85" alt="Friends enjoying a mountain hike together" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+          <p className="absolute bottom-6 inset-x-6 font-heading font-bold text-xl text-white">Your journey. Your people. Your story.</p>
+        </div>
+      </section>
+
+      <section className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-subtle">
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">Why we’re here</span>
+          <h2 className="font-heading font-bold text-2xl text-text mt-2">Make travel feel more connected</h2>
+          <div className="space-y-4 text-sm sm:text-base text-text-muted leading-relaxed mt-4">
+            <p>A weekend in Munnar, a coastal escape to Varkala, or a first trip with new companions can start with a simple conversation. Our mission is to make it easier to turn that spark into a shared plan.</p>
+            <p>Tripzobox gives travellers a place to discover destinations, discuss expectations, organize a trip room, and keep memories in a travel diary. Whether you prefer a relaxed itinerary or an active adventure, there’s room to describe what works for you.</p>
+            <p>We want the community to be useful before, during, and after the trip: inspiration when you’re deciding, clear plans when you’re preparing, and honest stories when you return.</p>
+          </div>
+        </div>
+        <aside className="rounded-3xl bg-emerald-950 text-white p-6 sm:p-8 flex flex-col justify-center gap-6">
+          {[
+            { label: 'Places to discover', value: String(destinations.length), detail: 'Browse destinations and community discoveries.' },
+            { label: 'Travel your way', value: 'Your pace', detail: 'Find plans that suit your interests and budget.' },
+            { label: 'Memories worth keeping', value: 'Your story', detail: 'Record the details you want to remember.' },
+          ].map((item) => <div key={item.label}><span className="text-xs text-emerald-200 uppercase tracking-wide">{item.label}</span><p className="font-heading font-bold text-3xl mt-1">{item.value}</p><p className="text-sm text-white/75 mt-1 leading-relaxed">{item.detail}</p></div>)}
+        </aside>
+      </section>
+
+      <section aria-labelledby="about-values" className="space-y-5">
+        <div><h2 id="about-values" className="font-heading font-bold text-2xl sm:text-3xl text-text">What brings us together</h2><p className="text-sm text-text-muted mt-2">A few shared habits can make every journey better.</p></div>
+        <div className="grid md:grid-cols-3 gap-5">{values.map(({ icon: Icon, title, description }) => <article key={title} className="rounded-2xl border border-border bg-white p-6"><div className="inline-flex p-3 rounded-xl bg-primary/10 text-primary"><Icon className="w-6 h-6" /></div><h3 className="font-heading font-bold text-lg text-text mt-4">{title}</h3><p className="text-sm text-text-muted mt-2 leading-relaxed">{description}</p></article>)}</div>
+      </section>
+
+      <section className="rounded-3xl border border-border bg-white p-6 sm:p-8 space-y-6">
+        <div><span className="text-xs font-bold text-primary uppercase tracking-widest">From inspiration to memories</span><h2 className="font-heading font-bold text-2xl sm:text-3xl text-text mt-2">One community, every part of the journey</h2></div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {[
+            { icon: MapPin, title: 'Discover a place', text: 'Browse familiar favourites and hidden spots. Share a discovery with photos and useful local details.', link: '/explore', action: 'Explore destinations' },
+            { icon: Users, title: 'Make a shared plan', text: 'Find a trip or host your own room. Discuss the route, group size, costs, and expectations before departure.', link: '/trips', action: 'Browse trips' },
+            { icon: Shield, title: 'Prepare thoughtfully', text: 'Keep important travel information organized and read our guidance on boundaries and group conduct.', link: '/safety', action: 'Read safety guidance' },
+            { icon: BookOpen, title: 'Keep the story', text: 'Record your experience in a diary and share the moments, tips, and recommendations others can learn from.', link: '/stories', action: 'Read travel stories' },
+          ].map(({ icon: Icon, title, text, link, action }) => <article key={title} className="flex flex-col items-start"><Icon className="w-6 h-6 text-primary" /><h3 className="font-heading font-bold text-base text-text mt-3">{title}</h3><p className="text-sm text-text-muted leading-relaxed mt-2 mb-4">{text}</p><Link to={link} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover mt-auto">{action}<ArrowRight className="w-4 h-4" /></Link></article>)}
+        </div>
+      </section>
+
+      <section className="grid md:grid-cols-2 gap-6">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6 sm:p-8"><h2 className="font-heading font-bold text-xl text-text">For first-time explorers and experienced hosts</h2><p className="text-sm text-text-muted leading-relaxed mt-3">You don’t need a perfect itinerary to begin. Come with a destination in mind, a story to share, or a willingness to meet people. Experienced travellers can help by sharing practical advice and setting clear, considerate expectations when hosting.</p><Link to="/how-it-works" className="inline-flex items-center gap-2 text-sm font-semibold text-primary mt-5">See how it works <ArrowRight className="w-4 h-4" /></Link></div>
+        <div className="rounded-2xl border border-border bg-white p-6 sm:p-8"><h2 className="font-heading font-bold text-xl text-text">Trust is something we build together</h2><p className="text-sm text-text-muted leading-relaxed mt-3">Be honest about your plans, respect a companion’s boundaries, and agree on shared expenses early. Our community rules explain the conduct we expect from travellers and trip leaders, so everyone can make informed choices about who they travel with.</p><Link to="/community-rules" className="inline-flex items-center gap-2 text-sm font-semibold text-primary mt-5">Read our community rules <ArrowRight className="w-4 h-4" /></Link></div>
+      </section>
+
+      <section id="contact" className="rounded-2xl border border-border bg-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div><h2 className="font-heading font-bold text-xl text-text">Help shape the next chapter</h2><p className="text-sm text-text-muted mt-2 leading-relaxed">Have a question, an idea, or feedback? We’d like to hear from you.</p><a href="mailto:hello@tripzobox.com" className="inline-block text-sm text-primary font-semibold hover:underline mt-2">hello@tripzobox.com</a></div>
+        <Link to="/contact" className="inline-flex items-center justify-center gap-2 shrink-0 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors">Get in touch <ArrowRight className="w-4 h-4" /></Link>
+      </section>
     </div>
   );
 };

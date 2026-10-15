@@ -116,6 +116,11 @@ export const TripFilterBar: React.FC<TripFilterBarProps> = ({
                   onStartDateChange?.(e.target.value);
                   onDateChange?.(e.target.value);
                 }}
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as any).showPicker?.();
+                  } catch {}
+                }}
                 aria-label="Trip start date"
                 className="w-full text-xs font-medium text-text bg-transparent outline-none cursor-pointer"
               />
@@ -128,6 +133,11 @@ export const TripFilterBar: React.FC<TripFilterBarProps> = ({
                 value={endDate}
                 min={startDate || undefined}
                 onChange={(e) => onEndDateChange?.(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    (e.currentTarget as any).showPicker?.();
+                  } catch {}
+                }}
                 aria-label="Trip end date"
                 className="w-full text-xs font-medium text-text bg-transparent outline-none cursor-pointer"
               />

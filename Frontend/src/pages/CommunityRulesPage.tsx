@@ -89,9 +89,9 @@ export const CommunityRulesPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10">
       {/* 1. HEADER HERO */}
-      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-8 sm:p-12 border border-border">
+      <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-6 sm:p-10 border border-border grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-8 lg:gap-12 items-center">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold tracking-wider uppercase font-heading mb-4">
             <ShieldCheck className="w-4 h-4" />
@@ -104,7 +104,50 @@ export const CommunityRulesPage: React.FC = () => {
             Tripzobox is founded on mutual trust and real camaraderie. These guidelines define the commitments every member makes so all journeys remain welcoming, safe, and memorable.
           </p>
         </div>
+        <div className="rounded-2xl bg-white/85 border border-white p-5 sm:p-6 shadow-subtle">
+          <div className="flex items-center gap-2 text-primary mb-4">
+            <HeartHandshake className="w-5 h-5" />
+            <h2 className="font-heading font-bold text-base">A better journey starts with us</h2>
+          </div>
+          <ul className="space-y-3 text-sm text-text">
+            {[
+              'Be honest about who you are and how you travel.',
+              'Agree on plans, costs, and boundaries together.',
+              'Look out for your group and respect local communities.',
+            ].map((commitment) => (
+              <li key={commitment} className="flex items-start gap-2.5 leading-relaxed">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-1" />
+                <span>{commitment}</span>
+              </li>
+            ))}
+          </ul>
+          <Link to="/safety" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary-hover mt-5">
+            Explore our safety guidelines <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
+
+      <section aria-labelledby="travel-checklist-title" className="space-y-4">
+        <div>
+          <h2 id="travel-checklist-title" className="font-heading font-bold text-xl sm:text-2xl text-text">Good habits for every adventure</h2>
+          <p className="text-sm text-text-muted mt-1">Small steps that help everyone travel with confidence.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { icon: Users, title: 'Before you join', description: 'Introduce yourself, discuss the itinerary and fitness expectations, and confirm what the shared budget includes.' },
+            { icon: HeartHandshake, title: 'While you travel', description: 'Ask before taking or sharing photos, check in with your companions, and leave shared spaces and trails clean.' },
+            { icon: Sparkles, title: 'After the trip', description: 'Settle agreed expenses, share honest and constructive feedback, and ask permission before posting group memories.' },
+          ].map(({ icon: Icon, title, description }) => (
+            <article key={title} className="flex items-start gap-4 rounded-2xl border border-border bg-white p-5 sm:p-6">
+              <div className="rounded-xl bg-primary/10 text-primary p-2.5 shrink-0"><Icon className="w-5 h-5" /></div>
+              <div>
+                <h3 className="font-heading font-bold text-base text-text">{title}</h3>
+                <p className="text-sm text-text-muted leading-relaxed mt-2">{description}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* 2. THE 4 PILLARS */}
       <div className="space-y-6">

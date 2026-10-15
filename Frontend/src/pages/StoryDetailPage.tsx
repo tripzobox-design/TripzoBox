@@ -24,7 +24,7 @@ export const StoryDetailPage: React.FC = () => {
   const { stories, getStoryBySlug } = useDiary();
   const { success } = useToast();
 
-  const story = getStoryBySlug(storySlug || 'exploring-gods-own-country') || stories[0];
+  const story = getStoryBySlug(storySlug || '');
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [likesCount, setLikesCount] = useState(story?.likes || 482);
@@ -61,7 +61,7 @@ export const StoryDetailPage: React.FC = () => {
   const otherStories = stories.filter((s) => s.id !== story.id).slice(0, 4);
 
   return (
-    <div className="flex flex-col gap-6 text-left max-w-6xl mx-auto">
+    <div className="flex flex-col gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
       {/* 1. TOP COVER BANNER (Matching Reference Screen 11) */}
       <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[200px] max-h-[340px] w-full bg-text shadow-float">
         <img
@@ -73,7 +73,7 @@ export const StoryDetailPage: React.FC = () => {
         
         {/* Back link floating on banner */}
         <Link
-          to="/explore"
+          to="/stories"
           className="absolute top-5 left-5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white text-xs font-semibold backdrop-blur-md transition-all border border-white/10"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

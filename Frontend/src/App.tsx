@@ -7,18 +7,17 @@ import { AuthProvider } from './context/AuthContext';
 import { TripsProvider } from './context/TripsContext';
 import { DiaryProvider } from './context/DiaryContext';
 import { VaultProvider } from './context/VaultContext';
+import { DestinationsProvider } from './context/DestinationsContext';
 
 // Layout Shells
 import { PublicShell } from './layouts/PublicShell';
-import { AppShell } from './layouts/AppShell';
+import { FeaturePageLayout } from './layouts/FeaturePageLayout';
 
 // Pages
-import { LandingPage } from './pages/LandingPage';
+import { HomeEntry } from './pages/HomeEntry';
 import { AuthPage } from './pages/AuthPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ExplorePage } from './pages/ExplorePage';
-import { DestinationDetailPage } from './pages/DestinationDetailPage';
-import { StoryDetailPage } from './pages/StoryDetailPage';
 import { HowItWorksPage } from './pages/HowItWorksPage';
 import { SafetyPage } from './pages/SafetyPage';
 import { AboutPage } from './pages/AboutPage';
@@ -28,7 +27,6 @@ import { ContactPage } from './pages/ContactPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 
-import { DashboardPage } from './pages/DashboardPage';
 import { TravelVaultPage } from './pages/TravelVaultPage';
 import { FindTripPage } from './pages/FindTripPage';
 import { CreateTripPage } from './pages/CreateTripPage';
@@ -39,6 +37,10 @@ import { CreateStoryPage } from './pages/CreateStoryPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { MessagesPage } from './pages/MessagesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { StoriesPage } from './pages/StoriesPage';
+import { StoryDetailPage } from './pages/StoryDetailPage';
+import { DestinationDetailPage } from './pages/DestinationDetailPage';
+import { CreateDestinationPage } from './pages/CreateDestinationPage';
 import { ScrollToTop } from './components/common/ScrollToTop';
 
 export const App: React.FC = () => {
@@ -50,51 +52,9 @@ export const App: React.FC = () => {
           <TripsProvider>
             <DiaryProvider>
               <VaultProvider>
-                <Routes>
-                  {/* PUBLIC MARKETING ROUTES (PublicShell) */}
-                  <Route element={<PublicShell />}>
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/explore" element={<ExplorePage />} />
-                    <Route path="/explore/:destinationSlug" element={<DestinationDetailPage />} />
-                    <Route path="/stories/:storySlug" element={<StoryDetailPage />} />
-                    <Route path="/how-it-works" element={<HowItWorksPage />} />
-                    <Route path="/safety" element={<SafetyPage />} />
-                    <Route path="/community-rules" element={<CommunityRulesPage />} />
-                    <Route path="/vault-security" element={<VaultSecurityPage />} />
-                    <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/about" element={<AboutPage />} />
-                    <Route path="/terms" element={<TermsPage />} />
-                    <Route path="/privacy" element={<PrivacyPage />} />
-                    <Route path="/trips" element={<FindTripPage />} />
-                    <Route path="/trips/:tripId" element={<TripDetailsPage />} />
-                  </Route>
-
-                  {/* AUTH SPLIT ROUTES (Dedicated full-screen Auth layout) */}
-                  <Route path="/signup" element={<AuthPage initialMode="signup" />} />
-                  <Route path="/login" element={<AuthPage initialMode="login" />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-                  {/* LOGGED-IN WEB APP ROUTES (AppShell) */}
-                  <Route path="/app" element={<AppShell />}>
-                    <Route index element={<Navigate to="/app/dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="vault" element={<TravelVaultPage />} />
-                    <Route path="trips" element={<FindTripPage />} />
-                    <Route path="trips/create" element={<CreateTripPage />} />
-                    <Route path="trips/:tripId" element={<TripDetailsPage />} />
-                    <Route path="trips/my" element={<FindTripPage />} />
-                    <Route path="diary" element={<TravelDiaryPage />} />
-                    <Route path="diary/add" element={<AddExperiencePage />} />
-                    <Route path="diary/create-story" element={<CreateStoryPage />} />
-                    <Route path="explore" element={<ExplorePage />} />
-                    <Route path="profile" element={<ProfilePage />} />
-                    <Route path="messages" element={<MessagesPage />} />
-                    <Route path="notifications" element={<NotificationsPage />} />
-                  </Route>
-
-                  {/* Fallback route */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <DestinationsProvider>
+                  <AppRoutes />
+                </DestinationsProvider>
               </VaultProvider>
             </DiaryProvider>
           </TripsProvider>
@@ -105,3 +65,53 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
+export const AppRoutes: React.FC = () => (
+                  <Routes>
+                    {/* PUBLIC MARKETING ROUTES (PublicShell) */}
+                    <Route element={<PublicShell />}>
+                      <Route path="/" element={<HomeEntry />} />
+                      <Route path="/app" element={<FeaturePageLayout />}>
+                        <Route index element={<Navigate to="/" replace />} />
+                        <Route path="dashboard" element={<Navigate to="/" replace />} />
+                        <Route path="vault" element={<TravelVaultPage />} />
+                        <Route path="trips" element={<FindTripPage />} />
+                        <Route path="trips/my" element={<FindTripPage />} />
+                        <Route path="trips/create" element={<CreateTripPage />} />
+                        <Route path="trips/:tripId" element={<TripDetailsPage />} />
+                        <Route path="diary" element={<TravelDiaryPage />} />
+                        <Route path="diary/add" element={<AddExperiencePage />} />
+                        <Route path="diary/create-story" element={<CreateStoryPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="messages" element={<MessagesPage />} />
+                        <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="explore" element={<ExplorePage />} />
+                        <Route path="explore/create" element={<CreateDestinationPage />} />
+                        <Route path="explore/:destinationSlug" element={<DestinationDetailPage />} />
+                      </Route>
+                      <Route path="/explore" element={<ExplorePage />} />
+                      <Route path="/explore/create" element={<CreateDestinationPage />} />
+                      <Route path="/explore/:destinationSlug" element={<DestinationDetailPage />} />
+                      <Route path="/stories" element={<StoriesPage />} />
+                      <Route path="/stories/:storySlug" element={<StoryDetailPage />} />
+                      <Route path="/how-it-works" element={<HowItWorksPage />} />
+                      <Route path="/safety" element={<SafetyPage />} />
+                      <Route path="/community-rules" element={<CommunityRulesPage />} />
+                      <Route path="/vault-security" element={<VaultSecurityPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/about" element={<AboutPage />} />
+                      <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/privacy" element={<PrivacyPage />} />
+                      <Route path="/trips" element={<FindTripPage />} />
+                      <Route path="/trips/:tripId" element={<TripDetailsPage />} />
+                    </Route>
+
+                    {/* AUTH SPLIT ROUTES (Dedicated full-screen Auth layout) */}
+                    <Route path="/signup" element={<AuthPage initialMode="signup" />} />
+                    <Route path="/login" element={<AuthPage initialMode="login" />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+                    {/* Fallback route */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+);

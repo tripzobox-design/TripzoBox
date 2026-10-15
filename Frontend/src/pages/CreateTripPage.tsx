@@ -16,6 +16,9 @@ export const CreateTripPage: React.FC = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
 
+  // Space & Room Type
+  const [roomType, setRoomType] = useState<'public' | 'private'>('public');
+
   // Step 1: Trip Details State
   const [tripName, setTripName] = useState('Munnar Adventure');
   const [destination, setDestination] = useState('Munnar, Kerala');
@@ -74,6 +77,7 @@ export const CreateTripPage: React.FC = () => {
       durationDays: 6,
       budgetPerPerson,
       tripType,
+      roomType,
       preferences,
       description,
       highlights,
@@ -136,9 +140,76 @@ export const CreateTripPage: React.FC = () => {
 
       {/* 3. STEP FORM CONTENT */}
       <div className="bg-white rounded-2xl border border-border p-6 sm:p-8 shadow-card">
-        {/* STEP 1: TRIP DETAILS (Matching Screen 6) */}
+        {/* STEP 1: TRIP DETAILS */}
         {currentStep === 1 && (
           <div className="space-y-6">
+            {/* Trip Leader Info Banner */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-primary/10 border border-primary/20 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                  👑
+                </div>
+                <div>
+                  <h4 className="font-heading font-bold text-sm text-text">
+                    You are the Trip Leader
+                  </h4>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    As creator, you host this room, guide the itinerary, and approve member requests.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-primary bg-white px-3 py-1 rounded-full border border-primary/30 shadow-xs shrink-0">
+                Host / Leader
+              </span>
+            </div>
+
+            {/* Room Space Visibility */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-text tracking-wide block">
+                Room Space Visibility *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRoomType('public')}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    roomType === 'public'
+                      ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
+                      : 'bg-white hover:bg-light-bg text-text border-border'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                    <span className="text-base">🌐</span>
+                    <span>Public Space</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white ml-auto">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1 leading-snug">
+                    Published in the Tripzobox directory so travellers can discover your trip and request to join.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRoomType('private')}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    roomType === 'private'
+                      ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
+                      : 'bg-white hover:bg-light-bg text-text border-border'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-heading font-bold text-sm">
+                    <span className="text-base">🔒</span>
+                    <span>Private Room</span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1 leading-snug">
+                    Hidden from public listings. Only people you invite with your unique Room Code can join.
+                  </p>
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Trip Name *"

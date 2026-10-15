@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Heart, Calendar, Users } from 'lucide-react';
 import { Trip } from '../../types';
 import { useTrips } from '../../context/TripsContext';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../ui/Badge';
 
 export interface TripCardProps {
@@ -14,6 +15,8 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
   const navigate = useNavigate();
   const location = useLocation();
   const { isTripSaved, toggleSaveTrip } = useTrips();
+  const { user } = useAuth();
+  const isLeader = user && trip.leader.id === user.id;
   const saved = isTripSaved(trip.id);
   const isInApp = location.pathname.startsWith('/app');
   const targetPath = isInApp ? `/app/trips/${trip.id}` : `/trips/${trip.id}`;
@@ -52,11 +55,23 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, showSaveButton = true 
           </button>
         )}
 
-        {/* Trip type badge */}
-        <div className="absolute bottom-3 left-3">
-          <Badge variant="primary" size="sm" className="capitalize backdrop-blur-md bg-primary/90 font-medium">
-            {trip.tripType} Trip
-          </Badge>
+        {/* Badges: Trip Leader & Room Type */}
+        <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-1.5">
+          {isLeader ? (
+            <span className="backdrop-blur-md bg-emerald-700/95 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-400/50 shadow-xs flex items-center gap-1">
+              👑 Trip Leader
+            </span>
+          ) : (
+            <Badge variant="primary" size="sm" className="capitalize backdrop-blur-md bg-primary/90 font-medium">
+              {trip.tripType} Trip
+            </Badge>
+          )}
+
+          {trip.roomType === 'public' && (
+            <span className="backdrop-blur-md bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full border border-white/20 flex items-center gap-1">
+              🌐 Public Space
+            </span>
+          )}
         </div>
       </div>
 
