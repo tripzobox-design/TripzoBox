@@ -3,6 +3,7 @@ import { DiaryEntry, Story } from '../types';
 import { mockDiaryEntries } from '../data/mockDiary';
 import { mockStories } from '../data/mockStories';
 import { useAuth } from './AuthContext';
+import { diaryApi, storiesApi } from '../lib/api';
 
 interface DiaryContextType {
   entries: DiaryEntry[];
@@ -59,6 +60,27 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return mockStories;
   });
 
+  // Fetch from server on mount
+  useEffect(() => {
+    diaryApi
+      .getEntries()
+      .then((serverEntries) => {
+        if (Array.isArray(serverEntries) && serverEntries.length > 0) {
+          setEntries(serverEntries);
+        }
+      })
+      .catch(() => {});
+
+    storiesApi
+      .getStories()
+      .then((serverStories) => {
+        if (Array.isArray(serverStories) && serverStories.length > 0) {
+          setStories(serverStories);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('tripzobox_diary_entries', JSON.stringify(entries));
   }, [entries]);
@@ -75,19 +97,32 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isPublished: false,
     };
     setEntries((prev) => [newEntry, ...prev]);
+
+    diaryApi.createEntry(newEntry).catch((err) => {
+      console.warn('[DiaryContext] Failed to save entry to server:', err);
+    });
+
     return newEntry;
   };
 
   const deleteEntry = (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    diaryApi.deleteEntry(id).catch(() => {});
   };
 
   const updateEntry = (id: string, updated: Partial<DiaryEntry>) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
+    diaryApi.updateEntry(id, updated).catch(() => {});
   };
 
-  const publishStory = (storyData: Omit<Story, 'id' | 'slug' | 'author' | 'likes' | 'comments' | 'views'>): Story => {
-    const slug = storyData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const publishStory = (
+    storyData: Omit<Story, 'id' | 'slug' | 'author' | 'likes' | 'comments' | 'views'>
+  ): Story => {
+    const slug = storyData.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
     const newStory: Story = {
       ...storyData,
       id: `story_${Date.now()}`,
@@ -104,15 +139,21 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (storyData.entries && storyData.entries.length > 0) {
       const entryIds = storyData.entries.map((e) => e.id);
       setEntries((prev) =>
-        prev.map((e) => (entryIds.includes(e.id) ? { ...e, isPublished: true, storyId: newStory.id } : e))
+        prev.map((e) =>
+          entryIds.includes(e.id) ? { ...e, isPublished: true, storyId: newStory.id } : e
+        )
       );
     }
+
+    storiesApi.createStory(newStory).catch((err) => {
+      console.warn('[DiaryContext] Failed to publish story to server:', err);
+    });
 
     return newStory;
   };
 
   const getStoryBySlug = (slug: string) => {
-    return stories.find((s) => s.slug === slug);
+    return stories.find((s) => s.slug === slug || s.id === slug);
   };
 
   return (

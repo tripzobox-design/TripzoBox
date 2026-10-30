@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Users, Compass, Search, ArrowLeft } from 'lucide-react';
 import { mockChatThreads, ChatThread } from '../data/mockMessages';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
+import { messagesApi } from '../lib/api';
 
 export const MessagesPage: React.FC = () => {
   const { user } = useAuth();
@@ -13,18 +14,33 @@ export const MessagesPage: React.FC = () => {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [threadQuery, setThreadQuery] = useState('');
 
+  useEffect(() => {
+    messagesApi
+      .getThreads()
+      .then((serverThreads) => {
+        if (Array.isArray(serverThreads) && serverThreads.length > 0) {
+          setThreads(serverThreads);
+          if (!serverThreads.some((t: any) => t.id === activeThreadId)) {
+            setActiveThreadId(serverThreads[0].id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0];
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim()) return;
 
+    const textToSend = messageText.trim();
     const newMsg = {
       id: Date.now().toString(),
       senderName: user.name,
       avatarUrl: user.avatarUrl,
       isCurrentUser: true,
-      text: messageText.trim(),
+      text: textToSend,
       time: 'Just now',
     };
 
@@ -33,7 +49,7 @@ export const MessagesPage: React.FC = () => {
         if (t.id === activeThreadId) {
           return {
             ...t,
-            lastMessage: messageText.trim(),
+            lastMessage: textToSend,
             time: 'Just now',
             messages: [...t.messages, newMsg],
           };
@@ -43,6 +59,12 @@ export const MessagesPage: React.FC = () => {
     );
 
     setMessageText('');
+
+    if (activeThread?.tripId) {
+      messagesApi.sendMessage(activeThread.tripId, textToSend).catch((err) => {
+        console.warn('[MessagesPage] Failed to send message to backend:', err);
+      });
+    }
   };
 
   return (

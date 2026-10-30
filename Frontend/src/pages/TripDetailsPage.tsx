@@ -25,6 +25,9 @@ import {
   CheckCircle2,
   XCircle,
   UserCheck,
+  Car,
+  Home,
+  ShieldAlert,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
@@ -60,8 +63,22 @@ export const TripDetailsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact'>('about');
   const [infoTab, setInfoTab] = useState<'reviews' | 'images' | 'contact'>('reviews');
   const [selectedTraveller, setSelectedTraveller] = useState<User | null>(null);
+  const [showRoomTypeConfirm, setShowRoomTypeConfirm] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
+
+  const handleConfirmRoomTypeChange = () => {
+    if (!trip) return;
+    const targetType = trip.roomType === 'private' ? 'public' : 'private';
+    updateTripRoomType(trip.id, targetType);
+    setShowRoomTypeConfirm(false);
+    success(
+      targetType === 'private'
+        ? 'Trip privacy set to Private Room. Only travellers with the invite code can access it.'
+        : 'Trip privacy set to Public Space. Travellers across Tripzobox can discover and request to join.',
+      targetType === 'private' ? 'Switched to Private Room' : 'Switched to Public Space'
+    );
+  };
 
   if (!trip) {
     return (
@@ -141,109 +158,119 @@ export const TripDetailsPage: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col gap-3 sm:gap-4 lg:gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
-      {/* 1. HERO BANNER WITH OVERLAID BACK BUTTON (Matching Reference Screen 7) */}
-      <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[250px] max-h-[440px] w-full bg-text shadow-float">
+    <div className={`flex flex-col gap-4 sm:gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
+      {/* 1. HERO BANNER (Matching Reference Screen 4) */}
+      <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[260px] max-h-[420px] w-full bg-emerald-950 shadow-float">
         <img
           src={trip.coverImageUrl}
           alt={trip.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30" />
-        
-        {/* Floating Back to Trips button (Matching Reference Screen 7) */}
-        <Link
-          to={isInApp ? '/app/trips' : '/trips'}
-          className="absolute top-5 left-5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white text-xs font-semibold backdrop-blur-md transition-all shadow-subtle border border-white/10"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Trips</span>
-        </Link>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/30" />
 
-        {/* Destination Pin Tag */}
-        <div className="absolute bottom-4 left-6">
-          <span className="text-xs font-semibold text-white/95 flex items-center gap-1.5 backdrop-blur-md bg-black/50 px-3 py-1.5 rounded-full border border-white/15">
-            <MapPin className="w-3.5 h-3.5 text-accent" />
-            {trip.destination}
+        {/* Top-left: Back button & Public Trip Badge (Matching Screen 4) */}
+        <div className="absolute top-5 left-5 flex items-center gap-2.5">
+          <Link
+            to={isInApp ? '/app/trips' : '/trips'}
+            className="w-9 h-9 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center backdrop-blur-md transition-all shadow-subtle"
+            aria-label="Back to Trips"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-700/90 text-white backdrop-blur-md shadow-xs">
+            <Globe className="w-3.5 h-3.5" />
+            <span>Public Trip</span>
           </span>
+        </div>
+
+        {/* Top-right: Heart bookmark button (Matching Screen 4) */}
+        <div className="absolute top-5 right-5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleShareClick}
+            className="w-9 h-9 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center backdrop-blur-md transition-all shadow-subtle cursor-pointer"
+            aria-label="Share Trip"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSaveTrip(trip.id)}
+            className="w-9 h-9 rounded-full bg-white/90 hover:bg-white text-gray-800 flex items-center justify-center backdrop-blur-md transition-all shadow-subtle cursor-pointer"
+            aria-label="Save Trip"
+          >
+            <Heart className={`w-4 h-4 ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+          </button>
+        </div>
+
+        {/* Bottom Banner Title & Destination Pin (Matching Screen 4) */}
+        <div className="absolute bottom-6 left-6 right-6">
+          <h1 className="font-heading font-extrabold text-2xl sm:text-4xl text-white tracking-tight drop-shadow-sm">
+            {trip.name}
+          </h1>
+          <p className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-emerald-200/90 mt-1.5 drop-shadow-xs">
+            <MapPin className="w-4 h-4 text-emerald-400" />
+            <span>{trip.destination}</span>
+          </p>
         </div>
       </div>
 
-      {/* 2. TITLE ROW & ACTION BUTTONS (Matching Reference Screen 7) */}
-      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      {/* 2. STATS BAR & TAGS CARD (Matching Reference Screen 4) */}
+      <div className="bg-white rounded-2xl border border-gray-200/90 p-4 sm:p-5 shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 pb-4 border-b border-gray-100">
+          {/* Stat 1: Dates */}
           <div className="flex items-center gap-3">
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-text">
-              {trip.name}
-            </h1>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleShareClick}
-                className="p-2 rounded-xl text-text-subtle hover:text-primary hover:bg-light-bg transition-colors"
-                aria-label="Share Trip"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleSaveTrip(trip.id)}
-                className="p-2 rounded-xl text-text-subtle hover:text-red-500 hover:bg-light-bg transition-colors"
-                aria-label="Bookmark Trip"
-              >
-                <Heart className={`w-4 h-4 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} />
-              </button>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 block">
+                {trip.startDate} - {trip.endDate}
+              </span>
+              <span className="text-xs text-gray-500 font-medium">({trip.durationDays} days)</span>
             </div>
           </div>
 
-          {/* Quick info row with icons (Matching Reference Screen 7) */}
-          <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-text-muted mt-2.5">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-primary" />
-              {trip.startDate} – {trip.endDate}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-border" />
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-primary" />
-              {trip.durationDays} days
-            </span>
-            <span className="w-1 h-1 rounded-full bg-border" />
-            <span className="flex items-center gap-1.5 font-semibold text-primary">
-              <Wallet className="w-4 h-4" />
-              ₹{trip.budgetPerPerson.toLocaleString()} per person
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-accent/40 text-primary border border-accent/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              {trip.tripType === 'group' ? 'Group Trip' : 'Solo / Group'}
-            </span>
+          {/* Stat 2: Members joined */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 block">
+                {trip.members.length} of {trip.maxMembers} joined
+              </span>
+              <span className="text-xs text-gray-500 font-medium">
+                ({Math.max(0, trip.maxMembers - trip.members.length)} spots left)
+              </span>
+            </div>
+          </div>
+
+          {/* Stat 3: Budget per person */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 block">
+                ₹{trip.budgetPerPerson.toLocaleString()}
+              </span>
+              <span className="text-xs text-gray-500 font-medium">per person</span>
+            </div>
           </div>
         </div>
 
-        {/* Join CTA or Leader Badge */}
-        <div className="shrink-0">
-          {isLeader ? (
-            <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-sm shadow-md border border-emerald-500">
-              <Crown className="w-4 h-4 text-amber-300" />
-              <span>Trip Leader (Host)</span>
-            </div>
-          ) : joinStatus === 'accepted' ? (
-            <div className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-sm border border-emerald-200">
-              <Check className="w-4 h-4 stroke-[3]" />
-              Joined ✓
-            </div>
-          ) : joinStatus === 'pending' ? (
-            <div className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-50 text-amber-700 font-semibold text-sm border border-amber-200 animate-pulse">
-              Request Pending...
-            </div>
-          ) : (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleJoinClick}
-              className="px-8 font-semibold shadow-hover"
-            >
-              Join Trip
-            </Button>
+        {/* Tag Badges row matching Screen 4: Nature, Trekking, Photography, Food */}
+        <div className="flex flex-wrap items-center gap-2 pt-4">
+          {(trip.preferences.length > 0 ? trip.preferences : ['Nature', 'Trekking', 'Photography', 'Food']).map(
+            (tag) => (
+              <span
+                key={tag}
+                className="px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-primary border border-emerald-200/80"
+              >
+                {tag}
+              </span>
+            )
           )}
         </div>
       </div>
@@ -264,12 +291,7 @@ export const TripDetailsPage: React.FC = () => {
             <div className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  updateTripRoomType(
-                    trip.id,
-                    trip.roomType === 'private' ? 'public' : 'private'
-                  )
-                }
+                onClick={() => setShowRoomTypeConfirm(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer"
               >
                 {trip.roomType === 'private' ? (
@@ -462,7 +484,36 @@ export const TripDetailsPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Trip Highlights Chips (Matching Reference Screen 7) */}
+                {/* Trip Inclusions (Matching Screen 4) */}
+                <div className="pt-4 border-t border-border">
+                  <h4 className="font-heading font-semibold text-base text-text mb-3">
+                    Trip Inclusions
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-light-bg border border-border text-xs font-semibold text-text shadow-2xs">
+                      <Car className="w-4 h-4 text-primary" />
+                      <span>Transport</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-light-bg border border-border text-xs font-semibold text-text shadow-2xs">
+                      <Home className="w-4 h-4 text-primary" />
+                      <span>Accommodation</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-light-bg border border-border text-xs font-semibold text-text shadow-2xs">
+                      <Utensils className="w-4 h-4 text-primary" />
+                      <span>Meals (breakfast + dinner)</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('itinerary')}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary mt-3 hover:underline cursor-pointer"
+                  >
+                    <span>View More</span>
+                    <span>&gt;</span>
+                  </button>
+                </div>
+
+                {/* Trip Highlights Chips */}
                 <div>
                   <h4 className="font-heading font-semibold text-base text-text mb-3">
                     Trip Highlights
@@ -675,52 +726,120 @@ export const TripDetailsPage: React.FC = () => {
           </section>
         </div>
 
-        {/* Right Column: Leader Card & Members Sidebar (Matching Screen 7) */}
-        <div className="space-y-5">
-          {/* Trip Leader Card */}
-          <div className="bg-white rounded-2xl border border-border p-5 shadow-card text-left">
-            <h4 className="font-heading font-bold text-base text-text mb-4">
-              Trip Leaders
+        {/* Right Column: Leader Card & Trip Rules & Action Button (Matching Screen 4) */}
+        <div className="space-y-4">
+          {/* Trip Organizer Card (Matching Screen 4) */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-xs text-left">
+            <h4 className="font-heading font-bold text-sm sm:text-base text-text mb-3">
+              Trip Organizer
             </h4>
-            <div className="flex items-center gap-3.5">
-              <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="lg" />
-              <div>
-                <h5 className="font-semibold text-sm sm:text-base text-text">{trip.leader.name}</h5>
-                <span className="text-xs font-semibold text-primary bg-accent/40 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                  Top Leader
-                </span>
-                <p className="text-xs text-text-muted mt-1">{trip.leader.city}, {trip.leader.country || 'India'}</p>
+            <div className="flex items-center gap-3">
+              <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
+              <div className="flex-1 min-w-0">
+                <h5 className="font-bold text-sm text-text truncate">{trip.leader.name}</h5>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Trip Leader · {trip.leader.stats?.trips || 4} trips
+                </p>
               </div>
             </div>
-            <p className="text-xs text-text-muted mt-3 pt-3 border-t border-border line-clamp-3 leading-relaxed">
-              {trip.leader.bio}
-            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedTraveller(trip.leader)}
+              className="w-full mt-3.5 py-2 px-3 rounded-xl border border-gray-200 hover:border-primary text-xs font-semibold text-text hover:text-primary transition-colors cursor-pointer text-center"
+            >
+              View Profile
+            </button>
+          </div>
+
+          {/* Trip Rules (Matching Screen 4) */}
+          <div className="bg-white rounded-2xl border border-border p-5 shadow-xs text-left">
+            <h4 className="font-heading font-bold text-sm sm:text-base text-text mb-3">
+              Trip Rules
+            </h4>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Be respectful</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>No alcohol</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Keep the group active</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary mt-3 hover:underline cursor-pointer"
+            >
+              <span>View All</span>
+              <span>&gt;</span>
+            </button>
+          </div>
+
+          {/* Request to Join / Leader Actions CTA (Matching Screen 4) */}
+          <div className="bg-white rounded-2xl border border-border p-4 shadow-xs text-left space-y-2.5">
+            {isLeader ? (
+              <div className="space-y-2">
+                <Link
+                  to={`/app/trips/${trip.id}/console`}
+                  className="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors block text-center"
+                >
+                  Trip Leader Console
+                </Link>
+                <Link
+                  to={`/app/trips/${trip.id}/requests`}
+                  className="w-full py-2.5 rounded-xl border border-primary text-primary hover:bg-emerald-50 font-semibold text-xs transition-colors block text-center"
+                >
+                  Join Requests ({trip.pendingJoinRequests?.length || 2})
+                </Link>
+              </div>
+            ) : joinStatus === 'accepted' ? (
+              <div className="w-full py-3 rounded-xl bg-emerald-50 text-primary font-semibold text-xs sm:text-sm text-center border border-emerald-200">
+                Joined ✓ (See you in Munnar!)
+              </div>
+            ) : joinStatus === 'pending' ? (
+              <div className="w-full py-3 rounded-xl bg-amber-50 text-amber-700 font-semibold text-xs sm:text-sm text-center border border-amber-200">
+                Request Pending Review...
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleJoinClick}
+                className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer"
+              >
+                Request to Join
+              </button>
+            )}
+
+            {/* Quick Leader Tools link if not leader to let user preview console & requests */}
+            {!isLeader && (
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                <span>Trip Leader preview:</span>
+                <Link
+                  to={`/app/trips/${trip.id}/console`}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  Leader Console &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Members Stack Card */}
           <div className="bg-white rounded-2xl border border-border p-5 shadow-card text-left">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-              <h4 className="font-heading font-bold text-base text-text">
+              <h4 className="font-heading font-bold text-sm text-text">
                 Members ({trip.members.length}/{trip.maxMembers})
               </h4>
               <span className="text-xs font-semibold text-primary">
-                {trip.maxMembers - trip.members.length} spots left
+                {Math.max(0, trip.maxMembers - trip.members.length)} spots left
               </span>
             </div>
 
-            <AvatarGroup users={trip.members} max={5} size="md" className="py-2" />
-
-            <div className="mt-4 pt-4 border-t border-border">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleShareClick}
-                className="w-full text-xs"
-                icon={<Share2 className="w-3.5 h-3.5" />}
-              >
-                Share Trip
-              </Button>
-            </div>
+            <AvatarGroup users={trip.members} max={5} size="md" className="py-1" />
           </div>
         </div>
       </div>
@@ -744,6 +863,85 @@ export const TripDetailsPage: React.FC = () => {
             <div><dt className="text-xs text-text-muted">Languages</dt><dd className="font-semibold text-text">{selectedTraveller.languages.join(', ') || 'Not shared'}</dd></div>
           </dl>
         </div>}
+      </Modal>
+
+      {/* Confirmation Modal to change between Public Space and Private Room */}
+      <Modal
+        isOpen={showRoomTypeConfirm}
+        onClose={() => setShowRoomTypeConfirm(false)}
+        title={trip.roomType === 'private' ? 'Make Trip Public?' : 'Make Trip Private?'}
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-left pt-1">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                trip.roomType === 'private'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              {trip.roomType === 'private' ? (
+                <Globe className="w-6 h-6" />
+              ) : (
+                <Lock className="w-6 h-6" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-heading font-bold text-sm text-gray-900">
+                {trip.roomType === 'private'
+                  ? 'Switch to a Public Space'
+                  : 'Switch to a Private Room'}
+              </h4>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                {trip.roomType === 'private'
+                  ? 'Your trip will be discoverable by all travellers on the Explore & Trips pages. Anyone can discover your itinerary and submit join requests.'
+                  : `Your trip will be hidden from public discovery. Only travellers with the direct room link or Room Code (${trip.roomCode || 'ROOM-8492'}) will be able to view and request to join.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-100 p-3 bg-white text-xs space-y-2 text-gray-600">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Current status:</span>
+              <span className="font-semibold text-gray-800">
+                {trip.roomType === 'private' ? '🔒 Private Room' : '🌐 Public Space'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">New status:</span>
+              <span
+                className={`font-semibold ${
+                  trip.roomType === 'private' ? 'text-emerald-700' : 'text-amber-700'
+                }`}
+              >
+                {trip.roomType === 'private' ? '🌐 Public Space' : '🔒 Private Room'}
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowRoomTypeConfirm(false)}
+              className="px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmRoomTypeChange}
+              className={`px-5 py-2.5 rounded-xl text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer ${
+                trip.roomType === 'private'
+                  ? 'bg-primary hover:bg-primary-hover'
+                  : 'bg-amber-600 hover:bg-amber-700'
+              }`}
+            >
+              {trip.roomType === 'private' ? 'Yes, Make Public' : 'Yes, Make Private'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

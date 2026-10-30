@@ -56,7 +56,7 @@ export const AddExperiencePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-left max-w-4xl mx-auto">
+    <div className="flex flex-col gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto">
       {/* 1. HEADER (Matching Screen 9) */}
       <div>
         <Link

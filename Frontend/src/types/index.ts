@@ -9,6 +9,15 @@ export interface User {
   country?: string;
   languages: string[];
   bio: string;
+  email?: string;
+  phone?: string;
+  birthDate?: string;
+  travelStyle?: 'Solo' | 'Group' | 'Couple' | 'Family' | string;
+  securityQuestion?: string;
+  securityAnswer?: string;
+  recoveryCodes?: string[];
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   travelInterests: string[];
   budgetStyle: 'budget' | 'mid-range' | 'comfort';
   travelPace?: 'Relaxed' | 'Balanced' | 'Action-packed' | string;
@@ -31,7 +40,7 @@ export interface Trip {
   endDate: string;
   durationDays: number;
   budgetPerPerson: number;
-  tripType: 'solo' | 'group' | 'couple';
+  tripType: 'solo' | 'group' | 'couple' | 'family' | 'women-only' | string;
   preferences: string[]; // Hiking, Nature, Food, Photography, Culture, Beaches
   description: string;
   highlights: string[];
@@ -42,7 +51,11 @@ export interface Trip {
   coverImageUrl: string;
   galleryImages?: string[];
   contactInformation?: { email?: string; phone?: string };
-  status: 'open' | 'full' | 'closed';
+  inclusions?: string[];
+  rules?: string[];
+  languages?: string[];
+  travelStyle?: string;
+  status: 'open' | 'full' | 'closed' | 'draft';
   roomType?: 'public' | 'private';
   roomCode?: string;
   pendingJoinRequests?: { id: string; user: User; message?: string; requestedAt: string }[];
@@ -50,6 +63,12 @@ export interface Trip {
   itinerary?: { day: number; title: string; desc: string; icon?: string }[];
   chatMessages?: { id: string; sender: User; text: string; time: string }[];
   reviews?: { id: string; author: User; rating: number; date: string; comment: string }[];
+  rating?: number;
+  reviewCount?: number;
+  badge?: string;
+  tags?: string[];
+  spotsLeft?: number;
+  organizerName?: string;
 }
 
 export interface JoinRequest {
@@ -65,7 +84,7 @@ export interface DiaryEntry {
   userId: string;
   place: string;
   date: string;
-  category: 'Nature' | 'Food' | 'Culture' | 'Beach' | 'Adventure' | 'Other';
+  category: 'Nature' | 'Food' | 'Culture' | 'Beach' | 'Adventure' | 'City' | 'Wildlife' | 'Other';
   text: string;
   photos: string[];
   price?: number;
@@ -91,6 +110,19 @@ export interface Story {
   comments: number;
   views: number;
   readTimeMins: number;
+  visibility?: 'public' | 'private';
+  badge?: string;
+  days?: number;
+  photosCount?: number;
+  placesCount?: number;
+  timeAgo?: string;
+  rating?: number;
+  reviewCount?: number;
+  tripType?: 'Solo' | 'Group' | 'Family' | string;
+  travelStyle?: string[];
+  languages?: string[];
+  tags?: string[];
+  category?: string;
 }
 
 export interface Destination {
@@ -114,6 +146,11 @@ export interface Destination {
   };
   createdAt?: string;
   locationDetails?: string;
+  rating?: number;
+  reviewCount?: string | number;
+  estimatedCostPerDay?: string;
+  badge?: string;
+  tags?: string[];
 }
 
 export interface VaultDocument {
@@ -128,6 +165,24 @@ export interface VaultDocument {
   fileMime?: string;
   visibility: 'private' | 'trusted-contacts' | 'offline-available';
   uploadedAt: string;
+  isVerified?: boolean;
+  issuingCountry?: string;
+  thumbnailUrl?: string;
+  category?: string;
+}
+
+export interface SharedAccessRecord {
+  id: string;
+  documentId: string;
+  documentName: string;
+  documentType: VaultDocument['type'];
+  sharedWithName: string;
+  sharedWithRole?: string;
+  sharedWithAvatar?: string;
+  permission: 'View' | 'View • Download';
+  expires: string;
+  createdAt?: string;
+  active: boolean;
 }
 
 export interface EmergencyContact {

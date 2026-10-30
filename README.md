@@ -62,26 +62,56 @@ Tripzobox is built to pixel-fidelity matching the 12 reference UI screens:
 ### Prerequisites
 - Node.js `v18+` or `v20+`
 - npm `v9+`
+- MongoDB running on `mongodb://127.0.0.1:27017/tripzobox` (local or MongoDB Atlas)
 
-### Installation
+---
+
+### Running Applications Independently
+
+#### Frontend (React + Vite + TypeScript)
 ```bash
-# Clone the repository
-git clone https://github.com/Valartamizh/TripzoBox.git
-cd TripzoBox
-
-# Install dependencies
+cd Frontend
 npm install
-
-# Start development server
 npm run dev
 ```
+- Local dev server: `http://localhost:5173`
+- Production build: `npm run build`
+- Configuration: `Frontend/.env.example` -> `Frontend/.env` (`VITE_API_BASE_URL=http://localhost:5000/api/v1`)
 
-Visit `http://localhost:5173` to explore the app.
-
-### Production Build
+#### Backend (Node.js + Express + TypeScript + MongoDB)
 ```bash
+cd Backend
+npm install
+npm run dev
+```
+- API server: `http://localhost:5000`
+- API Health check: `http://localhost:5000/api/v1/health`
+- Seed database: `npm run seed`
+- Run integration tests: `npm test`
+- Production build: `npm run build`
+- Production start: `npm start`
+- Configuration: `Backend/.env.example` -> `Backend/.env`
+
+---
+
+### Root-Level Convenience Commands
+
+From the project root:
+```bash
+# Start Frontend dev server
+npm run dev:frontend
+
+# Start Backend API dev server
+npm run dev:backend
+
+# Build both applications
 npm run build
-npm run preview
+
+# Run Backend test suite (Vitest + Supertest)
+npm test
+
+# Seed database with initial destinations, trips, stories, and users
+npm run seed
 ```
 
 ---
@@ -90,31 +120,57 @@ npm run preview
 
 ```
 TripzoBox/
-├── src/
-│   ├── assets/              # Static branding and icons
-│   ├── components/
-│   │   ├── feature/         # TripCard, DestinationCard, DocumentRow, DiaryEntryCard, StoryCard
-│   │   └── ui/              # Button, Input, Card, Badge, Tabs, Avatar, StarRating, Stepper, Modal, SearchBar, Dropzone, EmptyState, Skeleton
-│   ├── context/             # AuthContext, TripsContext, DiaryContext, VaultContext, ToastContext
-│   ├── data/                # Mock data (Munnar, Varkala, Kochi, Ooty, Goa, Mysuru)
-│   ├── layouts/             # PublicShell, AppShell (with mobile bottom tab bar)
-│   ├── pages/               # All 12 reference screens + supporting routes
-│   ├── styles/              # globals.css, Tailwind configuration
-│   ├── types/               # TypeScript data models
-│   ├── App.tsx              # React Router v6 routing tree
-│   └── main.tsx             # React 18 DOM entry point
-├── index.html
-├── package.json
-├── tailwind.config.js
-└── vite.config.ts
+├── Frontend/
+│   ├── src/
+│   │   ├── assets/              # Branding and icons
+│   │   ├── components/          # feature/ & ui/ components
+│   │   ├── context/             # Auth, Trips, Diary, Vault, Toast, Notifications contexts
+│   │   ├── data/                # Fallback mock data
+│   │   ├── layouts/             # PublicShell, FeaturePageLayout
+│   │   ├── lib/                 # Centralized api.ts HTTP client
+│   │   ├── pages/               # All reference screens & feature pages
+│   │   ├── styles/              # globals.css, Tailwind styles
+│   │   └── types/               # TypeScript interfaces & data contracts
+│   ├── public/                  # Static assets and icons
+│   ├── package.json             # Frontend dependencies
+│   ├── package-lock.json        # Frontend lockfile
+│   ├── vite.config.ts           # Vite build configuration
+│   ├── index.html               # Frontend HTML template
+│   └── .env.example             # Frontend environment template
+├── Backend/
+│   ├── src/
+│   │   ├── config/              # Database connection & env validation
+│   │   ├── models/              # Mongoose schemas (User, Trip, Story, Vault, etc.)
+│   │   ├── controllers/         # Request handling & HTTP responses
+│   │   ├── services/            # Business logic & data services
+│   │   ├── routes/              # Express API v1 endpoints
+│   │   ├── middleware/          # Auth, error handling, validation, rate limiting
+│   │   ├── validators/          # Zod request validators
+│   │   ├── utils/               # Token helpers, response formatters
+│   │   ├── scripts/             # Database seeding scripts
+│   │   ├── app.ts               # Express app creation & middleware setup
+│   │   └── server.ts            # HTTP server startup & MongoDB listener
+│   ├── tests/                   # Vitest & Supertest integration test suite
+│   ├── package.json             # Backend dependencies
+│   ├── package-lock.json        # Backend lockfile
+│   ├── tsconfig.json            # Backend TypeScript configuration
+│   └── .env.example             # Backend environment template
+├── f25_bank_printer/            # Repository brand font assets
+├── histore_magica/              # Repository brand font assets
+├── reference_screens/           # UI reference specifications
+├── .gitignore                   # Comprehensive root gitignore
+├── package.json                 # Root script coordinator
+└── README.md                    # Project documentation
 ```
 
 ---
 
-## 🛡️ Privacy & Safety Model
-- **Client-Side Encryption & Storage**: Personal diary entries, custom trips, and Travel Vault documents are persisted in browser `localStorage`.
-- **Zero Server Uploads**: File dropzones generate local object URLs (`URL.createObjectURL`) for immediate previews with zero network exposure.
-- **Compatibility Disclaimer**: Fit scores reflect travel preference alignments only and include explicit disclaimers regarding independent traveller safety.
+## 🛡️ Security & Privacy Architecture
+- **JWT & HttpOnly Cookies**: Dual token support for web and mobile clients with CSRF-safe cookie configuration.
+- **Password Protection**: Passwords hashed using bcrypt (10 rounds), never returned in responses.
+- **Role & Ownership Authorization**: Enforced on the server for trips, stories, vault documents, and join approvals.
+- **Validation**: Strict Zod input validation on all auth, trip, and diary endpoints.
+- **Client Offline Fallback**: The frontend gracefully falls back to local storage and cache if the backend is unreachable.
 
 ---
 

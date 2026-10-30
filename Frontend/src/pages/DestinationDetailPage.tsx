@@ -29,14 +29,6 @@ export const DestinationDetailPage: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const { showToast } = useToast();
 
-  const handleAddPlace = () => {
-    if (!isLoggedIn) {
-      showToast('Please log in to add and share a place', 'info');
-      navigate('/login?redirect=/explore/create');
-    } else {
-      navigate(isInApp ? '/app/explore/create' : '/explore/create');
-    }
-  };
 
   const destination = destinations.find((d) => d.slug === destinationSlug);
 
@@ -71,7 +63,7 @@ export const DestinationDetailPage: React.FC = () => {
   );
 
   return (
-    <div className={`flex flex-col gap-8 text-left max-w-6xl mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-8 sm:py-10'}`}>
+    <div className={`flex flex-col gap-8 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-8 sm:py-10'}`}>
       {/* Back Link & Actions */}
       <div className="flex items-center justify-between">
         <Link
@@ -91,15 +83,6 @@ export const DestinationDetailPage: React.FC = () => {
             className="text-xs"
           >
             Share Location
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleAddPlace}
-            icon={<Sparkles className="w-3.5 h-3.5 text-primary" />}
-            className="text-xs font-semibold"
-          >
-            + Add Another Place
           </Button>
         </div>
       </div>

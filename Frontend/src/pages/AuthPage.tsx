@@ -1,30 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
-  Shield,
-  Users,
-  Compass,
-  Share2,
-  Check,
-  Sparkles,
-  Mountain,
-  Palmtree,
-  Utensils,
-  Camera,
-  Car,
-  Heart,
-  Tent,
-  Waves,
-  Flame,
+  User as UserIcon,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Calendar,
+  Globe,
   ArrowLeft,
   ArrowRight,
+  Compass,
   MapPin,
-  Clock,
-  Wallet,
+  Trees,
+  Landmark,
+  Utensils,
+  Camera,
+  Waves,
+  Mountain,
+  Car,
+  Building2,
+  Bird,
+  Users,
+  Heart,
+  Home,
+  Check,
+  Send,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import confetti from 'canvas-confetti';
 import { Logo } from '../components/ui/Logo';
+import { AuthStepper } from '../components/auth/AuthStepper';
+import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
+import { BotanicalLeavesAccent } from '../components/auth/BotanicalLeavesAccent';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -32,829 +41,911 @@ export interface AuthPageProps {
   initialMode?: 'signup' | 'login';
 }
 
-const AVAILABLE_INTERESTS = [
-  { id: 'Hiking', label: 'Mountain Treks', icon: Mountain },
-  { id: 'Beaches', label: 'Beaches & Coastal', icon: Palmtree },
-  { id: 'Culture', label: 'Culture & Heritage', icon: Compass },
-  { id: 'Food', label: 'Food & Culinary', icon: Utensils },
-  { id: 'Nature', label: 'Nature & Wildlife', icon: Sparkles },
-  { id: 'Backpacking', label: 'Backpacking & Hostels', icon: Users },
-  { id: 'Photography', label: 'Photography & Scenic', icon: Camera },
-  { id: 'Road Trips', label: 'Road Trips & Drives', icon: Car },
-  { id: 'Wellness', label: 'Wellness & Yoga', icon: Heart },
-  { id: 'Camping', label: 'Camping & Stargazing', icon: Tent },
-  { id: 'Backwaters', label: 'Backwaters & Lakes', icon: Waves },
-  { id: 'Adventure', label: 'Adventure Sports', icon: Flame },
+type AuthMode = 'signup' | 'login';
+type SignUpStep = 1 | 2 | 3 | 'verify-email';
+
+const TRAVEL_INTERESTS = [
+  { id: 'Adventure', label: 'Adventure', icon: Compass },
+  { id: 'Nature', label: 'Nature', icon: Trees },
+  { id: 'Culture', label: 'Culture', icon: Landmark },
+  { id: 'Food', label: 'Food', icon: Utensils },
+  { id: 'Photography', label: 'Photography', icon: Camera },
+  { id: 'Beaches', label: 'Beaches', icon: Waves },
+  { id: 'Mountains', label: 'Mountains', icon: Mountain },
+  { id: 'Road Trips', label: 'Road Trips', icon: Car },
+  { id: 'Cities', label: 'Cities', icon: Building2 },
+  { id: 'Wildlife', label: 'Wildlife', icon: Bird },
 ];
 
-const PACE_OPTIONS = [
-  {
-    value: 'Relaxed',
-    label: 'Relaxed & Slow',
-    emoji: '☕',
-    desc: 'Leisurely cafes, gentle walks, zero rush',
-  },
-  {
-    value: 'Balanced',
-    label: 'Balanced',
-    emoji: '⚖️',
-    desc: 'Sightseeing mixed with downtime & relaxation',
-  },
-  {
-    value: 'Action-packed',
-    label: 'Action-Packed',
-    emoji: '⚡',
-    desc: 'Sunrise-to-sunset treks, sports & full schedules',
-  },
+const TRAVEL_STYLES = [
+  { id: 'Solo', label: 'Solo', icon: UserIcon },
+  { id: 'Group', label: 'Group', icon: Users },
+  { id: 'Couple', label: 'Couple', icon: Heart },
+  { id: 'Family', label: 'Family', icon: Home },
 ];
 
-const GROUP_OPTIONS = [
-  {
-    value: 'Solo explorer',
-    label: 'Solo Explorer',
-    emoji: '🧭',
-    desc: 'Flexible, loves meeting locals & solo freedom',
-  },
-  {
-    value: 'Small group (3–6)',
-    label: 'Small Squad (3–6)',
-    emoji: '👥',
-    desc: 'Close-knit intimate group chemistry',
-  },
-  {
-    value: 'Lively gang (7+)',
-    label: 'Lively Gang (7+)',
-    emoji: '🎒',
-    desc: 'High energy, vibrant group parties & road trips',
-  },
-];
-
-const BUDGET_OPTIONS: { value: 'budget' | 'mid-range' | 'comfort'; label: string; range: string; desc: string }[] = [
-  {
-    value: 'budget',
-    label: 'Budget Backpacker',
-    range: '< ₹5,000 / trip',
-    desc: 'Hostels, homestays, public transit & street food',
-  },
-  {
-    value: 'mid-range',
-    label: 'Comfort & Value',
-    range: '₹5,000 – ₹15,000',
-    desc: 'Boutique stays, private cabs & curated cafes',
-  },
-  {
-    value: 'comfort',
-    label: 'Premium Explorer',
-    range: '₹15,000+ / trip',
-    desc: 'Luxury resorts, guided experiences & all comforts',
-  },
+const POPULAR_COUNTRIES = [
+  'India',
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'United Arab Emirates',
+  'Singapore',
+  'Japan',
+  'Italy',
+  'Spain',
+  'Thailand',
+  'Malaysia',
+  'Indonesia',
+  'New Zealand',
+  'Switzerland',
+  'Netherlands',
 ];
 
 export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, signup, user, updateProfile } = useAuth();
-  const { success } = useToast();
+  const { success, error } = useToast();
 
-  const isLoginRoute = location.pathname === '/login' || initialMode === 'login';
-  const [mode, setMode] = useState<'signup' | 'login'>(isLoginRoute ? 'login' : 'signup');
-  const [authStep, setAuthStep] = useState<'credentials' | 'preferences'>('credentials');
-  const panelRef = React.useRef<HTMLDivElement>(null);
+  const isLoginPath = location.pathname === '/login' || initialMode === 'login';
+  const [mode, setMode] = useState<AuthMode>(isLoginPath ? 'login' : 'signup');
+  const [signUpStep, setSignUpStep] = useState<SignUpStep>(1);
 
-  React.useEffect(() => {
-    if (panelRef.current) {
-      panelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+  // Sync mode if route changes
+  useEffect(() => {
+    if (location.pathname === '/login') {
+      setMode('login');
+    } else if (location.pathname === '/signup') {
+      setMode('signup');
     }
-  }, [authStep]);
+  }, [location.pathname]);
 
-  // Form State
-  const [fullName, setFullName] = useState('');
-  const [gender, setGender] = useState<NonNullable<typeof user.gender>>('prefer-not-to-say');
-  const [emailOrPhone, setEmailOrPhone] = useState('');
+  // Form Inputs: Step 1 (Account Credentials)
+  const [fullName, setFullName] = useState(user.name || '');
+  const [emailOrPhone, setEmailOrPhone] = useState(user.email || '');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Preferences Questionnaire State
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    'Hiking',
-    'Nature',
-    'Photography',
-  ]);
-  const [travelPace, setTravelPace] = useState<'Relaxed' | 'Balanced' | 'Action-packed'>('Balanced');
-  const [preferredGroupSize, setPreferredGroupSize] = useState<string>('Small group (3–6)');
-  const [budgetStyle, setBudgetStyle] = useState<'budget' | 'mid-range' | 'comfort'>('mid-range');
-  const [homeCity, setHomeCity] = useState('');
-  const [dreamDestination, setDreamDestination] = useState('');
-  const [bio, setBio] = useState('');
+  // Form Inputs: Step 2 (Personal Info)
+  const [gender, setGender] = useState<'female' | 'male' | 'non-binary' | 'prefer-not-to-say'>(
+    user.gender || 'prefer-not-to-say'
+  );
+  const [birthDate, setBirthDate] = useState(user.birthDate || '');
+  const [country, setCountry] = useState(user.country || 'India');
 
-  // Validation Errors
+  // Form Inputs: Step 3 (Preferences)
+  const [selectedInterests, setSelectedInterests] = useState<string[]>(
+    user.travelInterests && user.travelInterests.length > 0
+      ? user.travelInterests
+      : ['Adventure', 'Nature', 'Photography', 'Mountains']
+  );
+  const [travelStyle, setTravelStyle] = useState<string>(user.travelStyle || 'Solo');
+
+  // Email Verification Step State
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Field validation errors
   const [errors, setErrors] = useState<{
     fullName?: string;
     emailOrPhone?: string;
     password?: string;
-    confirmPassword?: string;
   }>({});
 
-  const validate = () => {
-    const newErrors: {
-      fullName?: string;
-      emailOrPhone?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
-
+  const validateStep1 = () => {
+    const errs: typeof errors = {};
     if (mode === 'signup' && !fullName.trim()) {
-      newErrors.fullName = 'Full Name is required';
+      errs.fullName = 'Full Name is required';
     }
-
     if (!emailOrPhone.trim()) {
-      newErrors.emailOrPhone = 'Email or phone number is required';
+      errs.emailOrPhone = 'Email or phone number is required';
     } else if (
       emailOrPhone.includes('@') &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailOrPhone.trim())
     ) {
-      newErrors.emailOrPhone = 'Please enter a valid email address';
+      errs.emailOrPhone = 'Please enter a valid email address';
     }
-
     if (!password) {
-      newErrors.password = 'Password is required';
+      errs.password = 'Password is required';
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      errs.password = 'Password must be at least 6 characters';
     }
 
-    if (mode === 'signup') {
-      if (!confirmPassword) {
-        newErrors.confirmPassword = 'Confirm Password is required';
-      } else if (confirmPassword !== password) {
-        newErrors.confirmPassword = 'Passwords do not match';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
+  const getRedirectTarget = () => {
+    if (location.state?.from?.pathname) {
+      return `${location.state.from.pathname}${location.state.from.search || ''}`;
+    }
+    const searchParams = new URLSearchParams(location.search);
+    const redirectParam = searchParams.get('redirect');
+    if (redirectParam && redirectParam.startsWith('/')) {
+      return redirectParam;
+    }
+    return '/app/dashboard';
+  };
+
+  // Submit Step 1 / Login
+  const handleStep1Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateStep1()) return;
+
+    setIsLoading(true);
+
+    if (mode === 'login') {
+      try {
+        await login(emailOrPhone, password);
+        success('Welcome back to Tripzobox!', 'Logged In');
+        setIsLoading(false);
+        navigate(getRedirectTarget());
+      } catch (err: any) {
+        setIsLoading(false);
+        error(err.message || 'Invalid email or password', 'Login Failed');
+      }
+    } else {
+      // Sign Up: Advance to Step 2 (Personal Info)
+      try {
+        await signup(fullName, emailOrPhone, password);
+        setIsLoading(false);
+        setSignUpStep(2);
+      } catch (err: any) {
+        setIsLoading(false);
+        error(err.message || 'An error occurred during registration', 'Signup Failed');
+      }
+    }
+  };
+
+  // Social Auth Handlers
+  const handleSocialAuth = (provider: 'Google' | 'Apple') => {
+    setIsLoading(true);
+    setTimeout(async () => {
+      await signup(fullName || 'Mubarak Ali', 'mubarakallansari@gmail.com');
+      success(`Successfully signed in with ${provider}!`, 'Welcome');
+      setIsLoading(false);
+      navigate(getRedirectTarget());
+    }, 500);
+  };
+
+  // Step 2 -> Step 3
+  const handleStep2Next = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile({
+      gender,
+      birthDate,
+      country,
+    });
+    setSignUpStep(3);
+  };
+
+  // Step 3 -> Create Account & Verification
+  const handleStep3Submit = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      updateProfile({
+        travelInterests: selectedInterests,
+        travelStyle,
+      });
+      setIsLoading(false);
+      // Trigger subtle celebration
+      confetti({
+        particleCount: 60,
+        spread: 60,
+        origin: { y: 0.6 },
+      });
+      setSignUpStep('verify-email');
+      setResendCooldown(60);
+    }, 400);
+  };
+
+  // Toggle Interest Pill
   const toggleInterest = (id: string) => {
     setSelectedInterests((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const searchParams = new URLSearchParams(location.search);
-  const redirectParam = searchParams.get('redirect');
-  const getRedirectTarget = () => {
-    if (location.state?.from?.pathname) {
-      return `${location.state.from.pathname}${location.state.from.search || ''}`;
+  // Cooldown countdown for resending verification email
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
     }
-    if (redirectParam && redirectParam.startsWith('/')) {
-      return redirectParam;
-    }
-    return '/';
+  }, [resendCooldown]);
+
+  const handleResendEmail = () => {
+    if (resendCooldown > 0) return;
+    setResendCooldown(60);
+    success(
+      `A new verification link has been sent to ${emailOrPhone || 'your email'}!`,
+      'Email Sent'
+    );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setIsLoading(true);
-
-    setTimeout(async () => {
-      if (mode === 'signup') {
-        await signup(fullName, emailOrPhone, password);
-        updateProfile({ gender });
-        setIsLoading(false);
-        setAuthStep('preferences');
-      } else {
-        await login(emailOrPhone, password);
-        success('Welcome back to Tripzobox!', 'Logged In');
-        const redirectTarget = getRedirectTarget();
-        setIsLoading(false);
-        navigate(redirectTarget);
-      }
-    }, 450);
-  };
-
-  const handleCompletePreferences = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      updateProfile({
-        travelInterests: selectedInterests.length > 0 ? selectedInterests : ['Nature', 'Culture'],
-        budgetStyle,
-        travelPace,
-        preferredGroupSize,
-        city: homeCity.trim() || 'Kochi',
-        dreamDestination: dreamDestination.trim() || undefined,
-        bio: bio.trim() || `Travel enthusiast based in ${homeCity.trim() || 'Kochi'}. Ready to unbox new trails and connect with fellow explorers!`,
-      });
-      success(`Welcome to Tripzobox, ${fullName || user.name || 'explorer'}! Your preferences have been set.`, 'Profile Ready');
-      setIsLoading(false);
-      const redirectTarget = getRedirectTarget();
-      navigate(redirectTarget);
-    }, 500);
-  };
-
-  const handleSkipPreferences = () => {
-    updateProfile({
-      city: homeCity.trim() || 'Kochi',
-      travelInterests: selectedInterests.length > 0 ? selectedInterests : ['Nature', 'Culture'],
+  const handleVerificationComplete = () => {
+    updateProfile({ emailVerified: true });
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.5 },
     });
-    success(`Welcome to Tripzobox! You can update your trip preferences anytime in Profile.`, 'Welcome');
-    const redirectTarget = getRedirectTarget();
-    navigate(redirectTarget);
+    success('Email verified successfully! Welcome to Tripzobox.', 'Verified');
+    navigate(getRedirectTarget());
   };
 
-  // Continuous brand pane rotating images, headlines, bullets, and quotes
-  const authSlides = [
-    {
-      url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=85',
-      headlines: ['New places.', 'Real people.', 'Better journeys.'],
-      subtitle: 'Join our community of travellers and start your next adventure.',
-      bullets: [
-        { icon: Shield, text: 'Secure your travel information' },
-        { icon: Users, text: 'Connect with genuine travellers' },
-        { icon: Compass, text: 'Discover amazing destinations' },
-        { icon: Share2, text: 'Share your journey' },
-      ],
-      quote: '"Go Somewhere. Meet Someone."',
-      author: 'Tripzobox Philosophy',
-      location: 'Alpine Horizon',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=85',
-      headlines: ['Unbox trails.', 'Find your tribe.', 'Make memories.'],
-      subtitle: 'Hike misty ridges and discover hidden trails with verified companions.',
-      bullets: [
-        { icon: Compass, text: 'Handpicked mountain & valley routes' },
-        { icon: Users, text: 'Small, verified travel groups' },
-        { icon: Shield, text: 'Emergency contacts & offline access' },
-        { icon: Share2, text: 'Capture shared memories together' },
-      ],
-      quote: '"Travel isn’t about the miles. It’s about the memories."',
-      author: 'Authentic Journeys',
-      location: 'Yosemite Valley',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1600&q=85',
-      headlines: ['Travel bold.', 'Stay safe.', 'Wander free.'],
-      subtitle: 'Your private travel vault keeps your identity and documents protected.',
-      bullets: [
-        { icon: Shield, text: 'Zero-hassle encrypted document vault' },
-        { icon: Users, text: 'Host-vetted group itineraries' },
-        { icon: Compass, text: 'Real-time member discussions' },
-        { icon: Share2, text: 'Community-approved travel tips' },
-      ],
-      quote: '"Not all those who wander are lost."',
-      author: 'J.R.R. Tolkien',
-      location: 'Dolomite Summits',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1600&q=85',
-      headlines: ['Live stories.', 'Inspire others.', 'See the world.'],
-      subtitle: 'Record intimate travel moments and publish authentic guides for the world.',
-      bullets: [
-        { icon: Share2, text: 'Publish rich photo travelogues' },
-        { icon: Compass, text: 'Unfiltered destination guides' },
-        { icon: Users, text: 'Follow inspiring travel creators' },
-        { icon: Shield, text: 'Keep personal logs safe & private' },
-      ],
-      quote: '"Life is short and the world is wide."',
-      author: 'Wanderlust Spirit',
-      location: 'Misty Highlands',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=85',
-      headlines: ['Seek wonder.', 'Cross borders.', 'Find yourself.'],
-      subtitle: 'Step outside the ordinary and experience extraordinary adventures.',
-      bullets: [
-        { icon: Users, text: 'Compatible pace & budget matching' },
-        { icon: Compass, text: 'Offbeat destinations & stays' },
-        { icon: Shield, text: 'Verified traveller identities' },
-        { icon: Share2, text: 'Lifelong friendships forged on trails' },
-      ],
-      quote: '"Traveling leaves you speechless, then turns you into a storyteller."',
-      author: 'Ibn Battuta',
-      location: 'Ocean Horizons',
-    },
-  ];
+  // =========================================================================
+  // MULTI-STEP FLOWS (Steps 2, 3, and Verify Email)
+  // Matching Screens 2, 3, and 4
+  // =========================================================================
 
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  // Auto-advance auth brand pane every 3.2 seconds
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % authSlides.length);
-    }, 3200);
-    return () => clearInterval(timer);
-  }, [authSlides.length]);
-
-  return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-white">
-      {/* LEFT COLUMN: Visual Brand Pane (Matching Screen 2, with dynamic rotating images & quotes) */}
-      <div className="relative lg:w-1/2 lg:min-h-screen flex flex-col justify-between p-5 sm:p-6 lg:p-12 text-white overflow-hidden bg-text">
-        {/* Full-bleed background images with continuous crossfade */}
-        <div className="absolute inset-0 z-0">
-          {authSlides.map((slide, index) => (
-            <div
-              key={slide.url}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === activeSlide ? 'opacity-100 z-1' : 'opacity-0 z-0 pointer-events-none'
-                }`}
-            >
-              <img
-                src={slide.url}
-                alt={slide.location}
-                className="w-full h-full object-cover transform scale-105 transition-transform duration-8000 ease-out"
-              />
-            </div>
-          ))}
-          <div className="absolute inset-0 z-2 bg-gradient-to-t from-black/90 via-black/55 to-black/60" />
-        </div>
-
-        {/* Top Logo */}
-        <div className="relative z-10 flex items-center">
-          <Logo asLink to="/" size="md" variant="horizontal" inverted />
-        </div>
-
-        {/* Center / Bottom Feature Highlights (Dynamically changing with each slide) */}
-        <div className="relative z-10 lg:my-auto pt-4 lg:py-8 text-left">
-          <div
-            key={activeSlide}
-            className="transition-all duration-500 ease-out animate-in fade-in"
-          >
-            <h2 className="font-heading font-extrabold text-xl sm:text-2xl lg:text-4xl text-white leading-tight max-w-xl lg:max-w-md">
-              {authSlides[activeSlide].headlines.map((line, idx) => (
-                <span key={idx} className="inline lg:block">
-                  {line}{' '}
-                </span>
-              ))}
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-200 mt-2 lg:mt-3 max-w-xl lg:max-w-sm leading-relaxed">
-              {authSlides[activeSlide].subtitle}
-            </p>
-
-            {/* 4 Feature Bullets with Icons */}
-            <div className="hidden lg:block mt-8 space-y-4 max-w-sm">
-              {authSlides[activeSlide].bullets.map((bullet, idx) => {
-                const IconComponent = bullet.icon;
-                return (
-                  <div key={idx} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-                      <IconComponent className="w-4 h-4 text-accent" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-medium text-white">
-                      {bullet.text}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Rotating Quote */}
-        <div className="hidden lg:flex relative z-10 pt-4 border-t border-white/15 items-center justify-between text-left">
-          <div className="min-h-[44px] flex flex-col justify-center">
-            <p className="text-xs sm:text-sm font-medium text-white italic tracking-wide transition-all duration-300">
-              {authSlides[activeSlide].quote}
-            </p>
-            <span className="text-[11px] text-accent font-medium mt-0.5">
-              — {authSlides[activeSlide].author}
-            </span>
-          </div>
-
-          {/* Subtle slide dots */}
-          <div className="flex items-center gap-1.5 shrink-0 pl-3">
-            {authSlides.map((_, idx) => (
+  if (mode === 'signup' && signUpStep !== 1) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] flex flex-col justify-between relative overflow-x-hidden">
+        {/* Header with Logo */}
+        <header className="w-full py-4 sm:py-6 px-4 sm:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {signUpStep === 'verify-email' && (
               <button
-                key={idx}
                 type="button"
-                onClick={() => setActiveSlide(idx)}
-                aria-label={`Go to quote ${idx + 1}`}
-                className={`transition-all duration-300 rounded-full cursor-pointer ${idx === activeSlide
-                  ? 'w-5 h-1.5 bg-accent shadow-sm'
-                  : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/80'
-                  }`}
-              />
-            ))}
+                onClick={() => setSignUpStep(3)}
+                aria-label="Go back"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer mr-1"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <Logo asLink to="/" size="sm" variant="horizontal" />
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* RIGHT COLUMN: Form Panel / Preferences Questionnaire Panel */}
-      <div
-        ref={panelRef}
-        className={`lg:w-1/2 flex justify-center p-4 sm:p-8 lg:p-12 lg:overflow-y-auto lg:max-h-screen ${authStep === 'preferences' ? 'items-start' : 'items-center'
-          }`}
-      >
-        {authStep === 'preferences' ? (
-          <div className="w-full max-w-xl flex flex-col text-left py-2 sm:py-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            {/* Step Progress Header */}
-            <div className="mb-5 sm:mb-6">
-              <div className="flex items-center justify-between text-xs text-text-muted mb-2 font-medium">
-                <span className="flex items-center gap-2 text-primary font-bold">
-                  <span className="w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow-xs">
-                    2
-                  </span>
-                  <span>Step 2 of 2: Trip & Travel Preferences</span>
-                </span>
-                <span className="text-[11px] bg-accent/40 text-primary font-bold px-2.5 py-0.5 rounded-full border border-accent/60">
-                  Almost Done!
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-light-bg rounded-full overflow-hidden border border-border/50">
-                <div className="w-full h-full bg-gradient-to-r from-primary to-[#18a86a] rounded-full" />
-              </div>
-            </div>
+        {/* ========================================================================= */}
+        {/* SCREEN 2: Step 2: Personal Info */}
+        {/* ========================================================================= */}
+        {signUpStep === 2 && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-8 z-10 animate-in fade-in duration-300">
+            {/* Stepper */}
+            <AuthStepper
+              currentStep={2}
+              onStepClick={(s) => {
+                if (s === 1) setSignUpStep(1);
+              }}
+              className="mb-6 sm:mb-8"
+            />
 
-            {/* Header Titles */}
-            <div className="mb-6">
-              <h3 className="font-heading font-bold text-2xl sm:text-3xl text-text">
-                Personalize your adventures
-              </h3>
-              <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
-                Tell us what kind of trips excite you. We use this to calculate compatibility fit scores with travel buddies and recommend the best open trips.
+            {/* Content Container */}
+            <div className="w-full max-w-lg bg-white rounded-3xl border border-gray-200/90 shadow-card p-6 sm:p-10 text-left">
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Tell us a bit more about you
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 sm:mb-8 leading-relaxed">
+                This helps us connect you with the right trips and people.
               </p>
-            </div>
 
-            <div className="space-y-6">
-              {/* 1. Travel Interests (Multi-select) */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <label className="text-xs sm:text-sm font-semibold text-text flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span>What trips are you interested in?</span>
-                  </label>
-                  <span className="text-[11px] text-text-muted font-medium">
-                    {selectedInterests.length} selected
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {AVAILABLE_INTERESTS.map((item) => {
-                    const isSelected = selectedInterests.includes(item.id);
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleInterest(item.id)}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all text-left ${isSelected
-                          ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
-                          : 'bg-white hover:bg-light-bg text-text-muted hover:text-text border-border'
-                          }`}
-                      >
-                        <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-light-bg text-text-muted'
-                            }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="truncate flex-1">{item.label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0 stroke-[2.5]" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. Preferred Travel Pace */}
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-text mb-2.5 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span>Preferred Travel Pace</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {PACE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={travelPace === opt.value} onClick={() => setTravelPace(opt.value as any)}
-                      className={`min-w-0 p-2 sm:p-3 rounded-xl border text-center sm:text-left transition-all ${travelPace === opt.value
-                        ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
-                        : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                    >
-                      <div className="text-xl mb-1">{opt.emoji}</div>
-                      <div className="font-heading font-bold text-xs sm:text-sm text-text">
-                        {opt.label}
-                      </div>
-                      <div className="sr-only sm:not-sr-only sm:text-[11px] sm:text-text-muted sm:mt-1 sm:leading-snug">
-                        {opt.desc}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. Preferred Group Size */}
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-text mb-2.5 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-primary" />
-                  <span>Who do you like travelling with?</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {GROUP_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={preferredGroupSize === opt.value} onClick={() => setPreferredGroupSize(opt.value)}
-                      className={`min-w-0 p-2 sm:p-3 rounded-xl border text-center sm:text-left transition-all ${preferredGroupSize === opt.value
-                        ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
-                        : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                    >
-                      <div className="text-xl mb-1">{opt.emoji}</div>
-                      <div className="font-heading font-bold text-xs sm:text-sm text-text">
-                        {opt.label}
-                      </div>
-                      <div className="sr-only sm:not-sr-only sm:text-[11px] sm:text-text-muted sm:mt-1 sm:leading-snug">
-                        {opt.desc}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 4. Budget Preference */}
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-text mb-2.5 flex items-center gap-1.5">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  <span>Typical Budget Style</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {BUDGET_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={budgetStyle === opt.value} onClick={() => setBudgetStyle(opt.value)}
-                      className={`min-w-0 p-2 sm:p-3 rounded-xl border text-center sm:text-left transition-all ${budgetStyle === opt.value
-                        ? 'bg-primary/10 text-primary border-primary shadow-xs ring-1 ring-primary/30'
-                        : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                    >
-                      <div className="font-heading font-bold text-xs sm:text-sm text-text">
-                        {opt.label}
-                      </div>
-                      <div className="text-[10px] sm:text-xs font-semibold text-primary mt-1 leading-snug">
-                        {opt.range}
-                      </div>
-                      <div className="sr-only sm:not-sr-only sm:text-[11px] sm:text-text-muted sm:mt-1 sm:leading-snug">
-                        {opt.desc}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 5. Trip Details & Starting Location */}
-              <div className="space-y-3.5 pt-4 border-t border-border">
+              <form onSubmit={handleStep2Next} className="space-y-5">
+                {/* 1. Gender (Optional) */}
                 <div>
-                  <label className="block text-xs font-semibold text-text mb-1 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-primary" />
-                    <span>Your Home City / Starting Location</span>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Gender <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
-                  <input
-                    type="text"
-                    value={homeCity}
-                    onChange={(e) => setHomeCity(e.target.value)}
-                    placeholder="e.g. Kochi, Bengaluru, Mumbai, Delhi, Chennai..."
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-                  />
-                  {/* Quick City suggestions */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[10px] text-text-subtle mr-0.5">Quick select:</span>
-                    {['Kochi', 'Bengaluru', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad'].map((city) => (
-                      <button
-                        key={city}
-                        type="button"
-                        onClick={() => setHomeCity(city)}
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${homeCity === city
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-light-bg text-text-muted hover:text-text border-border'
-                          }`}
-                      >
-                        {city}
-                      </button>
-                    ))}
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as any)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                  >
+                    <option value="prefer-not-to-say">Select gender</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="non-binary">Non-binary</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+
+                {/* 2. Date of Birth (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Date of Birth <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      placeholder="DD / MM / YYYY"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                    />
                   </div>
                 </div>
 
+                {/* 3. Country (Optional) */}
                 <div>
-                  <label className="block text-xs font-semibold text-text mb-1 flex items-center gap-1">
-                    <Compass className="w-3.5 h-3.5 text-primary" />
-                    <span>Your Next Bucket-List Destination</span>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Country <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
-                  <input
-                    type="text"
-                    value={dreamDestination}
-                    onChange={(e) => setDreamDestination(e.target.value)}
-                    placeholder="e.g. Fort Kochi art biennale, Munnar tea hills, Ladakh bike ride..."
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-                  />
+                  <div className="relative">
+                    <select
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                    >
+                      <option value="">Select country</option>
+                      {POPULAR_COUNTRIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Short Travel Bio / Motto <span className="text-text-muted font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="e.g. Weekend hiker who loves trying local seafood, finding hidden viewpoints & shooting photography."
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 space-y-2.5">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="lg"
-                  isLoading={isLoading}
-                  onClick={handleCompletePreferences}
-                  className="w-full font-semibold shadow-hover flex items-center justify-center gap-2"
-                >
-                  <span>Complete Profile & Start Exploring</span>
-                  {/* <ArrowRight className="w-4 h-4" /> */}
-                </Button>
-
-                <div className="flex items-center justify-between pt-1">
+                {/* Bottom Navigation */}
+                <div className="flex items-center justify-between pt-5 border-t border-gray-100">
                   <button
                     type="button"
-                    onClick={() => setAuthStep('credentials')}
-                    className="text-xs text-text-muted hover:text-text transition-colors flex items-center gap-1"
+                    onClick={() => setSignUpStep(1)}
+                    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
                   >
-                    <ArrowLeft className="w-3 h-3" />
-                    <span>Back to account details</span>
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
                   </button>
+
                   <button
-                    type="button"
-                    onClick={handleSkipPreferences}
-                    className="text-xs text-text-muted hover:text-primary transition-colors font-semibold"
+                    type="submit"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                   >
-                    Skip for now
+                    <span>Next</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-md flex flex-col text-left">
-            {/* Tabs: Sign Up / Login with Underline Style */}
-            <div className="flex items-center border-b border-border mb-8">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setErrors({});
-                  setConfirmPassword('');
-                }}
-                className={`flex-1 pb-3 text-center text-sm sm:text-base font-semibold relative transition-colors ${mode === 'signup' ? 'text-primary' : 'text-text-muted hover:text-text'
-                  }`}
-              >
-                Sign Up
-                {mode === 'signup' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('login');
-                  setErrors({});
-                  setConfirmPassword('');
-                }}
-                className={`flex-1 pb-3 text-center text-sm sm:text-base font-semibold relative transition-colors ${mode === 'login' ? 'text-primary' : 'text-text-muted hover:text-text'
-                  }`}
-              >
-                Login
-                {mode === 'login' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                )}
-              </button>
-            </div>
-
-            {/* Form Header */}
-            <div className="mb-6">
-              <h3 className="font-heading font-bold text-2xl text-text">
-                {mode === 'signup' ? 'Create your account' : 'Welcome back'}
-              </h3>
-              <p className="text-xs sm:text-sm text-text-muted mt-1">
-                {mode === 'signup'
-                  ? 'Join our community of travellers'
-                  : 'Log in to continue your adventure'}
-              </p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {mode === 'signup' && <label className="block text-xs font-semibold text-text">Gender
-                <select value={gender} onChange={(event) => setGender(event.target.value as typeof gender)} className="block w-full mt-1.5 rounded-xl border border-border bg-light-bg px-3 py-2.5 text-sm text-text">
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                  <option value="female">Female</option>
-                  <option value="male">Male</option>
-                  <option value="non-binary">Non-binary</option>
-                </select>
-              </label>}
-              {mode === 'signup' && (
-                <Input
-                  label="Full Name"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  error={errors.fullName}
-                />
-              )}
-
-              <Input
-                label="Email or Phone Number"
-                placeholder="Enter your email or phone"
-                value={emailOrPhone}
-                onChange={(e) => setEmailOrPhone(e.target.value)}
-                error={errors.emailOrPhone}
-              />
-
-              <Input
-                label="Password"
-                placeholder={mode === 'signup' ? 'Create a password' : 'Enter your password'}
-                isPassword
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                error={errors.password}
-              />
-
-              {mode === 'signup' && (
-                <Input
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  isPassword
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  error={errors.confirmPassword}
-                />
-              )}
-
-              {mode === 'login' && (
-                <div className="flex justify-end">
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isLoading}
-                className="w-full mt-2 font-semibold text-sm sm:text-base"
-              >
-                {mode === 'signup' ? 'Sign Up' : 'Log In'}
-              </Button>
-            </form>
-
-            {/* Switch mode footer */}
-            <div className="mt-4 text-center text-xs text-text-muted">
-              {mode === 'signup' ? (
-                <p>
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('login');
-                      setErrors({});
-                      setConfirmPassword('');
-                    }}
-                    className="font-semibold text-primary hover:underline ml-1"
-                  >
-                    Login
-                  </button>
-                </p>
-              ) : (
-                <p>
-                  Don't have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('signup');
-                      setErrors({});
-                      setConfirmPassword('');
-                    }}
-                    className="font-semibold text-primary hover:underline ml-1"
-                  >
-                    Sign Up
-                  </button>
-                </p>
-              )}
+              </form>
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* SCREEN 3: Step 3: Preferences */}
+        {/* ========================================================================= */}
+        {signUpStep === 3 && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-8 z-10 animate-in fade-in duration-300">
+            {/* Stepper */}
+            <AuthStepper
+              currentStep={3}
+              onStepClick={(s) => {
+                if (s === 1) setSignUpStep(1);
+                if (s === 2) setSignUpStep(2);
+              }}
+              className="mb-6 sm:mb-8"
+            />
+
+            {/* Content Container */}
+            <div className="w-full max-w-xl bg-white rounded-3xl border border-gray-200/90 shadow-card p-6 sm:p-10 text-left relative overflow-hidden">
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Your travel preferences
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 sm:mb-8 leading-relaxed">
+                Help us suggest trips and destinations that match your interests.
+              </p>
+
+              <div className="space-y-6">
+                {/* Interests (Select all that apply) */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs sm:text-sm font-semibold text-gray-800">
+                      Interests <span className="text-gray-400 font-normal">(Select all that apply)</span>
+                    </label>
+                    <span className="text-[11px] text-primary font-semibold">
+                      {selectedInterests.length} selected
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
+                    {TRAVEL_INTERESTS.map((item) => {
+                      const isSelected = selectedInterests.includes(item.id);
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleInterest(item.id)}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50/90 border-primary text-primary ring-1 ring-primary/30 shadow-2xs'
+                              : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-3.5 h-3.5 shrink-0 ${
+                              isSelected ? 'text-primary' : 'text-gray-500'
+                            }`}
+                          />
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Preferred Travel Style */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-800 mb-3">
+                    Preferred Travel Style
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+                    {TRAVEL_STYLES.map((style) => {
+                      const isSelected = travelStyle === style.id;
+                      const Icon = style.icon;
+                      return (
+                        <button
+                          key={style.id}
+                          type="button"
+                          onClick={() => setTravelStyle(style.id)}
+                          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50/90 border-primary text-primary ring-1 ring-primary/30 shadow-2xs'
+                              : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-4 h-4 shrink-0 ${
+                              isSelected ? 'text-primary' : 'text-gray-500'
+                            }`}
+                          />
+                          <span>{style.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Navigation */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setSignUpStep(2)}
+                    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStep3Submit}
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center px-7 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SCREEN 4: Verify your email */}
+        {/* ========================================================================= */}
+        {signUpStep === 'verify-email' && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-8 z-10 animate-in fade-in duration-300">
+            <div className="w-full max-w-lg bg-white rounded-3xl border border-gray-200/90 shadow-card p-6 sm:p-10 text-center relative overflow-hidden">
+              {/* Paper Plane Icon in circular badge */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-100/80 text-primary flex items-center justify-center mx-auto mb-5 shadow-xs">
+                <Send className="w-8 h-8 sm:w-9 sm:h-9 translate-x-0.5 -translate-y-0.5" />
+              </div>
+
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Verify your email
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2 mb-1">
+                We've sent a verification link to
+              </p>
+              <p className="font-heading font-bold text-sm sm:text-base text-gray-900 mb-4">
+                {emailOrPhone || 'mubarakallansari@gmail.com'}
+              </p>
+
+              <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto leading-relaxed mb-6 sm:mb-8">
+                Check your inbox and click the link to verify your account. If you don't see it,
+                check your spam folder.
+              </p>
+
+              <div className="max-w-xs mx-auto space-y-3.5">
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  disabled={resendCooldown > 0}
+                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {resendCooldown > 0 ? `Resend Email (${resendCooldown}s)` : 'Resend Email'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVerificationComplete}
+                  className="w-full py-3 rounded-xl border border-gray-200 hover:border-primary text-gray-700 hover:text-primary font-semibold text-xs sm:text-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4 text-primary stroke-[2.5]" />
+                  <span>I've verified my email</span>
+                </button>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-gray-100 text-center">
+                <p className="text-xs text-gray-500">
+                  Didn't receive the email?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignUpStep(1);
+                    }}
+                    className="font-semibold text-primary hover:underline ml-1 cursor-pointer"
+                  >
+                    Check another email
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botanical Leaves Accent matching design */}
+        <BotanicalLeavesAccent />
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // SPLIT SCREEN: SCREEN 1 (Sign Up Step 1) & SCREEN 5 (Login)
+  // High-fidelity split layout with left imagery, logo, quote, tabs, and inputs
+  // =========================================================================
+  const isLogin = mode === 'login';
+
+  return (
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-x-hidden">
+      {/* ========================================================================= */}
+      {/* LEFT COLUMN: Visual Brand Pane */}
+      {/* Matches Screen 1 for Sign Up, Screen 5 for Login */}
+      {/* ========================================================================= */}
+      <div className="relative lg:w-1/2 lg:min-h-screen min-h-[260px] sm:min-h-[340px] flex flex-col justify-between p-5 sm:p-10 lg:p-14 text-white overflow-hidden bg-emerald-950">
+        {/* Full-bleed background image with smooth crossfade */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={
+              isLogin
+                ? 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=85'
+                : 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1920&q=85'
+            }
+            alt={isLogin ? 'Scenic mountain lake vista' : 'Majestic alpine summit'}
+            className="w-full h-full object-cover transform scale-105 transition-all duration-1000 ease-out"
+          />
+          {/* Refined gradient overlay for high contrast and rich atmosphere */}
+          <div className="absolute inset-0 z-1 bg-gradient-to-t from-black/90 via-black/45 to-black/55" />
+        </div>
+
+        {/* Top: Tripzobox Logo Inverted (White) & Location Pill */}
+        <div className="relative z-10 flex items-center justify-between">
+          <Logo asLink to="/" size="md" variant="horizontal" inverted />
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-[11px] font-medium text-emerald-200 shadow-2xs">
+            <MapPin className="w-3 h-3 text-[#bef264]" />
+            <span>{isLogin ? 'Yosemite Valley, CA' : 'Dolomites, Italian Alps'}</span>
+          </div>
+        </div>
+
+        {/* Center / Poetic Typography matching image */}
+        <div className="relative z-10 my-auto py-3 sm:py-8 lg:py-12 text-left">
+          {isLogin ? (
+            <div className="animate-in fade-in duration-500 space-y-2 sm:space-y-4">
+              <h1 className="font-heading font-extrabold text-xl sm:text-3xl lg:text-[42px] text-white tracking-tight leading-snug sm:leading-[1.18] drop-shadow-md max-w-lg">
+                “Travel isn’t where you go, but <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-[#bef264]">who you become</span> along the way.”
+              </h1>
+
+              <p className="text-xs sm:text-sm text-emerald-100/90 max-w-md leading-relaxed font-normal">
+                Log in to reconnect with fellow adventurers, update your travel diary, and discover upcoming journeys.
+              </p>
+
+              <div className="flex pt-3 sm:pt-4 items-center gap-2.5 sm:gap-3 text-[11px] sm:text-xs text-white/80">
+                <div className="flex -space-x-2 overflow-hidden">
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                </div>
+                <span className="font-medium">
+                  Over <strong className="text-white font-bold">10,000+</strong> journeys shared across 40+ destinations
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="animate-in fade-in duration-500 space-y-2 sm:space-y-4">
+              <h1 className="font-heading font-extrabold text-xl sm:text-3xl lg:text-[42px] text-white tracking-tight leading-snug sm:leading-[1.18] drop-shadow-md max-w-lg">
+                “The world is too big to stay in one place, and life is too short to <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-[#bef264]">explore alone</span>.”
+              </h1>
+
+              <p className="text-xs sm:text-sm text-emerald-100/90 max-w-md leading-relaxed font-normal">
+                Join our verified community of travellers exploring offbeat trails, group expeditions, and unforgettable memories together.
+              </p>
+
+              <div className="flex pt-3 sm:pt-4 items-center gap-2.5 sm:gap-3 text-[11px] sm:text-xs text-white/80">
+                <div className="flex -space-x-2 overflow-hidden">
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                  <img
+                    className="inline-block h-6 w-6 sm:h-7 sm:w-7 rounded-full ring-2 ring-emerald-900 object-cover"
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80"
+                    alt="Traveler"
+                  />
+                </div>
+                <span className="font-medium">
+                  Join <strong className="text-white font-bold">15,000+</strong> verified adventurers worldwide
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom subtle quote / brand tagline */}
+        <div className="hidden lg:flex relative z-10 pt-4 border-t border-white/20 items-center justify-between text-xs text-emerald-200/90">
+          <span>Explore The World Without Limits</span>
+          <span>© Tripzobox · Verified Travel Community</span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* RIGHT COLUMN: Interactive Form Panel */}
+      {/* Matches Screen 1 for Sign Up, Screen 5 for Login */}
+      {/* ========================================================================= */}
+      <div className="lg:w-1/2 flex items-center justify-center px-5 py-6 sm:p-8 lg:p-14 bg-white overflow-y-auto">
+        <div className="w-full max-w-md flex flex-col text-left">
+          {/* Top Tabs: Sign Up | Login */}
+          <div className="flex items-center border-b border-gray-200 mb-4 sm:mb-8">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setErrors({});
+              }}
+              className={`flex-1 pb-2.5 sm:pb-3 text-center text-sm sm:text-base font-semibold relative transition-colors cursor-pointer ${
+                mode === 'signup' ? 'text-primary' : 'text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              Sign Up
+              {mode === 'signup' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setErrors({});
+              }}
+              className={`flex-1 pb-2.5 sm:pb-3 text-center text-sm sm:text-base font-semibold relative transition-colors cursor-pointer ${
+                mode === 'login' ? 'text-primary' : 'text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              Login
+              {mode === 'login' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
+            </button>
+          </div>
+
+          {/* Form Header Titles */}
+          <div className="mb-3.5 sm:mb-6">
+            <h2 className="font-heading font-extrabold text-xl sm:text-3xl text-gray-900 tracking-tight">
+              {isLogin ? 'Welcome back' : 'Create your account'}
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {isLogin ? 'Log in to continue your journey' : 'Join our community of travellers'}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleStep1Submit} className="space-y-3 sm:space-y-4" noValidate>
+            {/* Full Name (Sign Up only) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Full Name
+                </label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none">
+                    <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+                    }}
+                    placeholder="Enter your full name"
+                    className={`w-full bg-white text-gray-900 text-xs sm:text-sm rounded-lg sm:rounded-xl border pl-9 sm:pl-10 pr-3.5 sm:pr-4 py-2 sm:py-3 outline-none transition-all ${
+                      errors.fullName
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                    }`}
+                  />
+                </div>
+                {errors.fullName && (
+                  <p className="text-[10px] sm:text-[11px] text-red-600 font-medium mt-0.5 sm:mt-1">{errors.fullName}</p>
+                )}
+              </div>
+            )}
+
+            {/* Email or Phone Number */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Email or Phone Number
+              </label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none">
+                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={emailOrPhone}
+                  onChange={(e) => {
+                    setEmailOrPhone(e.target.value);
+                    if (errors.emailOrPhone)
+                      setErrors((prev) => ({ ...prev, emailOrPhone: undefined }));
+                  }}
+                  placeholder="Enter your email or phone number"
+                  className={`w-full bg-white text-gray-900 text-xs sm:text-sm rounded-lg sm:rounded-xl border pl-9 sm:pl-10 pr-3.5 sm:pr-4 py-2 sm:py-3 outline-none transition-all ${
+                    errors.emailOrPhone
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                  }`}
+                />
+              </div>
+              {errors.emailOrPhone && (
+                <p className="text-[10px] sm:text-[11px] text-red-600 font-medium mt-0.5 sm:mt-1">{errors.emailOrPhone}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Password
+              </label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none">
+                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  placeholder={isLogin ? 'Enter your password' : 'Create a password'}
+                  className={`w-full bg-white text-gray-900 text-xs sm:text-sm rounded-lg sm:rounded-xl border pl-9 sm:pl-10 pr-10 sm:pr-11 py-2 sm:py-3 outline-none transition-all ${
+                    errors.password
+                      ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 sm:right-3.5 text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-[10px] sm:text-[11px] text-red-600 font-medium mt-0.5 sm:mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Login Only: Remember Me & Forgot Password row */}
+            {isLogin && (
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <label className="flex items-center gap-1.5 sm:gap-2 cursor-pointer select-none text-gray-600 text-[11px] sm:text-xs">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded text-primary focus:ring-primary/20 border-gray-300 cursor-pointer accent-primary"
+                  />
+                  <span>Remember me</span>
+                </label>
+
+                <Link
+                  to="/forgot-password"
+                  className="font-semibold text-primary hover:text-primary-hover hover:underline transition-colors text-[11px] sm:text-xs"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            )}
+
+            {/* Primary Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 sm:py-3.5 rounded-lg sm:rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm sm:text-base shadow-xs transition-colors cursor-pointer disabled:opacity-60 mt-1.5 sm:mt-2"
+            >
+              {isLoading ? 'Processing...' : isLogin ? 'Login' : 'Sign Up'}
+            </button>
+          </form>
+
+          {/* Divider 'or' */}
+          <div className="relative my-3 sm:my-5 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <span className="relative bg-white px-3 text-xs text-gray-400 uppercase tracking-wider font-medium">
+              or
+            </span>
+          </div>
+
+          {/* Social Auth Buttons */}
+          <SocialAuthButtons
+            isLoading={isLoading}
+            onGoogleClick={() => handleSocialAuth('Google')}
+            onAppleClick={() => handleSocialAuth('Apple')}
+          />
+
+          {/* Footer mode switch */}
+          <div className="mt-3.5 sm:mt-6 text-center text-xs text-gray-500">
+            {isLogin ? (
+              <p>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrors({});
+                  }}
+                  className="font-semibold text-primary hover:underline ml-1 cursor-pointer"
+                >
+                  Sign Up
+                </button>
+              </p>
+            ) : (
+              <p>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrors({});
+                  }}
+                  className="font-semibold text-primary hover:underline ml-1 cursor-pointer"
+                >
+                  Login
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

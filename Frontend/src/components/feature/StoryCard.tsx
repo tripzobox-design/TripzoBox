@@ -1,16 +1,71 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageSquare, Clock } from 'lucide-react';
+import {
+  Bookmark,
+  Calendar,
+  Camera,
+  Navigation,
+  MapPin,
+  Star,
+  Flame,
+} from 'lucide-react';
 import { Story } from '../../types';
 import { Avatar } from '../ui/Avatar';
 
 export interface StoryCardProps {
   story: Story;
   variant?: 'standard' | 'compact';
+  isBookmarked?: boolean;
+  onToggleBookmark?: (storyId: string) => void;
 }
 
-export const StoryCard: React.FC<StoryCardProps> = ({ story, variant = 'standard' }) => {
+export const StoryCard: React.FC<StoryCardProps> = ({
+  story,
+  variant = 'standard',
+  isBookmarked: externalBookmarked,
+  onToggleBookmark,
+}) => {
   const navigate = useNavigate();
+
+  const [internalBookmarked, setInternalBookmarked] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('tripzobox_bookmarked_stories');
+      if (saved) {
+        const list = JSON.parse(saved);
+        return Array.isArray(list) && list.includes(story.id);
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
+  const isBookmarked =
+    externalBookmarked !== undefined ? externalBookmarked : internalBookmarked;
+
+  const handleToggleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextState = !isBookmarked;
+    setInternalBookmarked(nextState);
+
+    try {
+      const saved = localStorage.getItem('tripzobox_bookmarked_stories');
+      let list: string[] = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(list)) list = [];
+      if (nextState) {
+        if (!list.includes(story.id)) list.push(story.id);
+      } else {
+        list = list.filter((id) => id !== story.id);
+      }
+      localStorage.setItem('tripzobox_bookmarked_stories', JSON.stringify(list));
+    } catch {
+      // ignore
+    }
+
+    if (onToggleBookmark) {
+      onToggleBookmark(story.id);
+    }
+  };
 
   if (variant === 'compact') {
     return (
@@ -37,49 +92,99 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, variant = 'standard
     );
   }
 
+  const isFlameBadge = story.badge?.toLowerCase().includes('popular');
+
   return (
     <div
       onClick={() => navigate(`/stories/${story.slug}`)}
-      className="group bg-white rounded-2xl border border-border overflow-hidden shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-row lg:flex-col text-left"
+      className="group bg-white rounded-2xl border border-gray-200/90 hover:border-emerald-500/30 overflow-hidden shadow-xs hover:shadow-card hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col text-left"
     >
-      <div className="relative w-[96px] sm:w-[110px] lg:w-full shrink-0 lg:aspect-[16/10] overflow-hidden bg-gray-100">
+      {/* Top Image Container */}
+      <div className="relative w-full h-32 sm:h-48 md:h-52 overflow-hidden bg-gray-100">
         <img
           src={story.coverImageUrl}
           alt={story.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="hidden lg:flex absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          {story.readTimeMins} min read
-        </div>
+
+        {/* Top-Left Badge */}
+        {story.badge && (
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-white/95 backdrop-blur-xs text-gray-800 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-2xs border border-gray-200/60 z-10 select-none">
+            {isFlameBadge ? (
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 fill-amber-500" />
+            ) : (
+              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 fill-emerald-600" />
+            )}
+            <span>{story.badge}</span>
+          </div>
+        )}
+
+        {/* Top-Right Bookmark Button */}
+        <button
+          type="button"
+          onClick={handleToggleBookmark}
+          className={`absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 rounded-lg backdrop-blur-xs transition-all z-10 cursor-pointer ${
+            isBookmarked
+              ? 'bg-primary text-white shadow-xs'
+              : 'bg-black/40 hover:bg-black/60 text-white'
+          }`}
+          aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark story'}
+        >
+          <Bookmark className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isBookmarked ? 'fill-current' : ''}`} />
+        </button>
       </div>
 
-      <div className="min-w-0 p-3 lg:p-5 flex-1 flex flex-col justify-between">
+      {/* Card Body */}
+      <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
-          <span className="text-xs font-semibold text-primary">{story.destination}</span>
-          <h3 className="font-heading font-semibold text-sm sm:text-base lg:text-lg text-text mt-1 line-clamp-2 group-hover:text-primary transition-colors">
+          {/* Story Title */}
+          <h3 className="font-heading font-bold text-xs sm:text-base text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
             {story.title}
           </h3>
-          <p className="hidden sm:block text-xs lg:text-sm text-text-muted mt-1 lg:mt-2 line-clamp-1 lg:line-clamp-2 leading-relaxed">
+
+          {/* Location Row */}
+          <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 shrink-0" />
+            <span className="truncate">{story.destination}</span>
+          </div>
+
+          {/* Metadata Row (Days, Photos, Places) */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3.5 text-[10px] sm:text-xs text-gray-600 mt-2 sm:mt-3 font-medium">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
+              {story.days || 3}d
+            </span>
+            <span className="flex items-center gap-1">
+              <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
+              {story.photosCount || 28} photos
+            </span>
+          </div>
+
+          {/* Summary / Excerpt */}
+          <p className="hidden sm:block text-xs text-gray-500 mt-2.5 line-clamp-2 leading-relaxed">
             {story.summary}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-1 pt-2 mt-2 lg:pt-4 lg:mt-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <span className="hidden lg:block"><Avatar src={story.author.avatarUrl} name={story.author.name} size="xs" /></span>
-            <span className="text-[11px] lg:text-xs font-medium text-text truncate max-w-[120px]">{story.author.name}</span>
+        {/* Footer Row (Author Info & Rating Badge) */}
+        <div className="flex items-center justify-between pt-2 sm:pt-3.5 mt-2.5 sm:mt-4 border-t border-gray-100">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <Avatar src={story.author.avatarUrl} name={story.author.name} size="xs" />
+            <div className="min-w-0 text-left">
+              <p className="text-[11px] sm:text-xs font-semibold text-gray-900 truncate">
+                {story.author.name}
+              </p>
+              <p className="text-[9px] sm:text-[11px] text-gray-400 leading-tight hidden sm:block">
+                {story.timeAgo || '3 days ago'}
+              </p>
+            </div>
           </div>
 
-          <span className="lg:hidden inline-flex items-center gap-1 text-[10px] text-text-muted"><Clock className="w-3 h-3" />{story.readTimeMins} min</span>
-          <div className="hidden lg:flex items-center gap-3 text-xs text-text-muted">
-            <span className="flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5 text-text-subtle" />
-              {story.likes}
-            </span>
-            <span className="flex items-center gap-1">
-              <MessageSquare className="w-3.5 h-3.5 text-text-subtle" />
-              {story.comments}
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-300 bg-emerald-50/70 text-emerald-800 text-xs font-semibold shrink-0">
+            <Star className="w-3 h-3 text-emerald-600 fill-emerald-600" />
+            <span>{story.rating ? story.rating.toFixed(1) : '4.8'}</span>
+            <span className="text-emerald-700/70 font-normal">
+              ({story.reviewCount || 120})
             </span>
           </div>
         </div>

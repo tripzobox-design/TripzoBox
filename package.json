@@ -2,12 +2,17 @@
   "name": "tripzobox",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "Frontend"
-  ],
   "scripts": {
     "dev": "npm --prefix Frontend run dev",
-    "build": "npm --prefix Frontend run build",
+    "dev:frontend": "npm --prefix Frontend run dev",
+    "dev:backend": "npm --prefix Backend run dev",
+    "build": "npm --prefix Frontend run build && npm --prefix Backend run build",
+    "build:frontend": "npm --prefix Frontend run build",
+    "build:backend": "npm --prefix Backend run build",
+    "start:backend": "npm --prefix Backend start",
+    "test:backend": "npm --prefix Backend test",
+    "test": "npm --prefix Backend test",
+    "seed": "npm --prefix Backend run seed",
     "preview": "npm --prefix Frontend run preview"
   }
 }

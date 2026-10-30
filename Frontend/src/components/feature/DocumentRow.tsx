@@ -9,13 +9,16 @@ import {
   Eye,
   Trash2,
   Share2,
+  CheckCircle2,
+  AlertCircle,
+  Pencil,
 } from 'lucide-react';
 import { VaultDocument } from '../../types';
-import { Button } from '../ui/Button';
 
 export interface DocumentRowProps {
   document: VaultDocument;
   onView: (doc: VaultDocument) => void;
+  onEdit?: (doc: VaultDocument) => void;
   onDelete: (id: string) => void;
   onShare: (doc: VaultDocument) => void;
 }
@@ -23,138 +26,166 @@ export interface DocumentRowProps {
 export const DocumentRow: React.FC<DocumentRowProps> = ({
   document,
   onView,
+  onEdit,
   onDelete,
   onShare,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const getDocTypeBadge = (type: VaultDocument['type']) => {
+  const getDocTypeIcon = (type: VaultDocument['type']) => {
     switch (type) {
       case 'Passport':
-        return {
-          icon: <FileText className="w-5 h-5 text-blue-600" />,
-          bg: 'bg-blue-100',
-        };
+        return <FileText className="w-5 h-5 text-blue-600" />;
       case 'Aadhaar':
-        return {
-          icon: <CreditCard className="w-5 h-5 text-emerald-600" />,
-          bg: 'bg-emerald-100',
-        };
+        return <CreditCard className="w-5 h-5 text-emerald-600" />;
       case 'DrivingLicense':
-        return {
-          icon: <CreditCard className="w-5 h-5 text-purple-600" />,
-          bg: 'bg-purple-100',
-        };
+        return <CreditCard className="w-5 h-5 text-purple-600" />;
       case 'Insurance':
-        return {
-          icon: <Shield className="w-5 h-5 text-orange-600" />,
-          bg: 'bg-orange-100',
-        };
+        return <Shield className="w-5 h-5 text-orange-600" />;
       case 'FlightTicket':
-        return {
-          icon: <Plane className="w-5 h-5 text-amber-600" />,
-          bg: 'bg-amber-100',
-        };
+        return <Plane className="w-5 h-5 text-amber-600" />;
       case 'HotelBooking':
-        return {
-          icon: <Building className="w-5 h-5 text-teal-600" />,
-          bg: 'bg-teal-100',
-        };
+        return <Building className="w-5 h-5 text-teal-600" />;
       default:
-        return {
-          icon: <FileText className="w-5 h-5 text-gray-600" />,
-          bg: 'bg-gray-100',
-        };
+        return <FileText className="w-5 h-5 text-gray-600" />;
     }
   };
 
-  const badge = getDocTypeBadge(document.type);
+  const isVerified = document.isVerified ?? true;
 
   return (
-    <div className="relative flex items-center justify-between p-4 bg-white rounded-2xl border border-border/80 shadow-subtle hover:border-primary/40 hover:shadow-card transition-all duration-200">
-      {/* Icon + Info */}
-      <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-        <div
-          className={`w-11 h-11 rounded-xl ${badge.bg} flex items-center justify-center shrink-0`}
-        >
-          {badge.icon}
+    <div className="relative flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-white rounded-2xl border border-gray-200/90 hover:border-emerald-500/40 hover:shadow-2xs transition-all duration-200 gap-3">
+      {/* Left: Thumbnail & Info */}
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        {/* Document Thumbnail / Icon */}
+        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 border border-gray-200/80 shrink-0 flex items-center justify-center">
+          {document.thumbnailUrl ? (
+            <img
+              src={document.thumbnailUrl}
+              alt={document.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            getDocTypeIcon(document.type)
+          )}
         </div>
+
+        {/* Title & Metadata */}
         <div className="min-w-0 text-left">
-          <h4 className="text-sm sm:text-base font-semibold text-text truncate font-heading">
+          <h4 className="text-sm font-bold text-gray-900 truncate font-heading">
             {document.name}
           </h4>
-          <p className="text-xs text-text-muted mt-0.5 truncate">
-            {document.validTill
-              ? `Valid till: ${document.validTill}`
-              : document.referenceNumber || `Uploaded: ${document.uploadedAt}`}
+          <p className="text-xs text-gray-500 mt-0.5 truncate">
+            {document.referenceNumber || document.type}{' '}
+            {document.validTill && (
+              <>
+                <span className="text-gray-300 mx-1">•</span>
+                <span>Expires {document.validTill}</span>
+              </>
+            )}
           </p>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => onView(document)}
-          className="text-xs px-3 py-1.5 h-8 font-medium"
-        >
-          View
-        </Button>
+      {/* Middle: Verified Badge & Upload Date */}
+      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 shrink-0 pl-15 sm:pl-0">
+        {/* Status Badge */}
+        {isVerified ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/70">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+            <span>Verified</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/70">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600 stroke-[2.5]" />
+            <span>Not Verified</span>
+          </span>
+        )}
 
-        <div className="relative">
+        {/* Upload Date */}
+        <span className="text-xs text-gray-400 hidden md:inline-block min-w-[110px] text-right">
+          Uploaded {document.uploadedAt}
+        </span>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1">
+          {/* View Icon Button */}
           <button
             type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1.5 rounded-lg text-text-subtle hover:text-text hover:bg-light-bg transition-colors"
-            aria-label="More actions"
+            onClick={() => onView(document)}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+            title="View document"
+            aria-label="View document"
           >
-            <MoreVertical className="w-4 h-4" />
+            <Eye className="w-4 h-4" />
           </button>
 
-          {menuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-20"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-float border border-border py-1.5 z-30 text-left">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onView(document);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-light-bg hover:text-primary transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View Original
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onShare(document);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-light-bg hover:text-primary transition-colors"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Share Securely
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete(document.id);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
+          {/* Edit Icon Button */}
+          <button
+            type="button"
+            onClick={() => onEdit?.(document)}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+            title="Edit details"
+            aria-label="Edit details"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+
+          {/* More Actions Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="More actions"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {menuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-lg border border-gray-200 py-1.5 z-30 text-left">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onView(document);
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-gray-700 hover:bg-gray-50 hover:text-emerald-700 transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Original</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onShare(document);
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-gray-700 hover:bg-gray-50 hover:text-emerald-700 transition-colors"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share Document</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete(document.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

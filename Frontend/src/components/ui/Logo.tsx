@@ -44,7 +44,7 @@ export const Logo: React.FC<LogoProps> = ({
       return (
         <img
           src="/logo.png"
-          alt="Tripzobox — Unbox Your Next Adventure"
+          alt="Tripzobox — Explore The World Without Limits"
           className={`${sizeClasses.full} w-auto object-contain ${className}`}
         />
       );
@@ -54,19 +54,23 @@ export const Logo: React.FC<LogoProps> = ({
     if (inverted) {
       // On dark backgrounds: Icon mark + white brand typography for optimal contrast
       return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <img
             src="/logo-icon.png"
             alt="Tripzobox"
             className={`${sizeClasses.icon} w-auto object-contain shrink-0 transition-transform duration-200 group-hover:scale-105`}
           />
-          <div className="flex flex-col text-left">
-            <span className={`font-heading font-extrabold ${sizeClasses.text} text-white tracking-tight leading-none`}>
-              Tripz<span className="text-secondary">o</span>b<span className="text-[#84cc16]">o</span>x
+          <div className="flex flex-col text-left leading-none">
+            <span
+              className={`font-heading font-extrabold ${sizeClasses.text} text-white tracking-tight leading-none`}
+            >
+              Tripzo<span className="text-secondary">b</span>o<span className="text-[#84cc16]">x</span>
             </span>
             {showTagline && (
-              <span className={`font-medium ${sizeClasses.tag} text-emerald-200/90 tracking-wide mt-0.5`}>
-                Unbox Your Next Adventure.
+              <span
+                className={`font-medium ${sizeClasses.tag} text-emerald-200/90 tracking-wide mt-1`}
+              >
+                Explore The World Without Limits
               </span>
             )}
           </div>
@@ -74,19 +78,39 @@ export const Logo: React.FC<LogoProps> = ({
       );
     }
 
-    // Standard Horizontal on light backgrounds: Use the master horizontal logo image
+    // Standard Horizontal on light backgrounds: Use the master horizontal logo image or icon + styled text
     return (
-      <img
-        src="/logo-horizontal.png"
-        alt="Tripzobox — Unbox Your Next Adventure"
-        className={`${sizeClasses.horiz} w-auto object-contain shrink-0 transition-transform duration-200 group-hover:scale-105`}
-      />
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        <img
+          src="/logo-icon.png"
+          alt="Tripzobox"
+          className={`${sizeClasses.icon} w-auto shrink-0 object-contain transition-transform duration-200 group-hover:scale-105`}
+        />
+        <div className="flex flex-col items-start leading-none">
+          <span
+            className={`font-heading font-extrabold ${sizeClasses.text} tracking-tight text-[#087b68]`}
+          >
+            Tripzo<span className="text-[#159b6f]">b</span>o<span className="text-[#84cc16]">x</span>
+          </span>
+          {showTagline && (
+            <span
+              className={`mt-1 font-semibold tracking-wide text-[#1c9a82] ${sizeClasses.tag}`}
+            >
+              Explore The World Without Limits
+            </span>
+          )}
+        </div>
+      </div>
     );
   };
 
   if (asLink) {
     return (
-      <Link to={to} className={`inline-flex items-center group ${className}`} aria-label="Tripzobox Home">
+      <Link
+        to={to}
+        className={`inline-flex items-center group ${className}`}
+        aria-label="Tripzobox Home"
+      >
         {renderContent()}
       </Link>
     );

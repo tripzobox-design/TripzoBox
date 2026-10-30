@@ -32,6 +32,7 @@ import { TravelVaultPage } from './pages/TravelVaultPage';
 import { FindTripPage } from './pages/FindTripPage';
 import { CreateTripPage } from './pages/CreateTripPage';
 import { TripDetailsPage } from './pages/TripDetailsPage';
+import { TripLeaderConsolePage } from './pages/TripLeaderConsolePage';
 import { TravelDiaryPage } from './pages/TravelDiaryPage';
 import { AddExperiencePage } from './pages/AddExperiencePage';
 import { CreateStoryPage } from './pages/CreateStoryPage';
@@ -42,6 +43,8 @@ import { StoriesPage } from './pages/StoriesPage';
 import { StoryDetailPage } from './pages/StoryDetailPage';
 import { DestinationDetailPage } from './pages/DestinationDetailPage';
 import { CreateDestinationPage } from './pages/CreateDestinationPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { AccountSecurityPage } from './pages/AccountSecurityPage';
 import { ScrollToTop } from './components/common/ScrollToTop';
 
 export const App: React.FC = () => {
@@ -74,27 +77,35 @@ export const AppRoutes: React.FC = () => (
                       <Route path="/" element={<HomeEntry />} />
                       <Route path="/app" element={<FeaturePageLayout />}>
                         <Route index element={<Navigate to="/" replace />} />
-                        <Route path="dashboard" element={<Navigate to="/" replace />} />
+                        <Route path="dashboard" element={<DashboardPage />} />
                         <Route path="vault" element={<TravelVaultPage />} />
                         <Route path="trips" element={<FindTripPage />} />
                         <Route path="trips/my" element={<FindTripPage />} />
                         <Route path="trips/create" element={<CreateTripPage />} />
                         <Route path="trips/:tripId" element={<TripDetailsPage />} />
+                        <Route path="trips/:tripId/console" element={<TripLeaderConsolePage />} />
+                        <Route path="trips/:tripId/requests" element={<TripLeaderConsolePage />} />
                         <Route path="diary" element={<TravelDiaryPage />} />
                         <Route path="diary/add" element={<AddExperiencePage />} />
                         <Route path="diary/create-story" element={<CreateStoryPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="profile/settings" element={<ProfilePage settingsOnly />} />
+                        <Route path="stories/create" element={<CreateStoryPage />} />
+                        <Route path="profile" element={<AccountSecurityPage initialTab="profile" />} />
+                        <Route path="profile/settings" element={<AccountSecurityPage initialTab="security" />} />
+                        <Route path="account-security" element={<AccountSecurityPage initialTab="security" />} />
                         <Route path="messages" element={<MessagesPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="explore" element={<ExplorePage />} />
                         <Route path="explore/create" element={<CreateDestinationPage />} />
                         <Route path="explore/:destinationSlug" element={<DestinationDetailPage />} />
                       </Route>
+                      <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+                      <Route path="/vault" element={<Navigate to="/app/vault" replace />} />
+                      <Route path="/diary" element={<Navigate to="/app/diary" replace />} />
                       <Route path="/explore" element={<ExplorePage />} />
                       <Route path="/explore/create" element={<CreateDestinationPage />} />
                       <Route path="/explore/:destinationSlug" element={<DestinationDetailPage />} />
                       <Route path="/stories" element={<StoriesPage />} />
+                      <Route path="/stories/create" element={<CreateStoryPage />} />
                       <Route path="/stories/:storySlug" element={<StoryDetailPage />} />
                       <Route path="/how-it-works" element={<HowItWorksPage />} />
                       <Route path="/safety" element={<SafetyPage />} />
@@ -105,6 +116,7 @@ export const AppRoutes: React.FC = () => (
                       <Route path="/terms" element={<TermsPage />} />
                       <Route path="/privacy" element={<PrivacyPage />} />
                       <Route path="/trips" element={<FindTripPage />} />
+                      <Route path="/trips/create" element={<CreateTripPage />} />
                       <Route path="/trips/:tripId" element={<TripDetailsPage />} />
                     </Route>
 

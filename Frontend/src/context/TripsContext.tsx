@@ -3,6 +3,7 @@ import { Trip, User } from '../types';
 import { mockTrips } from '../data/mockTrips';
 import { mockUsers } from '../data/mockUsers';
 import { useAuth } from './AuthContext';
+import { tripsApi } from '../lib/api';
 
 interface TripsContextType {
   trips: Trip[];
@@ -11,12 +12,13 @@ interface TripsContextType {
   toggleSaveTrip: (tripId: string) => void;
   isTripSaved: (tripId: string) => boolean;
   requestJoinTrip: (tripId: string) => void;
-  createTrip: (tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> & Partial<Pick<Trip, 'roomType' | 'roomCode'>>) => Trip;
+  createTrip: (tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> & Partial<Pick<Trip, 'roomType' | 'roomCode' | 'status'>>) => Trip;
   acceptJoinRequest: (tripId: string, applicantId: string) => void;
   declineJoinRequest: (tripId: string, applicantId: string) => void;
   updateTripRoomType: (tripId: string, roomType: 'public' | 'private') => void;
   getTripById: (tripId: string) => Trip | undefined;
   myTrips: Trip[];
+  refreshTrips: () => Promise<void>;
 }
 
 const TripsContext = createContext<TripsContextType | undefined>(undefined);
@@ -29,44 +31,14 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        let hasUpdates = false;
-        const updated = parsed.map((t: Trip) => {
-          const defaultTrip = mockTrips.find((m) => m.id === t.id);
-          if (defaultTrip) {
-            let changed = false;
-            const patched = { ...t };
-            if (defaultTrip.coverImageUrl !== t.coverImageUrl) {
-              patched.coverImageUrl = defaultTrip.coverImageUrl;
-              changed = true;
-            }
-            if (defaultTrip.itinerary && (!t.itinerary || t.itinerary.length === 0)) {
-              patched.itinerary = defaultTrip.itinerary;
-              changed = true;
-            }
-            if (defaultTrip.chatMessages && (!t.chatMessages || t.chatMessages.length === 0)) {
-              patched.chatMessages = defaultTrip.chatMessages;
-              changed = true;
-            }
-            if (defaultTrip.reviews && (!t.reviews || t.reviews.length === 0)) {
-              patched.reviews = defaultTrip.reviews;
-              changed = true;
-            }
-            if (changed) {
-              hasUpdates = true;
-              return patched;
-            }
-          }
-          return t;
-        });
-
-        const existingIds = new Set(updated.map((t: Trip) => t.id));
+        const existingIds = new Set(parsed.map((t: Trip) => t.id));
         const newTrips = mockTrips.filter((m) => !existingIds.has(m.id));
-        if (newTrips.length > 0 || hasUpdates) {
-          const merged = [...updated, ...newTrips];
+        if (newTrips.length > 0) {
+          const merged = [...parsed, ...newTrips];
           localStorage.setItem('tripzobox_trips', JSON.stringify(merged));
           return merged;
         }
-        return updated;
+        return parsed;
       } catch (e) {
         return mockTrips;
       }
@@ -98,6 +70,31 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { trip_munnar_1: 'accepted' };
   });
 
+  const refreshTrips = async () => {
+    try {
+      const serverTrips = await tripsApi.getTrips();
+      if (Array.isArray(serverTrips) && serverTrips.length > 0) {
+        setTrips(serverTrips);
+      }
+    } catch (e) {
+      // Backend offline or unreachable, keep cached trips
+    }
+  };
+
+  // Synchronize with backend API on mount
+  useEffect(() => {
+    refreshTrips();
+
+    tripsApi
+      .getSavedTrips()
+      .then((data) => {
+        if (data?.savedTripIds) {
+          setSavedTripIds(data.savedTripIds);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('tripzobox_trips', JSON.stringify(trips));
   }, [trips]);
@@ -114,44 +111,33 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSavedTripIds((prev) =>
       prev.includes(tripId) ? prev.filter((id) => id !== tripId) : [...prev, tripId]
     );
+    tripsApi.toggleSaveTrip(tripId).catch(() => {});
   };
 
   const isTripSaved = (tripId: string) => savedTripIds.includes(tripId);
 
   const requestJoinTrip = (tripId: string) => {
+    const trip = trips.find((item) => item.id === tripId);
+    if (!trip || trip.roomType === 'private' || trip.status !== 'open' || trip.members.length >= trip.maxMembers) return;
+    if (trip.members.some((member) => member.id === user.id) || joinRequests[tripId]) return;
+
     setJoinRequests((prev) => ({
       ...prev,
       [tripId]: 'pending',
     }));
 
-    // Simulate auto-acceptance after 2 seconds for a realistic demo
-    setTimeout(() => {
-      setJoinRequests((prev) => ({
-        ...prev,
-        [tripId]: 'accepted',
-      }));
-
-      // Add user to trip members
-      setTrips((prevTrips) =>
-        prevTrips.map((t) => {
-          if (t.id === tripId) {
-            const alreadyMember = t.members.some((m) => m.id === user.id);
-            if (!alreadyMember && t.members.length < t.maxMembers) {
-              return {
-                ...t,
-                members: [...t.members, user],
-              };
-            }
-          }
-          return t;
-        })
-      );
-    }, 2000);
+    tripsApi
+      .requestJoin(tripId, {
+        message: `Hi! I would love to join your ${trip.name} trip!`,
+      })
+      .catch((err) => {
+        console.warn('[TripsContext] Join request fallback:', err);
+      });
   };
 
   const createTrip = (
     tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> &
-      Partial<Pick<Trip, 'roomType' | 'roomCode'>>
+      Partial<Pick<Trip, 'roomType' | 'roomCode' | 'status'>>
   ): Trip => {
     const isPublic = tripData.roomType !== 'private';
     const roomCode =
@@ -162,7 +148,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `trip_${Date.now()}`,
       leader: user,
       members: [user],
-      status: 'open',
+      status: tripData.status || 'open',
       roomType: isPublic ? 'public' : 'private',
       roomCode,
       compatibilityScore: 98,
@@ -242,6 +228,12 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setTrips((prev) => [newTrip, ...prev]);
     setJoinRequests((prev) => ({ ...prev, [newTrip.id]: 'accepted' }));
+
+    // Send to backend
+    tripsApi.createTrip(newTrip).catch((err) => {
+      console.warn('[TripsContext] Server createTrip sync failed:', err);
+    });
+
     return newTrip;
   };
 
@@ -249,6 +241,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTrips((prevTrips) =>
       prevTrips.map((t) => {
         if (t.id === tripId) {
+          if (t.leader.id !== user.id || t.members.length >= t.maxMembers) return t;
           const req = t.pendingJoinRequests?.find((r) => r.user.id === applicantId);
           const applicant = req?.user;
           const remainingReqs =
@@ -279,12 +272,15 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return t;
       })
     );
+
+    tripsApi.acceptRequest(tripId, applicantId).catch(() => {});
   };
 
   const declineJoinRequest = (tripId: string, applicantId: string) => {
     setTrips((prevTrips) =>
       prevTrips.map((t) => {
         if (t.id === tripId) {
+          if (t.leader.id !== user.id) return t;
           return {
             ...t,
             pendingJoinRequests:
@@ -294,12 +290,15 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return t;
       })
     );
+
+    tripsApi.declineRequest(tripId, applicantId).catch(() => {});
   };
 
   const updateTripRoomType = (tripId: string, roomType: 'public' | 'private') => {
     setTrips((prevTrips) =>
       prevTrips.map((t) => (t.id === tripId ? { ...t, roomType } : t))
     );
+    tripsApi.updateRoomType(tripId, roomType).catch(() => {});
   };
 
   const getTripById = (tripId: string) => {
@@ -328,6 +327,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateTripRoomType,
         getTripById,
         myTrips,
+        refreshTrips,
       }}
     >
       {children}

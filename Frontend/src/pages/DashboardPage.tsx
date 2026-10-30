@@ -38,7 +38,7 @@ export const DashboardPage: React.FC = () => {
   ).slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-7 text-left max-w-6xl mx-auto">
+    <div className="flex flex-col gap-7 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto">
       {/* 1. GREETING (Above Banner, matching Screen 3) */}
       <div>
         <h2 className="font-heading font-bold text-2xl sm:text-3xl text-text">
@@ -87,80 +87,96 @@ export const DashboardPage: React.FC = () => {
         </form>
       </div>
 
-      {/* 2. THREE QUICK-ACTION CARDS (Matching Screen 3) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* 2. THREE QUICK-ACTION CARDS (In one row across mobile and desktop) */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-5">
         {/* Quick Card 1: Travel Vault */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left">
+        <div
+          onClick={() => navigate('/app/vault')}
+          className="bg-white rounded-2xl p-2.5 sm:p-5 lg:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left cursor-pointer"
+        >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-4">
-              <Shield className="w-6 h-6 stroke-[2]" />
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-2 sm:mb-4">
+              <Shield className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2]" />
             </div>
-            <h3 className="font-heading font-bold text-lg text-text">
+            <h3 className="font-heading font-bold text-xs sm:text-lg text-text leading-tight">
               Travel Vault
             </h3>
-            <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
+            <p className="text-[10px] sm:text-sm text-text-muted mt-1 leading-snug line-clamp-2 sm:line-clamp-none">
               Your important information, safe & secure.
             </p>
           </div>
-          <div className="mt-5 pt-4 border-t border-border/60">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => navigate('/app/vault')}
-              className="w-full font-medium"
+          <div className="mt-2.5 sm:mt-5 pt-2 sm:pt-4 border-t border-border/60">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/app/vault');
+              }}
+              className="w-full bg-primary hover:bg-primary-hover text-white text-[10px] xs:text-[11px] sm:text-sm font-semibold py-1.5 sm:py-2.5 px-1 sm:px-4 rounded-lg sm:rounded-xl transition-colors shadow-2xs whitespace-nowrap cursor-pointer text-center"
             >
               Open Vault
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Quick Card 2: Find a Trip */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left">
+        <div
+          onClick={() => navigate('/app/trips')}
+          className="bg-white rounded-2xl p-2.5 sm:p-5 lg:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left cursor-pointer"
+        >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-4">
-              <Compass className="w-6 h-6 stroke-[2]" />
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-2 sm:mb-4">
+              <Compass className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2]" />
             </div>
-            <h3 className="font-heading font-bold text-lg text-text">
+            <h3 className="font-heading font-bold text-xs sm:text-lg text-text leading-tight">
               Find a Trip
             </h3>
-            <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
+            <p className="text-[10px] sm:text-sm text-text-muted mt-1 leading-snug line-clamp-2 sm:line-clamp-none">
               Meet people, join trips, share the adventure.
             </p>
           </div>
-          <div className="mt-5 pt-4 border-t border-border/60">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => navigate('/app/trips')}
-              className="w-full font-medium"
+          <div className="mt-2.5 sm:mt-5 pt-2 sm:pt-4 border-t border-border/60">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/app/trips');
+              }}
+              className="w-full bg-primary hover:bg-primary-hover text-white text-[10px] xs:text-[11px] sm:text-sm font-semibold py-1.5 sm:py-2.5 px-1 sm:px-4 rounded-lg sm:rounded-xl transition-colors shadow-2xs whitespace-nowrap cursor-pointer text-center"
             >
-              Explore Trips
-            </Button>
+              <span className="hidden sm:inline">Explore Trips</span>
+              <span className="sm:hidden">Explore</span>
+            </button>
           </div>
         </div>
 
         {/* Quick Card 3: Travel Diary */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left">
+        <div
+          onClick={() => navigate('/app/diary')}
+          className="bg-white rounded-2xl p-2.5 sm:p-5 lg:p-6 border border-border/80 shadow-card hover:shadow-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left cursor-pointer"
+        >
           <div>
-            <div className="w-12 h-12 rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-4">
-              <BookOpen className="w-6 h-6 stroke-[2]" />
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-accent/40 text-primary flex items-center justify-center mb-2 sm:mb-4">
+              <BookOpen className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2]" />
             </div>
-            <h3 className="font-heading font-bold text-lg text-text">
+            <h3 className="font-heading font-bold text-xs sm:text-lg text-text leading-tight">
               Travel Diary
             </h3>
-            <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
+            <p className="text-[10px] sm:text-sm text-text-muted mt-1 leading-snug line-clamp-2 sm:line-clamp-none">
               Record, share and inspire others.
             </p>
           </div>
-          <div className="mt-5 pt-4 border-t border-border/60">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => navigate('/app/diary')}
-              className="w-full font-medium"
+          <div className="mt-2.5 sm:mt-5 pt-2 sm:pt-4 border-t border-border/60">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/app/diary');
+              }}
+              className="w-full bg-primary hover:bg-primary-hover text-white text-[10px] xs:text-[11px] sm:text-sm font-semibold py-1.5 sm:py-2.5 px-1 sm:px-4 rounded-lg sm:rounded-xl transition-colors shadow-2xs whitespace-nowrap cursor-pointer text-center"
             >
               Open Diary
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -180,7 +196,7 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-5">
           {recentTrips.map((trip) => (
             <TripCard key={trip.id} trip={trip} />
           ))}
@@ -207,7 +223,7 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-5">
           {hiddenSpots.map((dest) => (
             <div
               key={dest.id}

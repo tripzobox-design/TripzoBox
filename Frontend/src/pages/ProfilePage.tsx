@@ -100,7 +100,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
   if (!settingsOnly && searchParams.get('tab') === 'settings') return <Navigate to="/app/profile/settings" replace />;
 
   return (
-    <div className="flex flex-col gap-3 lg:gap-6 text-left max-w-5xl mx-auto">
+    <div className="flex flex-col gap-3 lg:gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto">
       {/* 1. COVER BANNER & PROFILE CARD (Matching Screen 12) */}
       {!settingsOnly && <div className="bg-white rounded-3xl border border-border overflow-hidden shadow-card">
         {/* Cover Image */}
@@ -245,7 +245,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               </Link>
             </div>
             {myTrips.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-5">
                 {visibleTrips.map((trip) => (
                   <TripCard key={trip.id} trip={trip} />
                 ))}
@@ -263,7 +263,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               Published Stories
             </h3>
             {myStories.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-6">
                 {myStories.map((story) => (
                   <StoryCard key={story.id} story={story} />
                 ))}
@@ -283,7 +283,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               Saved Trips ({savedTrips.length})
             </h3>
             {savedTrips.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-5">
                 {savedTrips.map((trip) => (
                   <TripCard key={trip.id} trip={trip} />
                 ))}
@@ -337,6 +337,25 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
                   {user.languages.join(', ')}
                 </p>
               </div>
+            </div>
+
+            {/* Account Security Card Link (Matching Screen 12) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900">Account Security</h4>
+                  <p className="text-xs text-gray-600 mt-0.5">Manage email, phone number, password, recovery question and codes.</p>
+                </div>
+              </div>
+              <Link
+                to="/app/account-security"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs shadow-xs transition-colors shrink-0"
+              >
+                Manage Security
+              </Link>
             </div>
 
             {/* Privacy Sub-section (Per Section 8.12) */}

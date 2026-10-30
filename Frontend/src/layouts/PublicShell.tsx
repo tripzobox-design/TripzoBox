@@ -15,7 +15,15 @@ export const PublicShell: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const isNavActive = (path: string) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path) || location.pathname.startsWith('/app' + path);
+  const isNavActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    if (path === '/app/dashboard') return location.pathname.includes('/dashboard');
+    if (path === '/app/vault') return location.pathname.includes('/vault');
+    if (path === '/trips') return location.pathname.startsWith('/trips') || location.pathname.startsWith('/app/trips');
+    if (path === '/app/diary') return location.pathname.includes('/diary') || location.pathname.includes('/stories');
+    if (path === '/explore') return location.pathname.startsWith('/explore') || location.pathname.startsWith('/app/explore');
+    return location.pathname.startsWith(path);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,14 +43,15 @@ export const PublicShell: React.FC = () => {
     desktop.addEventListener('change', closeOnDesktop);
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
-  const navLinks = [
+  const publicNavLinks = [
     { label: 'Home', path: '/' },
-    { label: 'Explore', path: '/explore' },
+    { label: 'Dashboard', path: '/app/dashboard' },
+    { label: 'Travel Vault', path: '/app/vault' },
     { label: 'Trips', path: '/trips' },
-    { label: 'Stories', path: '/stories' },
-    { label: 'Safety', path: '/safety' },
-    { label: 'About', path: '/about' },
+    { label: 'Trip Diary', path: '/app/diary' },
+    { label: 'Explore', path: '/explore' },
   ];
+  const navLinks = publicNavLinks;
 
   return (
     <div className="min-h-screen flex flex-col bg-light-bg text-text selection:bg-accent selection:text-text">
@@ -52,16 +61,16 @@ export const PublicShell: React.FC = () => {
       }`}>
         <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* Logo: Consistent light theme with brand colors */}
-          <Logo asLink to="/" size="md" variant="horizontal" inverted={false} className="min-w-0 shrink-0 [&>img]:h-auto [&>img]:w-[156px] sm:[&>img]:w-[180px]" />
+          <Logo asLink to="/" size="md" variant="horizontal" inverted={false} className="min-w-0 shrink-0" />
 
           {/* Desktop Center Nav Links with active indicator */}
-          <nav className="hidden lg:flex items-center gap-8" aria-label="Main Navigation">
+          <nav className="hidden lg:flex min-w-0 items-center justify-center gap-1 xl:gap-2" aria-label="Main Navigation">
             {navLinks.map((link) => (
               <NavLink
                 key={link.label}
                 to={link.path}
                 className={() =>
-                  `text-sm font-medium transition-colors hover:text-primary relative py-1 ${
+                  `whitespace-nowrap rounded-lg px-1.5 py-2 text-xs xl:text-sm font-medium transition-colors hover:text-primary relative ${
                     isNavActive(link.path) ? 'text-primary font-semibold' : 'text-text-muted'
                   }`
                 }
@@ -145,7 +154,7 @@ export const PublicShell: React.FC = () => {
                 The travel-community platform to discover trips, connect with compatible travellers, keep travel documents safe, and publish real travel stories.
               </p>
               <p className="text-xs font-semibold text-primary">
-                "Unbox Your Next Adventure."
+                Explore The World Without Limits
               </p>
             </div>
 

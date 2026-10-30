@@ -1,20 +1,45 @@
 # Dependencies
 node_modules/
 Frontend/node_modules/
+Backend/node_modules/
 .pnp
 .pnp.js
 
-# Production build
+# Production and intermediate builds
 dist/
-Frontend/dist/
 build/
+Frontend/dist/
+Backend/dist/
+*.tsbuildinfo
+.vite/
+Frontend/.vite/
 
-# Environment files
+# Temporary test & responsive check outputs
+.responsive-check/
+Frontend/.responsive-check/
+coverage/
+
+# Backend uploads
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
+# Environment files & secrets (Always preserve .env.example)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
+Backend/.env
+Backend/.env.*
+!Backend/.env.example
+
+# Logs & caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
 
 # Editor & System
 .vscode/

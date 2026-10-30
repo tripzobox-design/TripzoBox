@@ -38,7 +38,7 @@ export const HowItWorksPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col text-left max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-12 space-y-5 lg:space-y-16">
+    <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-12 space-y-5 lg:space-y-16">
       <div className="text-center max-w-3xl mx-auto">
         <span className="text-xs font-bold text-primary tracking-wider uppercase font-heading">
           Simple, Transparent & Community-First

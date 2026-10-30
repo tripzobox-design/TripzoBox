@@ -66,16 +66,34 @@ export const SafetyPage: React.FC = () => {
           <p className="text-sm sm:text-base text-text-muted mt-4 leading-relaxed font-body">
             At Tripzobox, traveller safety is our foundational architecture. Learn how our verification, group matching, and emergency protocols safeguard every journey.
           </p>
-          <div className="mt-5 lg:mt-8 grid grid-cols-2 lg:flex gap-2 lg:gap-4">
-            <Link to="/community-rules" className="min-w-0">
-              <Button variant="primary" size="md" className="w-full h-full px-2 sm:px-4 text-[11px] sm:text-sm">
-                <span className="lg:hidden">Community Rules</span><span className="hidden lg:inline">Read Community Rules</span>
-              </Button>
+          <div className="mt-5 lg:mt-8 grid grid-cols-3 gap-1.5 sm:gap-3 sm:flex sm:flex-wrap sm:items-center">
+            <Link to="/app/vault" className="w-full sm:w-auto min-w-0">
+              <button
+                type="button"
+                className="w-full sm:w-auto bg-primary text-white font-semibold text-[11px] sm:text-sm px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl inline-flex items-center justify-center gap-1 sm:gap-2 hover:bg-primary-hover transition-colors shadow-2xs whitespace-nowrap cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Open Travel Vault</span>
+                <span className="sm:hidden">Open Vault</span>
+              </button>
             </Link>
-            <Link to="/vault-security" className="min-w-0">
-              <Button variant="secondary" size="md" className="w-full h-full px-2 sm:px-4 text-[11px] sm:text-sm">
-                <span className="lg:hidden">Vault Security</span><span className="hidden lg:inline">Travel Vault Security</span>
-              </Button>
+            <Link to="/community-rules" className="w-full sm:w-auto min-w-0">
+              <button
+                type="button"
+                className="w-full sm:w-auto bg-white border border-primary text-primary font-semibold text-[11px] sm:text-sm px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl inline-flex items-center justify-center gap-1 sm:gap-2 hover:bg-accent-light transition-colors shadow-2xs whitespace-nowrap cursor-pointer"
+              >
+                <span className="hidden sm:inline">Read Community Rules</span>
+                <span className="sm:hidden">Community Rules</span>
+              </button>
+            </Link>
+            <Link to="/vault-security" className="w-full sm:w-auto min-w-0">
+              <button
+                type="button"
+                className="w-full sm:w-auto bg-white border border-primary text-primary font-semibold text-[11px] sm:text-sm px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl inline-flex items-center justify-center gap-1 sm:gap-2 hover:bg-accent-light transition-colors shadow-2xs whitespace-nowrap cursor-pointer"
+              >
+                <span className="hidden sm:inline">Travel Vault Security</span>
+                <span className="sm:hidden">Vault Security</span>
+              </button>
             </Link>
           </div>
         </div>
@@ -92,21 +110,21 @@ export const SafetyPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-6">
           {safetyProtocols.map((protocol) => {
             const Icon = protocol.icon;
             return (
               <div
                 key={protocol.title}
-                className="bg-white rounded-3xl border border-border p-4 sm:p-5 lg:p-8 shadow-card flex flex-col gap-3"
+                className="bg-white rounded-2xl sm:rounded-3xl border border-border p-3 sm:p-6 lg:p-8 shadow-card flex flex-col gap-2 sm:gap-3"
               >
-                <div className="w-12 h-12 rounded-2xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
-                  <Icon className="w-6 h-6 stroke-[1.75]" />
+                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent/35 text-primary flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 sm:w-6 sm:h-6 stroke-[1.75]" />
                 </div>
-                <h3 className="font-heading font-bold text-lg text-text">
+                <h3 className="font-heading font-bold text-xs sm:text-lg text-text leading-snug">
                   {protocol.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
+                <p className="text-[11px] sm:text-sm text-text-muted leading-relaxed">
                   {protocol.description}
                 </p>
               </div>

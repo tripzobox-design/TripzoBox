@@ -44,7 +44,32 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
   const [category, setCategory] = useState<Destination['category']>('Hidden Spots');
   const [shortDescription, setShortDescription] = useState('');
   const [longDescription, setLongDescription] = useState('');
-  const [bestTimeToVisit, setBestTimeToVisit] = useState('October to March');
+  const [bestTimeFrom, setBestTimeFrom] = useState('');
+  const [bestTimeTo, setBestTimeTo] = useState('');
+
+  const formatBestTime = (fromStr: string, toStr: string): string => {
+    if (!fromStr && !toStr) return 'All Year';
+    if (fromStr && !toStr) {
+      try {
+        const d = new Date(fromStr);
+        return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+      } catch {
+        return fromStr;
+      }
+    }
+    try {
+      const dFrom = new Date(fromStr);
+      const dTo = new Date(toStr);
+      const fromMonth = dFrom.toLocaleDateString('en-GB', { month: 'short' });
+      const toMonth = dTo.toLocaleDateString('en-GB', { month: 'short' });
+      if (fromMonth === toMonth) {
+        return `${dFrom.getDate()} - ${dTo.getDate()} ${fromMonth}`;
+      }
+      return `${fromMonth} to ${toMonth}`;
+    } catch {
+      return `${fromStr} to ${toStr}`;
+    }
+  };
   const [locationDetails, setLocationDetails] = useState('');
   const [isHiddenSpot, setIsHiddenSpot] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
@@ -163,7 +188,7 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
         galleryImages: allGallery,
         shortDescription: shortDescription.trim(),
         longDescription: longDescription.trim() || shortDescription.trim(),
-        bestTimeToVisit: bestTimeToVisit.trim() || 'All Year',
+        bestTimeToVisit: formatBestTime(bestTimeFrom, bestTimeTo),
         topAttractions: attractions,
         isHiddenSpot: isHiddenSpot || category === 'Hidden Spots',
         isPublic,
@@ -426,28 +451,55 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
                     <label className="block text-xs font-bold text-text uppercase tracking-wider mb-1.5">
                       Best Time to Visit
                     </label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 text-text-subtle absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        value={bestTimeToVisit}
-                        onChange={(e) => setBestTimeToVisit(e.target.value)}
-                        placeholder="e.g. October to March, Early sunrise"
-                        className="w-full text-sm font-medium border border-border rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-primary"
-                      />
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <span className="block text-[11px] text-gray-500 font-medium mb-1">From Date</span>
+                        <input
+                          type="date"
+                          value={bestTimeFrom}
+                          onChange={(e) => {
+                            setBestTimeFrom(e.target.value);
+                            if (bestTimeTo && e.target.value && bestTimeTo < e.target.value) {
+                              setBestTimeTo(e.target.value);
+                            }
+                          }}
+                          onClick={(e) => (e.target as any).showPicker?.()}
+                          className="w-full text-xs sm:text-sm font-medium border border-border rounded-xl px-3 py-2 outline-none focus:border-primary bg-white cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[11px] text-gray-500 font-medium mb-1">To Date</span>
+                        <input
+                          type="date"
+                          min={bestTimeFrom || undefined}
+                          value={bestTimeTo}
+                          onChange={(e) => setBestTimeTo(e.target.value)}
+                          onClick={(e) => (e.target as any).showPicker?.()}
+                          className="w-full text-xs sm:text-sm font-medium border border-border rounded-xl px-3 py-2 outline-none focus:border-primary bg-white cursor-pointer"
+                        />
+                      </div>
                     </div>
+                    {bestTimeFrom && bestTimeTo && (
+                      <p className="text-[11px] text-emerald-700 font-medium mt-1.5 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Best season: {formatBestTime(bestTimeFrom, bestTimeTo)}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-text uppercase tracking-wider mb-1.5">
                       How to Reach / Landmark Details
                     </label>
+                    <span className="hidden sm:block text-[11px] text-transparent font-medium mb-1 select-none">
+                      Align
+                    </span>
                     <input
                       type="text"
                       value={locationDetails}
                       onChange={(e) => setLocationDetails(e.target.value)}
                       placeholder="e.g. Take train to Varkala, then 15 min rickshaw north"
-                      className="w-full text-sm font-medium border border-border rounded-xl px-4 py-2.5 outline-none focus:border-primary"
+                      className="w-full text-xs sm:text-sm font-medium border border-border rounded-xl px-4 py-2 outline-none focus:border-primary"
                     />
                   </div>
                 </div>

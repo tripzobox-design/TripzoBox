@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { currentUser as defaultUser } from '../data/mockUsers';
+import { authApi } from '../lib/api';
 
 interface AuthContextType {
   user: User;
@@ -8,8 +9,20 @@ interface AuthContextType {
   login: (email?: string, password?: string) => Promise<boolean>;
   signup: (name: string, email: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (updatedData: Partial<User>) => void;
+  updateProfile: (updatedData: Partial<User>) => Promise<void> | void;
 }
+
+const sanitizeUser = (u: User): User => {
+  const sanitized = { ...u };
+  if (
+    sanitized.phone &&
+    (/[a-zA-Z]/.test(sanitized.phone) || !/^\+?[\d\s-]{10,15}$/.test(sanitized.phone.trim()))
+  ) {
+    sanitized.phone = '';
+    sanitized.phoneVerified = false;
+  }
+  return sanitized;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -18,18 +31,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem('tripzobox_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return sanitizeUser(parsed);
       } catch (e) {
-        return defaultUser;
+        return sanitizeUser(defaultUser);
       }
     }
-    return defaultUser;
+    return sanitizeUser(defaultUser);
   });
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const status = localStorage.getItem('tripzobox_auth_status');
     return status !== null ? status === 'true' : false;
   });
+
+  // Verify session with server on initial mount
+  useEffect(() => {
+    const token = localStorage.getItem('tripzobox_token');
+    if (token) {
+      authApi
+        .getMe()
+        .then((fetchedUser) => {
+          if (fetchedUser) {
+            setUser(sanitizeUser(fetchedUser));
+            setIsLoggedIn(true);
+          }
+        })
+        .catch(() => {
+          // Token expired or server unreachable, maintain current local state
+        });
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('tripzobox_user', JSON.stringify(user));
@@ -39,29 +71,96 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('tripzobox_auth_status', isLoggedIn ? 'true' : 'false');
   }, [isLoggedIn]);
 
-  const login = async (_email?: string, _password?: string): Promise<boolean> => {
-    setIsLoggedIn(true);
-    return true;
+  const login = async (emailOrPhone?: string, password?: string): Promise<boolean> => {
+    try {
+      if (emailOrPhone) {
+        const data = await authApi.login(emailOrPhone, password || 'Password123!');
+        if (data?.user) {
+          setUser(sanitizeUser(data.user));
+        }
+      }
+      setIsLoggedIn(true);
+      return true;
+    } catch (err: any) {
+      if (err?.statusCode === 401 || err?.statusCode === 400 || err?.statusCode === 409) {
+        throw err;
+      }
+      console.warn('[AuthContext] Backend login call failed, falling back to local session:', err);
+      if (emailOrPhone) {
+        const trimmed = emailOrPhone.trim();
+        const isEmail = trimmed.includes('@');
+        const digits = trimmed.replace(/\D/g, '');
+        const isPhone = !/[a-zA-Z]/.test(trimmed) && digits.length >= 10 && digits.length <= 15;
+        setUser((prev) =>
+          sanitizeUser({
+            ...prev,
+            name: !isEmail && !isPhone ? trimmed : prev.name || 'Traveler',
+            email: isEmail ? trimmed : prev.email,
+            phone: isPhone ? trimmed : '',
+            phoneVerified: isPhone,
+          })
+        );
+      }
+      setIsLoggedIn(true);
+      return true;
+    }
   };
 
-  const signup = async (name: string, _email: string, _password?: string): Promise<boolean> => {
-    setUser((prev) => ({
-      ...prev,
-      name: name.trim() || prev.name,
-    }));
-    setIsLoggedIn(true);
-    return true;
+  const signup = async (name: string, emailOrPhone: string, password?: string): Promise<boolean> => {
+    try {
+      const data = await authApi.signup({
+        name,
+        emailOrPhone,
+        password: password || 'Password123!',
+      });
+      if (data?.user) {
+        setUser(sanitizeUser(data.user));
+      }
+      setIsLoggedIn(true);
+      return true;
+    } catch (err: any) {
+      if (err?.statusCode === 409 || err?.statusCode === 400 || err?.statusCode === 401) {
+        throw err;
+      }
+      console.warn('[AuthContext] Backend signup call failed, falling back to local session:', err);
+      const trimmed = emailOrPhone.trim();
+      const isEmail = trimmed.includes('@');
+      const digits = trimmed.replace(/\D/g, '');
+      const isPhone = !/[a-zA-Z]/.test(trimmed) && digits.length >= 10 && digits.length <= 15;
+      setUser((prev) =>
+        sanitizeUser({
+          ...prev,
+          name: name.trim() || prev.name,
+          email: isEmail ? trimmed : prev.email || 'user@example.com',
+          phone: isPhone ? trimmed : '',
+          phoneVerified: isPhone,
+        })
+      );
+      setIsLoggedIn(true);
+      return true;
+    }
   };
 
   const logout = () => {
+    authApi.logout().catch(() => {});
     setIsLoggedIn(false);
   };
 
-  const updateProfile = (updatedData: Partial<User>) => {
-    setUser((prev) => ({
-      ...prev,
-      ...updatedData,
-    }));
+  const updateProfile = async (updatedData: Partial<User>) => {
+    setUser((prev) =>
+      sanitizeUser({
+        ...prev,
+        ...updatedData,
+      })
+    );
+    try {
+      const updatedUser = await authApi.updateProfile(updatedData);
+      if (updatedUser) {
+        setUser(sanitizeUser(updatedUser));
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Failed to sync profile with server:', err);
+    }
   };
 
   return (

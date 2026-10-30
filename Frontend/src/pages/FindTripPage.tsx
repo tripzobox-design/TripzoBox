@@ -1,1590 +1,1533 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Compass,
-  Frown,
   Search,
   MapPin,
   Calendar,
-  Wallet,
-  SlidersHorizontal,
-  ArrowUpDown,
-  X,
-  RotateCcw,
-  Sparkles,
-  Mountain,
-  Palmtree,
-  Utensils,
-  Camera,
-  Users,
-  Flame,
-  Check,
+  Navigation,
   ChevronDown,
-  ChevronUp,
-  PlusCircle,
-  Globe,
-  Lock,
-  Crown,
-  Image as ImageIcon,
-  Upload,
+  RotateCcw,
+  Check,
+  X,
+  Compass,
+  Star,
+  Users,
+  ShieldCheck,
+  Sparkles,
+  Plus,
+  SlidersHorizontal,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { TripCard } from '../components/feature/TripCard';
-import { Tabs } from '../components/ui/Tabs';
-import { EmptyState } from '../components/ui/EmptyState';
-import { Button } from '../components/ui/Button';
-import { Drawer } from '../components/ui/Drawer';
 
-// Quick destination shortcuts
-const QUICK_DESTINATIONS = [
-  'All',
-  'Munnar',
-  'Varkala',
-  'Goa',
+const TRIP_TYPES = ['All', 'Group Trip', 'Solo Friendly', 'Couple', 'Family', 'Women Only'] as const;
+
+const DURATION_OPTIONS = [
+  { id: '1-2', label: '1–2 days', desc: 'Weekend Escape', min: 1, max: 2 },
+  { id: '3-5', label: '3–5 days', desc: 'Short Trip', min: 3, max: 5 },
+  { id: '6-10', label: '6–10 days', desc: 'Week Journey', min: 6, max: 10 },
+  { id: '10+', label: '10+ days', desc: 'Extended Expedition', min: 10, max: 999 },
+];
+
+const TRAVEL_STYLES = [
+  'Adventure',
+  'Nature',
+  'Mountains',
+  'Trekking',
+  'Beaches',
+  'Culture',
+  'Food',
+  'Relaxation',
+  'Photography',
+  'Backpacking',
+  'Camping',
+  'Road Trip',
+] as const;
+
+const LANGUAGES = [
+  'Hindi',
+  'English',
+  'Tamil',
+  'Malayalam',
+  'Kannada',
+  'Telugu',
+  'Punjabi',
+  'Others',
+] as const;
+
+const GROUP_SIZE_OPTIONS = [
+  { id: 'intimate', label: 'Intimate (2–4 travelers)', min: 1, max: 4 },
+  { id: 'standard', label: 'Standard (5–8 travelers)', min: 5, max: 8 },
+  { id: 'large', label: 'Large Group (8+ travelers)', min: 9, max: 99 },
+];
+
+const INCLUSION_OPTIONS = [
+  { id: 'transport', label: 'Transport Included' },
+  { id: 'accommodation', label: 'Stay / Accommodation' },
+  { id: 'meals', label: 'Meals Included' },
+  { id: 'gear', label: 'Equipment & Guide' },
+];
+
+const DIFFICULTY_OPTIONS = [
+  { id: 'easy', label: 'Easy / Relaxed', desc: 'Leisurely pace, all fitness levels' },
+  { id: 'medium', label: 'Moderate / Active', desc: 'Walking & moderate trails' },
+  { id: 'hard', label: 'Challenging / Trek', desc: 'High altitude, rugged routes' },
+];
+
+const START_CITIES = [
+  'All Cities',
+  'Bengaluru',
+  'Delhi',
   'Kochi',
-  'Coorg',
-  'Ooty',
-  'Alleppey',
-  'Hampi',
-];
+  'Chandigarh',
+  'Thiruvananthapuram',
+] as const;
 
-// Quick departure hub cities
-const DEPARTURE_CITIES = [
-  { value: 'all', label: 'All Departure Hubs' },
-  { value: 'Kochi', label: 'Kochi, Kerala' },
-  { value: 'Bengaluru', label: 'Bengaluru, Karnataka' },
-  { value: 'Panaji', label: 'Goa (Panaji)' },
-  { value: 'Coimbatore', label: 'Coimbatore, Tamil Nadu' },
-  { value: 'Thiruvananthapuram', label: 'Thiruvananthapuram' },
-  { value: 'Mumbai', label: 'Mumbai, Maharashtra' },
-  { value: 'Delhi', label: 'Delhi NCR' },
-];
-
-// Budget options
-const BUDGET_PRESETS = [
-  { label: 'Any Budget', max: undefined },
-  { label: '< ₹5,000', max: 5000 },
-  { label: '₹5k – ₹8k', max: 8000 },
-  { label: '₹8k – ₹15k', max: 15000 },
-];
-
-// Travel theme filter chips
-const THEME_OPTIONS = [
-  { id: 'Hiking', label: 'Mountains & Trekking', icon: Mountain },
-  { id: 'Beaches', label: 'Beaches & Coastal', icon: Palmtree },
-  { id: 'Nature', label: 'Nature & Wildlife', icon: Sparkles },
-  { id: 'Food', label: 'Culinary & Local Food', icon: Utensils },
-  { id: 'Culture', label: 'Heritage & Culture', icon: Compass },
-  { id: 'Photography', label: 'Scenic Photography', icon: Camera },
-  { id: 'Adventure', label: 'Adventure & Sports', icon: Flame },
-];
-
-// Cover photo presets
-const COVER_PRESETS = [
-  {
-    label: 'Munnar Mist',
-    url: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    label: 'Varkala Beach',
-    url: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    label: 'Goa Coastal',
-    url: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    label: 'Kochi Heritage',
-    url: 'https://images.unsplash.com/photo-1558025638-565ae7710b3f?auto=format&fit=crop&w=1600&q=85',
-  },
-  {
-    label: 'Coorg Coffee',
-    url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    label: 'Ooty Hills',
-    url: 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=1200&q=80',
-  },
-];
-
-// Sort options
-type SortOption =
-  | 'recommended'
-  | 'price_asc'
-  | 'price_desc'
-  | 'date_asc'
-  | 'duration_asc'
-  | 'duration_desc'
-  | 'popularity';
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'recommended', label: 'Recommended (Best Match)' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'date_asc', label: 'Date: Soonest Upcoming' },
-  { value: 'duration_asc', label: 'Duration: Short to Long' },
-  { value: 'duration_desc', label: 'Duration: Long to Short' },
-  { value: 'popularity', label: 'Most Popular / Members' },
-];
+const CATEGORY_TABS = ['Popular', 'Upcoming', 'Nearby', 'My Interests'] as const;
 
 export const FindTripPage: React.FC = () => {
-  const { trips, createTrip } = useTrips();
+  const { trips } = useTrips();
   const { user, isLoggedIn } = useAuth();
-  const { success, info } = useToast();
+  const { success } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const isMyTripsRoute = location.pathname.includes('/my');
-  const isInApp = location.pathname.startsWith('/app');
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Core Search State
-  const initialQuery = searchParams.get('q') || '';
-  const [destinationQuery, setDestinationQuery] = useState(initialQuery);
-  const [selectedCity, setSelectedCity] = useState('all');
-  const [startDateQuery, setStartDateQuery] = useState('');
-  const [endDateQuery, setEndDateQuery] = useState('');
-  const [selectedBudgetMax, setSelectedBudgetMax] = useState<number | undefined>(undefined);
-  const [customBudgetInput, setCustomBudgetInput] = useState('');
+  // Search State
+  const initialDestination = searchParams.get('destination') || searchParams.get('q') || '';
+  const [destinationInput, setDestinationInput] = useState(initialDestination);
+  const [departureDateInput, setDepartureDateInput] = useState('');
+  const [fromCityInput, setFromCityInput] = useState('');
 
-  // Date input refs for opening native picker on any click
-  const startDateInputRef = useRef<HTMLInputElement>(null);
-  const endDateInputRef = useRef<HTMLInputElement>(null);
+  // Category & Sort State
+  const [activeCategoryTab, setActiveCategoryTab] = useState<string>('Popular');
+  const [sortBy, setSortBy] = useState<string>('newest');
 
-  const openStartDatePicker = () => {
-    try {
-      startDateInputRef.current?.showPicker?.();
-    } catch {
-      startDateInputRef.current?.focus();
-    }
-  };
+  // Sidebar Filter State — ALL BLANK BY DEFAULT ON PAGE VISIT
+  const [selectedTripType, setSelectedTripType] = useState<string>('All');
+  const [budgetMax, setBudgetMax] = useState<number>(10000);
+  const [selectedDurations, setSelectedDurations] = useState<string[]>([]); // BLANK by default
+  const [selectedTravelStyles, setSelectedTravelStyles] = useState<string[]>([]); // BLANK by default
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]); // BLANK by default
+  const [selectedGroupSizes, setSelectedGroupSizes] = useState<string[]>([]); // BLANK by default
+  const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]); // BLANK by default
+  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]); // BLANK by default
+  const [onlyAvailableSpots, setOnlyAvailableSpots] = useState<boolean>(false); // BLANK by default
+  const [minRating, setMinRating] = useState<number>(0); // BLANK by default
+  const [startCityFilter, setStartCityFilter] = useState<string>('All Cities'); // BLANK by default
+  const [showAllStyles, setShowAllStyles] = useState(false);
+  const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  const openEndDatePicker = () => {
-    try {
-      endDateInputRef.current?.showPicker?.();
-    } catch {
-      endDateInputRef.current?.focus();
-    }
-  };
+  // Pagination / Load More
+  const [visibleCount, setVisibleCount] = useState<number>(6);
 
-  // Extended Filters State
-  const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'group' | 'solo' | 'couple'>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
-  const [durationFilter, setDurationFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
-  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
-  const [openOnlyFilter, setOpenOnlyFilter] = useState(false);
-
-  // Filter Drawer visibility
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
-
-  // Sorting and Tabs
-  const [activeTab, setActiveTab] = useState<'popular' | 'upcoming' | 'nearby'>('popular');
-  const [sortBy, setSortBy] = useState<SortOption>('recommended');
-
-  // Create Room Modal State
-  const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
-  useEffect(() => {
-    if (!isCreateRoomOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsCreateRoomOpen(false); };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
-  }, [isCreateRoomOpen]);
-  const [newRoomName, setNewRoomName] = useState('Munnar Misty Peaks Trek');
-  const [newDestination, setNewDestination] = useState('Munnar, Kerala');
-  const [newStartCity, setNewStartCity] = useState('Kochi');
-  const [newStartDate, setNewStartDate] = useState('2025-06-12');
-  const [newEndDate, setNewEndDate] = useState('2025-06-18');
-  const [newBudget, setNewBudget] = useState(5500);
-  const [newMaxMembers, setNewMaxMembers] = useState(8);
-  const [newTripType, setNewTripType] = useState<'group' | 'solo' | 'couple'>('group');
-  const [newDifficulty, setNewDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-  const [newRoomType, setNewRoomType] = useState<'public' | 'private'>('public');
-  const [newPreferences, setNewPreferences] = useState<string[]>([
-    'Hiking',
-    'Nature',
-    'Photography',
-  ]);
-  const [newDescription, setNewDescription] = useState(
-    'Weekend getaway to explore tea hills, hidden waterfalls, and misty viewpoints with great company. Open to all friendly travellers!'
-  );
-  const [newCoverUrl, setNewCoverUrl] = useState(COVER_PRESETS[0].url);
-  const coverFileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedCover, setUploadedCover] = useState<{ url: string; name: string } | null>(null);
-  const [coverUploadError, setCoverUploadError] = useState('');
-  const [isReadingCover, setIsReadingCover] = useState(false);
-  const handleCoverUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setCoverUploadError('');
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setCoverUploadError('Please choose a JPG, PNG, or WebP image.');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setCoverUploadError('Please choose an image smaller than 2 MB.');
-      return;
-    }
-    setIsReadingCover(true);
-    const reader = new FileReader();
-    reader.onerror = () => {
-      setCoverUploadError('This image could not be read. Please try another file.');
-      setIsReadingCover(false);
-    };
-    reader.onload = () => {
-      const url = reader.result;
-      if (typeof url !== 'string') {
-        setCoverUploadError('This image could not be read. Please try another file.');
-        setIsReadingCover(false);
-        return;
-      }
-      const image = new Image();
-      image.onerror = () => {
-        setCoverUploadError('This image could not be opened. Please try another file.');
-        setIsReadingCover(false);
-      };
-      image.onload = () => {
-        setUploadedCover({ url, name: file.name });
-        setNewCoverUrl(url);
-        setIsReadingCover(false);
-      };
-      image.src = url;
-    };
-    reader.readAsDataURL(file);
-  };
-  const [formError, setFormError] = useState('');
-
-  const filterTabs = [
-    { id: 'popular', label: 'Popular Trips' },
-    { id: 'upcoming', label: 'Upcoming' },
-    { id: 'nearby', label: 'Nearby' },
-  ];
-
-  // Helper date parser
-  const parseTripDate = (dateStr: string): Date | null => {
-    if (!dateStr) return null;
-    const parsed = new Date(dateStr);
-    return isNaN(parsed.getTime()) ? null : parsed;
-  };
-
-  // Toggle theme chip
-  const toggleTheme = (themeId: string) => {
-    setSelectedThemes((prev) =>
-      prev.includes(themeId) ? prev.filter((t) => t !== themeId) : [...prev, themeId]
+  // Filter Toggle Handlers
+  const toggleDuration = (id: string) => {
+    setSelectedDurations((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
     );
   };
 
-  const toggleNewPref = (prefId: string) => {
-    setNewPreferences((prev) =>
-      prev.includes(prefId) ? prev.filter((t) => t !== prefId) : [...prev, prefId]
+  const toggleTravelStyle = (style: string) => {
+    setSelectedTravelStyles((prev) =>
+      prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style]
     );
   };
 
-  // Open Room Modal
-  const handleOpenCreateRoom = () => {
-    if (!isLoggedIn) {
-      info('Please log in or sign up to host a trip room as leader!');
-      navigate('/login', { state: { from: location } });
-      return;
-    }
-    setFormError('');
-    setIsCreateRoomOpen(true);
-  };
-
-  // Create Room Submit
-  const handleCreateRoomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReadingCover) return;
-    if (!newRoomName.trim()) {
-      setFormError('Please enter a trip room title');
-      return;
-    }
-    if (!newDestination.trim()) {
-      setFormError('Please enter a destination');
-      return;
-    }
-
-    const created = createTrip({
-      name: newRoomName.trim(),
-      destination: newDestination.trim(),
-      startCity: newStartCity.trim() || 'Kochi',
-      startDate: newStartDate,
-      endDate: newEndDate,
-      durationDays: 5,
-      budgetPerPerson: newBudget,
-      tripType: newTripType,
-      roomType: newRoomType,
-      difficulty: newDifficulty,
-      maxMembers: newTripType === 'solo' ? 1 : newMaxMembers,
-      preferences: newPreferences,
-      description: newDescription.trim(),
-      highlights: ['Scenic Trails', 'Local Food', 'Photography Spots'],
-      coverImageUrl: newCoverUrl || COVER_PRESETS[0].url,
-    });
-
-    try {
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    } catch (err) {}
-
-    success(
-      `Trip Room "${newRoomName}" created! You are the Trip Leader. Your ${
-        newRoomType === 'public' ? 'Public Space' : 'Private Room'
-      } is now open for travellers!`,
-      'Room Created 🎉'
+  const toggleLanguage = (lang: string) => {
+    setSelectedLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
     );
-
-    setIsCreateRoomOpen(false);
-    navigate(isInApp ? `/app/trips/${created.id}` : `/trips/${created.id}`);
   };
 
-  // Count active filters (for badge)
-  const activeFiltersCount = useMemo(() => {
+  const toggleGroupSize = (id: string) => {
+    setSelectedGroupSizes((prev) =>
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    );
+  };
+
+  const toggleInclusion = (id: string) => {
+    setSelectedInclusions((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleDifficulty = (id: string) => {
+    setSelectedDifficulties((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  };
+
+  // Complete Reset Handler: clears ALL filters to completely blank & default
+  const handleResetFilters = () => {
+    setDestinationInput('');
+    setDepartureDateInput('');
+    setFromCityInput('');
+    setSelectedTripType('All');
+    setBudgetMax(10000);
+    setSelectedDurations([]);
+    setSelectedTravelStyles([]);
+    setSelectedLanguages([]);
+    setSelectedGroupSizes([]);
+    setSelectedInclusions([]);
+    setSelectedDifficulties([]);
+    setOnlyAvailableSpots(false);
+    setMinRating(0);
+    setStartCityFilter('All Cities');
+    setIsMoreFiltersOpen(false);
+    setSortBy('newest');
+    setActiveCategoryTab('Popular');
+    setVisibleCount(6);
+    setSearchParams({}, { replace: true });
+    success('All filters have been reset');
+  };
+
+  const handleCreateTrip = () => {
+    const targetPath = isLoggedIn ? '/app/trips/create' : '/trips/create';
+    navigate(targetPath);
+  };
+
+  // Active filter count for badge
+  const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (destinationQuery) count++;
-    if (selectedCity !== 'all') count++;
-    if (startDateQuery || endDateQuery) count++;
-    if (selectedBudgetMax !== undefined || customBudgetInput) count++;
-    if (tripTypeFilter !== 'all') count++;
-    if (difficultyFilter !== 'all') count++;
-    if (durationFilter !== 'all') count++;
-    if (selectedThemes.length > 0) count += selectedThemes.length;
-    if (openOnlyFilter) count++;
+    if (destinationInput.trim()) count++;
+    if (departureDateInput.trim()) count++;
+    if (fromCityInput.trim()) count++;
+    if (selectedTripType !== 'All') count++;
+    if (budgetMax < 10000) count++;
+    count += selectedDurations.length;
+    count += selectedTravelStyles.length;
+    count += selectedLanguages.length;
+    count += selectedGroupSizes.length;
+    count += selectedInclusions.length;
+    count += selectedDifficulties.length;
+    if (onlyAvailableSpots) count++;
+    if (minRating > 0) count++;
+    if (startCityFilter !== 'All Cities') count++;
     return count;
   }, [
-    destinationQuery,
-    selectedCity,
-    startDateQuery,
-    endDateQuery,
-    selectedBudgetMax,
-    customBudgetInput,
-    tripTypeFilter,
-    difficultyFilter,
-    durationFilter,
-    selectedThemes,
-    openOnlyFilter,
+    destinationInput,
+    departureDateInput,
+    fromCityInput,
+    selectedTripType,
+    budgetMax,
+    selectedDurations,
+    selectedTravelStyles,
+    selectedLanguages,
+    selectedGroupSizes,
+    selectedInclusions,
+    selectedDifficulties,
+    onlyAvailableSpots,
+    minRating,
+    startCityFilter,
   ]);
 
-  // Reset all filters
-  const handleClearAllFilters = () => {
-    setDestinationQuery('');
-    setSelectedCity('all');
-    setStartDateQuery('');
-    setEndDateQuery('');
-    setSelectedBudgetMax(undefined);
-    setCustomBudgetInput('');
-    setTripTypeFilter('all');
-    setDifficultyFilter('all');
-    setDurationFilter('all');
-    setSelectedThemes([]);
-    setOpenOnlyFilter(false);
-    setActiveTab('popular');
-    setSortBy('recommended');
-  };
-
-  // Base list of trips
-  const baseTrips = useMemo(() => {
-    if (isMyTripsRoute) {
-      return trips.filter((t) => t.leader.id === user.id || t.members.some((m) => m.id === user.id));
-    }
-    return trips;
-  }, [trips, isMyTripsRoute, user.id]);
-
-  // Filtered trips logic
+  // Filter Logic
   const filteredTrips = useMemo(() => {
-    return baseTrips.filter((trip) => {
-      // 1. Destination / name query
-      if (destinationQuery) {
-        const queryLower = destinationQuery.toLowerCase().trim();
-        const matchesDest = trip.destination.toLowerCase().includes(queryLower);
-        const matchesName = trip.name.toLowerCase().includes(queryLower);
-        if (!matchesDest && !matchesName) return false;
+    const dest = destinationInput.trim().toLowerCase();
+    const fromCity = fromCityInput.trim().toLowerCase();
+    const depDate = departureDateInput.trim().toLowerCase();
+
+    return trips.filter((trip) => {
+      // If on My Trips route, only show trips user is member of or leader
+      if (isMyTripsRoute) {
+        if (!isLoggedIn) return false;
+        const isMember = trip.members.some((m) => m.id === user?.id);
+        const isLeader = trip.leader.id === user?.id;
+        if (!isMember && !isLeader) return false;
       }
 
-      // 2. Starting departure city
-      if (selectedCity !== 'all') {
-        const tripCity = (trip.startCity || '').toLowerCase();
-        if (!tripCity.includes(selectedCity.toLowerCase())) return false;
+      // Destination filter
+      if (dest) {
+        const matchesDest =
+          trip.destination.toLowerCase().includes(dest) ||
+          trip.name.toLowerCase().includes(dest) ||
+          (trip.highlights && trip.highlights.some((h) => h.toLowerCase().includes(dest)));
+        if (!matchesDest) return false;
       }
 
-      // 3. Date range filter
-      if (startDateQuery || endDateQuery) {
-        const tripStart = parseTripDate(trip.startDate);
-        const tripEnd = parseTripDate(trip.endDate || trip.startDate);
+      // From city filter (hero search input)
+      if (fromCity) {
+        if (!trip.startCity.toLowerCase().includes(fromCity)) return false;
+      }
 
-        if (tripStart && tripEnd) {
-          if (startDateQuery) {
-            const userFrom = new Date(startDateQuery);
-            if (tripEnd < userFrom) return false;
-          }
-          if (endDateQuery) {
-            const userTo = new Date(endDateQuery);
-            userTo.setHours(23, 59, 59, 999);
-            if (tripStart > userTo) return false;
+      // Starting City dropdown filter
+      if (startCityFilter !== 'All Cities') {
+        if (trip.startCity.toLowerCase() !== startCityFilter.toLowerCase()) return false;
+      }
+
+      // Departure Date filter
+      if (departureDateInput.trim()) {
+        const inputD = new Date(departureDateInput + 'T00:00:00');
+        let matchesDate = false;
+
+        if (!isNaN(inputD.getTime())) {
+          const tripStart = new Date(trip.startDate);
+          const tripEnd = new Date(trip.endDate);
+
+          if (!isNaN(tripStart.getTime())) {
+            const isSameDay =
+              tripStart.getFullYear() === inputD.getFullYear() &&
+              tripStart.getMonth() === inputD.getMonth() &&
+              tripStart.getDate() === inputD.getDate();
+
+            const isWithinTrip =
+              !isNaN(tripEnd.getTime()) &&
+              tripStart.getTime() <= inputD.getTime() &&
+              inputD.getTime() <= tripEnd.getTime();
+
+            const isUpcomingInMonth =
+              tripStart.getFullYear() === inputD.getFullYear() &&
+              tripStart.getMonth() === inputD.getMonth() &&
+              tripStart.getDate() >= inputD.getDate();
+
+            matchesDate = isSameDay || isWithinTrip || isUpcomingInMonth;
           }
         }
+
+        if (!matchesDate) {
+          const depRaw = departureDateInput.trim().toLowerCase();
+          matchesDate =
+            trip.startDate.toLowerCase().includes(depRaw) ||
+            trip.endDate.toLowerCase().includes(depRaw);
+        }
+
+        if (!matchesDate) return false;
       }
 
-      // 4. Budget filter (preset or custom input)
-      const effectiveMaxBudget =
-        customBudgetInput && !isNaN(parseInt(customBudgetInput, 10))
-          ? parseInt(customBudgetInput, 10)
-          : selectedBudgetMax;
+      // Trip Type
+      if (selectedTripType !== 'All') {
+        const badge = trip.badge?.toLowerCase() || '';
+        const tType = trip.tripType?.toLowerCase() || '';
+        const style = trip.travelStyle?.toLowerCase() || '';
+        const tags = (trip.tags || []).map((t) => t.toLowerCase());
+        const target = selectedTripType.toLowerCase();
 
-      if (effectiveMaxBudget !== undefined && trip.budgetPerPerson > effectiveMaxBudget) {
-        return false;
-      }
-
-      // 5. Trip Type filter
-      if (tripTypeFilter !== 'all' && trip.tripType !== tripTypeFilter) {
-        return false;
-      }
-
-      // 6. Difficulty filter
-      if (difficultyFilter !== 'all' && trip.difficulty !== difficultyFilter) {
-        return false;
-      }
-
-      // 7. Duration filter
-      if (durationFilter === 'short' && (trip.durationDays < 1 || trip.durationDays > 3)) {
-        return false;
-      }
-      if (durationFilter === 'medium' && (trip.durationDays < 4 || trip.durationDays > 6)) {
-        return false;
-      }
-      if (durationFilter === 'long' && trip.durationDays < 7) {
-        return false;
+        if (target.includes('group') && !badge.includes('group') && tType !== 'group' && style !== 'group')
+          return false;
+        if (target.includes('solo') && !badge.includes('solo') && tType !== 'solo' && style !== 'solo')
+          return false;
+        if (target.includes('couple') && !badge.includes('couple') && tType !== 'couple' && style !== 'couple')
+          return false;
+        if (target.includes('family') && !badge.includes('family') && tType !== 'family' && style !== 'family' && !tags.includes('family'))
+          return false;
+        if (target.includes('women') && !badge.includes('women') && !tType.includes('women') && !style.includes('women') && !tags.includes('women'))
+          return false;
       }
 
-      // 8. Theme / Preferences filter (must match at least one selected theme)
-      if (selectedThemes.length > 0) {
-        const hasThemeMatch = selectedThemes.some((theme) => {
-          const tLower = theme.toLowerCase();
-          return trip.preferences.some((p) => {
-            const pLower = p.toLowerCase();
-            return (
-              pLower === tLower ||
-              (tLower === 'hiking' && (pLower.includes('mountain') || pLower.includes('hiking'))) ||
-              (tLower === 'beaches' && (pLower.includes('beach') || pLower.includes('coastal')))
-            );
-          });
+      // Budget Max
+      if (budgetMax < 10000) {
+        if (trip.budgetPerPerson > budgetMax) return false;
+      }
+
+      // Duration Checkboxes (if empty, matches all)
+      if (selectedDurations.length > 0) {
+        const days = trip.durationDays;
+        const matchesAnyDuration = selectedDurations.some((durId) => {
+          const opt = DURATION_OPTIONS.find((o) => o.id === durId);
+          if (!opt) return false;
+          return days >= opt.min && days <= opt.max;
         });
-        if (!hasThemeMatch) return false;
+        if (!matchesAnyDuration) return false;
       }
 
-      // 9. Open spots only
-      if (openOnlyFilter && trip.status !== 'open') {
-        return false;
+      // Travel Styles (if empty, matches all)
+      if (selectedTravelStyles.length > 0) {
+        const tags = trip.tags || [];
+        const prefs = trip.preferences || [];
+        const combined = [...tags, ...prefs].map((s) => s.toLowerCase());
+        const matchesStyle = selectedTravelStyles.some((s) => {
+          const query = s.toLowerCase();
+          return combined.some((item) => item.includes(query) || query.includes(item));
+        });
+        if (!matchesStyle) return false;
       }
 
-      // 10. Sub-tabs logic
-      if (!isMyTripsRoute) {
-        if (activeTab === 'nearby') {
-          const dest = trip.destination.toLowerCase();
-          return dest.includes('kerala') || dest.includes('tamil nadu') || dest.includes('karnataka');
+      // Languages (if empty, matches all)
+      if (selectedLanguages.length > 0) {
+        const tripLangs = (trip.languages || []).map((l) => l.toLowerCase());
+        const matchesLang = selectedLanguages.some((l) =>
+          tripLangs.includes(l.toLowerCase())
+        );
+        if (!matchesLang) return false;
+      }
+
+      // Group Size (if empty, matches all)
+      if (selectedGroupSizes.length > 0) {
+        const size = trip.maxMembers;
+        const matchesGroup = selectedGroupSizes.some((gs) => {
+          if (gs === 'intimate') return size <= 4;
+          if (gs === 'standard') return size >= 5 && size <= 8;
+          if (gs === 'large') return size > 8;
+          return true;
+        });
+        if (!matchesGroup) return false;
+      }
+
+      // Inclusions (if empty, matches all)
+      if (selectedInclusions.length > 0) {
+        const allInc = (trip.inclusions || []).join(' ').toLowerCase();
+        const matchesAllInclusions = selectedInclusions.every((incId) => {
+          if (incId === 'transport') {
+            return (
+              allInc.includes('transport') ||
+              allInc.includes('volvo') ||
+              allInc.includes('suv') ||
+              allInc.includes('bus') ||
+              allInc.includes('scooter') ||
+              allInc.includes('ferry') ||
+              allInc.includes('bike')
+            );
+          }
+          if (incId === 'accommodation') {
+            return (
+              allInc.includes('stay') ||
+              allInc.includes('accommodation') ||
+              allInc.includes('hostel') ||
+              allInc.includes('hotel') ||
+              allInc.includes('homestay') ||
+              allInc.includes('tent') ||
+              allInc.includes('cottage') ||
+              allInc.includes('camp')
+            );
+          }
+          if (incId === 'meals') {
+            return (
+              allInc.includes('meal') ||
+              allInc.includes('breakfast') ||
+              allInc.includes('dinner') ||
+              allInc.includes('food')
+            );
+          }
+          if (incId === 'gear') {
+            return (
+              allInc.includes('gear') ||
+              allInc.includes('guide') ||
+              allInc.includes('equipment') ||
+              allInc.includes('tour') ||
+              allInc.includes('support') ||
+              allInc.includes('rafting')
+            );
+          }
+          return true;
+        });
+        if (!matchesAllInclusions) return false;
+      }
+
+      // Difficulty Level (if empty, matches all)
+      if (selectedDifficulties.length > 0) {
+        if (!selectedDifficulties.includes(trip.difficulty)) return false;
+      }
+
+      // Open Spots Available Only (if false, matches all)
+      if (onlyAvailableSpots) {
+        const spots = trip.spotsLeft ?? Math.max(0, trip.maxMembers - trip.members.length);
+        if (spots <= 0) return false;
+      }
+
+      // Minimum Rating (if 0, matches all)
+      if (minRating > 0) {
+        if ((trip.rating || 4.5) < minRating) return false;
+      }
+
+      // Category Tabs Logic
+      if (activeCategoryTab === 'Popular') {
+        // Shown by default
+      } else if (activeCategoryTab === 'Upcoming') {
+        // Priority to upcoming departure dates
+      } else if (activeCategoryTab === 'Nearby') {
+        // Priority to South India / regional trips
+      } else if (activeCategoryTab === 'My Interests') {
+        if (user?.travelInterests && user.travelInterests.length > 0) {
+          const uInterests = user.travelInterests.map((i) => i.toLowerCase());
+          const tripTags = [...(trip.tags || []), ...(trip.preferences || [])].map((t) =>
+            t.toLowerCase()
+          );
+          const sharesInterest = uInterests.some((ui) =>
+            tripTags.some((tt) => tt.includes(ui) || ui.includes(tt))
+          );
+          if (!sharesInterest) return false;
         }
       }
 
       return true;
     });
   }, [
-    baseTrips,
-    destinationQuery,
-    selectedCity,
-    startDateQuery,
-    endDateQuery,
-    selectedBudgetMax,
-    customBudgetInput,
-    tripTypeFilter,
-    difficultyFilter,
-    durationFilter,
-    selectedThemes,
-    openOnlyFilter,
-    activeTab,
+    trips,
     isMyTripsRoute,
+    isLoggedIn,
+    user?.id,
+    user?.travelInterests,
+    destinationInput,
+    fromCityInput,
+    startCityFilter,
+    departureDateInput,
+    selectedTripType,
+    budgetMax,
+    selectedDurations,
+    selectedTravelStyles,
+    selectedLanguages,
+    selectedGroupSizes,
+    selectedInclusions,
+    selectedDifficulties,
+    onlyAvailableSpots,
+    minRating,
+    activeCategoryTab,
   ]);
 
-  // Sorted trips logic
-  const sortedAndFilteredTrips = useMemo(() => {
+  // Sort Logic
+  const sortedTrips = useMemo(() => {
     const list = [...filteredTrips];
-    switch (sortBy) {
-      case 'price_asc':
-        return list.sort((a, b) => a.budgetPerPerson - b.budgetPerPerson);
-      case 'price_desc':
-        return list.sort((a, b) => b.budgetPerPerson - a.budgetPerPerson);
-      case 'date_asc':
-        return list.sort((a, b) => {
-          const da = parseTripDate(a.startDate)?.getTime() || 0;
-          const db = parseTripDate(b.startDate)?.getTime() || 0;
-          return da - db;
-        });
-      case 'duration_asc':
-        return list.sort((a, b) => a.durationDays - b.durationDays);
-      case 'duration_desc':
-        return list.sort((a, b) => b.durationDays - a.durationDays);
-      case 'popularity':
-        return list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
-      case 'recommended':
-      default:
-        return list.sort((a, b) => (b.compatibilityScore || 85) - (a.compatibilityScore || 85));
+    if (sortBy === 'price_asc') {
+      return list.sort((a, b) => a.budgetPerPerson - b.budgetPerPerson);
     }
+    if (sortBy === 'price_desc') {
+      return list.sort((a, b) => b.budgetPerPerson - a.budgetPerPerson);
+    }
+    if (sortBy === 'rating') {
+      return list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    if (sortBy === 'duration') {
+      return list.sort((a, b) => a.durationDays - b.durationDays);
+    }
+    return list;
   }, [filteredTrips, sortBy]);
 
-  return (
-    <div
-      className={`flex flex-col gap-3 lg:gap-8 text-left w-full max-w-[1536px] mx-auto ${
-        isInApp ? '' : 'px-4 sm:px-6 lg:px-8 pt-2 pb-4 lg:py-10'
-      }`}
-    >
-      {/* 1. HERO & DISCOVERY SEARCH CONSOLE */}
-      <div className="relative rounded-3xl overflow-hidden border border-border/70 bg-white shadow-card text-white">
-        {/* Scenic Background with Gradient */}
-        <div className="absolute inset-x-0 top-0 h-[340px] sm:h-[320px] z-0">
-          <img
-            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=85"
-            alt="Scenic mountain ridge travellers"
-            className="w-full h-full object-cover object-[center_45%]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-950/65 to-emerald-950/30" />
-        </div>
-
-        <div className="relative z-10 p-3 sm:p-5 lg:p-10">
-          {/* Header Title & Create Room CTA Button */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-6 lg:mb-10 text-left">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-accent text-xs font-semibold mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Your next adventure starts here</span>
+  const renderFilterSections = (isDrawer = false) => (
+    <>
+      {!isDrawer && (
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 sticky top-0 bg-white z-10 pt-0.5">
+              <div className="flex items-center gap-2">
+                <h2 className="font-heading font-extrabold text-base text-gray-900">Filters</h2>
+                {activeFilterCount > 0 && (
+                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
               </div>
-              <h1 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-tight">
-                {isMyTripsRoute ? 'My Adventures' : 'Find Your Next Trip'}
-              </h1>
-              <p className="text-xs sm:text-base text-gray-200 mt-2 max-w-xl font-medium leading-relaxed">
-                {isMyTripsRoute
-                  ? 'All trips you have organized or joined with fellow explorers.'
-                  : 'Discover beautiful places and find travel companions who share your pace, plans, and budget.'}
-              </p>
-            </div>
-
-            {/* "+ Create Trip Room / Host Space" button */}
-            <div className="shrink-0">
               <button
                 type="button"
-                onClick={handleOpenCreateRoom}
-                className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-white/95 hover:bg-white text-primary font-heading font-bold text-sm shadow-lg motion-safe:hover:-translate-y-0.5 active:scale-[0.98] transition-all border border-white/70 cursor-pointer"
+                onClick={handleResetFilters}
+                className="text-xs text-emerald-700 hover:text-emerald-950 font-semibold flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer group"
+                title="Reset all filters to blank"
               >
-                <PlusCircle className="w-5 h-5" />
-                <span>Create a trip</span>
+                <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-90 transition-transform duration-300" />
+                <span>Reset</span>
               </button>
             </div>
-          </div>
 
-          {/* Elevated Search & Filter Console Card */}
-          <div className="trip-search-console bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-text border border-border/70">
-            <h2 className="lg:hidden text-sm font-bold text-text mb-3">Plan your route</h2>
-            {/* Primary Search Inputs Grid */}
-            <div className="grid grid-cols-2 xl:grid-cols-12 gap-3 items-stretch">
-              {/* Destination Search */}
-              <div className="trip-search-field col-span-2 sm:col-span-1 xl:col-span-3 flex items-center gap-2 px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
-                <MapPin className="w-5 h-5 text-primary shrink-0" />
-                <div className="flex flex-col text-left w-full min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                    Destination
-                  </span>
-                  <div className="flex items-center">
-                    <input
-                      type="text"
-                      value={destinationQuery}
-                      onChange={(e) => setDestinationQuery(e.target.value)}
-                      placeholder="Where to?"
-                      className="w-full text-xs sm:text-sm font-semibold text-text bg-transparent outline-none placeholder:text-text-subtle truncate"
-                    />
-                    {destinationQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setDestinationQuery('')}
-                        className="text-text-muted hover:text-text p-0.5 ml-1"
-                        aria-label="Clear destination"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+            
+      )}
+
+{/* 1. Trip Type (Pills) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800">Trip Type</label>
+                {selectedTripType !== 'All' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTripType('All')}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {TRIP_TYPES.map((type) => {
+                  const isSelected = selectedTripType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setSelectedTripType(type)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#0D5A46] text-white font-semibold shadow-2xs'
+                          : 'border border-gray-200 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Budget (per person) Range Slider + Quick Presets */}
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold text-gray-800 mb-1.5">
+                <span>Budget (per person)</span>
+                <span className="text-emerald-700 font-semibold">
+                  {budgetMax >= 10000 ? '₹10,000+' : `Up to ₹${budgetMax.toLocaleString()}`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="1000"
+                max="10000"
+                step="500"
+                value={budgetMax}
+                onChange={(e) => setBudgetMax(Number(e.target.value))}
+                className="w-full accent-[#0D5A46] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+              />
+              <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
+                <span>₹1,000</span>
+                <span>₹10,000+</span>
               </div>
 
-              {/* Departure Hub / From City */}
-              <div className="trip-search-field col-span-2 sm:col-span-1 xl:col-span-3 flex items-center gap-2 px-2.5 sm:px-3.5 py-2.5 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px]">
-                <Compass className="w-5 h-5 text-primary shrink-0" />
-                <div className="flex flex-col text-left w-full min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                    Departure Hub
-                  </span>
-                  <select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    className="w-full text-xs sm:text-sm font-semibold text-text bg-transparent outline-none cursor-pointer"
+              {/* Quick Budget Chips */}
+              <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+                <button
+                  type="button"
+                  onClick={() => setBudgetMax(4000)}
+                  className={`text-[11px] py-1 px-1.5 rounded-lg border text-center transition-colors cursor-pointer ${
+                    budgetMax === 4000
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-800 font-bold'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  &lt; ₹4,000
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBudgetMax(7000)}
+                  className={`text-[11px] py-1 px-1.5 rounded-lg border text-center transition-colors cursor-pointer ${
+                    budgetMax === 7000
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-800 font-bold'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  &le; ₹7,000
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBudgetMax(10000)}
+                  className={`text-[11px] py-1 px-1.5 rounded-lg border text-center transition-colors cursor-pointer ${
+                    budgetMax === 10000
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-800 font-bold'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Any Budget
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Trip Duration Checkboxes (BLANK BY DEFAULT) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800">Trip Duration</label>
+                {selectedDurations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDurations([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
                   >
-                    {DEPARTURE_CITIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
+                    Clear ({selectedDurations.length})
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {DURATION_OPTIONS.map((dur) => {
+                  const isChecked = selectedDurations.includes(dur.id);
+                  return (
+                    <label
+                      key={dur.id}
+                      onClick={() => toggleDuration(dur.id)}
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                            isChecked
+                              ? 'bg-[#0D5A46] border-[#0D5A46] text-white shadow-2xs'
+                              : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="font-medium text-xs text-gray-800">{dur.label}</span>
+                      </div>
+                      <span className="text-[11px] text-gray-400">{dur.desc}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Travel Style (2-column checkboxes, BLANK BY DEFAULT) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800">Travel Style & Vibe</label>
+                {selectedTravelStyles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTravelStyles([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear ({selectedTravelStyles.length})
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                {(showAllStyles ? TRAVEL_STYLES : TRAVEL_STYLES.slice(0, 8)).map((style) => {
+                  const isChecked = selectedTravelStyles.includes(style);
+                  return (
+                    <label
+                      key={style}
+                      onClick={() => toggleTravelStyle(style)}
+                      className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                          isChecked
+                            ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                            : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="font-medium text-xs text-gray-700 truncate">{style}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllStyles(!showAllStyles)}
+                className="mt-2 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
+              >
+                <span>{showAllStyles ? 'Show Less' : `+ Show ${TRAVEL_STYLES.length - 8} More Styles`}</span>
+              </button>
+            </div>
+
+            {/* 5. Languages (BLANK BY DEFAULT) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800">Languages</label>
+                {selectedLanguages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLanguages([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear ({selectedLanguages.length})
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                {LANGUAGES.map((lang) => {
+                  const isChecked = selectedLanguages.includes(lang);
+                  return (
+                    <label
+                      key={lang}
+                      onClick={() => toggleLanguage(lang)}
+                      className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                          isChecked
+                            ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                            : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="font-medium text-xs text-gray-700">{lang}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. Group Size (NEW FILTER OPTION) */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Group Size</span>
+                </label>
+                {selectedGroupSizes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroupSizes([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {GROUP_SIZE_OPTIONS.map((gs) => {
+                  const isChecked = selectedGroupSizes.includes(gs.id);
+                  return (
+                    <label
+                      key={gs.id}
+                      onClick={() => toggleGroupSize(gs.id)}
+                      className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                          isChecked
+                            ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                            : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="font-medium text-xs text-gray-700">{gs.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 7. Trip Inclusions (NEW FILTER OPTION) */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Trip Inclusions</span>
+                </label>
+                {selectedInclusions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInclusions([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {INCLUSION_OPTIONS.map((inc) => {
+                  const isChecked = selectedInclusions.includes(inc.id);
+                  return (
+                    <label
+                      key={inc.id}
+                      onClick={() => toggleInclusion(inc.id)}
+                      className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-0.5 group"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                          isChecked
+                            ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                            : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="font-medium text-xs text-gray-700">{inc.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 8. Activity & Difficulty Level (NEW FILTER OPTION) */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-800">Difficulty Level</label>
+                {selectedDifficulties.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDifficulties([])}
+                    className="text-[11px] text-gray-400 hover:text-gray-700 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {DIFFICULTY_OPTIONS.map((diff) => {
+                  const isChecked = selectedDifficulties.includes(diff.id);
+                  return (
+                    <label
+                      key={diff.id}
+                      onClick={() => toggleDifficulty(diff.id)}
+                      className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                            isChecked
+                              ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                              : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="font-medium text-xs text-gray-800">{diff.label}</span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 9. Availability & Rating (NEW FILTER OPTIONS) */}
+            <div className="pt-2 border-t border-gray-100 space-y-3">
+              <label className="text-xs font-bold text-gray-800 block">Preferences & Trust</label>
+
+              {/* Instant Open Spots Only Toggle */}
+              <label
+                onClick={() => setOnlyAvailableSpots(!onlyAvailableSpots)}
+                className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-gray-50 group"
+              >
+                <span className="font-medium text-xs text-gray-800">Open Spots Available Only</span>
+                <div
+                  className={`w-8 h-4 rounded-full p-0.5 transition-colors ${
+                    onlyAvailableSpots ? 'bg-[#0D5A46]' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`w-3 h-3 rounded-full bg-white transition-transform ${
+                      onlyAvailableSpots ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </label>
+
+              {/* 4.5+ Star Rating Chip */}
+              <label
+                onClick={() => setMinRating(minRating > 0 ? 0 : 4.5)}
+                className="flex items-center justify-between text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-gray-50 group"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span className="font-medium text-xs text-gray-800">Top Rated (4.5★ &amp; above)</span>
+                </div>
+                <div
+                  className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    minRating >= 4.5
+                      ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                      : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                  }`}
+                >
+                  {minRating >= 4.5 && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+              </label>
+
+              {/* Departure City Quick Filter */}
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                  Starting City
+                </label>
+                <div className="relative">
+                  <select
+                    value={startCityFilter}
+                    onChange={(e) => setStartCityFilter(e.target.value)}
+                    className="w-full appearance-none px-3 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-800 bg-white focus:outline-none focus:border-primary pr-7 cursor-pointer"
+                  >
+                    {START_CITIES.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
+            </div>
 
-              {/* Dates Range */}
-              <div
-                onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.tagName !== 'BUTTON' && target.tagName !== 'INPUT') {
-                    if (!startDateQuery) openStartDatePicker();
-                    else openEndDatePicker();
-                  }
-                }}
-                className="trip-search-dates col-span-2 xl:col-span-3 flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-light-bg border border-border/80 focus-within:bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all min-h-[50px] cursor-pointer"
+            
+
+      {!isDrawer && (
+        <div className="pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 hover:border-emerald-500/60 text-xs font-semibold text-gray-700 hover:text-emerald-800 hover:bg-emerald-50/50 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Calendar
-                  className="w-5 h-5 text-primary shrink-0 hover:scale-110 transition-transform cursor-pointer"
-                  onClick={() => {
-                    if (!startDateQuery) openStartDatePicker();
-                    else openEndDatePicker();
-                  }}
-                />
-                <div className="flex flex-col text-left w-full min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span
-                      onClick={() => (!startDateQuery ? openStartDatePicker() : openEndDatePicker())}
-                      className="text-[10px] font-bold uppercase tracking-wider text-text-muted cursor-pointer hover:text-primary transition-colors"
-                    >
-                      Travel Dates
-                    </span>
-                    {(startDateQuery || endDateQuery) && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setStartDateQuery('');
-                          setEndDateQuery('');
-                        }}
-                        className="text-[10px] text-primary hover:underline font-semibold"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                  <div className="trip-date-inputs flex items-center gap-1.5 mt-0.5">
-                    <label onClick={(event) => event.stopPropagation()} className="date-control group relative min-w-0 flex flex-col gap-1 lg:contents"><span className="lg:hidden text-[10px] font-semibold text-text-muted">From</span>
-                      <span className="lg:hidden flex items-center justify-between gap-1 min-h-[46px] rounded-xl border border-border bg-light-bg px-3 text-xs font-medium text-text group-focus-within:ring-2 group-focus-within:ring-primary/20"><span className="truncate">{startDateQuery ? new Date(startDateQuery + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Start date'}</span><Calendar className="w-4 h-4 text-primary shrink-0" /></span>
-                    <input
-                      ref={startDateInputRef}
-                      type="date"
-                      value={startDateQuery}
-                      onChange={(e) => setStartDateQuery(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openStartDatePicker();
-                      }}
-                      aria-label="Trip start date"
-                      className="w-full text-xs font-semibold text-text bg-transparent outline-none cursor-pointer"
-                    />
-                    </label>
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEndDatePicker();
-                      }}
-                      className="text-text-muted text-xs font-bold shrink-0 cursor-pointer hover:text-primary"
-                    >
-                      →
-                    </span>
-                    <label onClick={(event) => event.stopPropagation()} className="date-control group relative min-w-0 flex flex-col gap-1 lg:contents"><span className="lg:hidden text-[10px] font-semibold text-text-muted">Until</span>
-                      <span className="lg:hidden flex items-center justify-between gap-1 min-h-[46px] rounded-xl border border-border bg-light-bg px-3 text-xs font-medium text-text group-focus-within:ring-2 group-focus-within:ring-primary/20"><span className="truncate">{endDateQuery ? new Date(endDateQuery + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'End date'}</span><Calendar className="w-4 h-4 text-primary shrink-0" /></span>
-                    <input
-                      ref={endDateInputRef}
-                      type="date"
-                      value={endDateQuery}
-                      min={startDateQuery || undefined}
-                      onChange={(e) => setEndDateQuery(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEndDatePicker();
-                      }}
-                      aria-label="Trip end date"
-                      className="w-full text-xs font-semibold text-text bg-transparent outline-none cursor-pointer"
-                    />
-                    </label>
-                  </div>
-                </div>
-              </div>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset All Filters</span>
+              </button>
+            </div>
+          
+      )}
+    </>
+  );
 
-              {/* Action Buttons: Filter Toggle & Search */}
-              <div className="trip-search-actions col-span-2 xl:col-span-3 flex items-center gap-2.5 min-h-[50px]">
+  const displayedTrips = sortedTrips.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedTrips.length;
+
+  return (
+    <div className="w-full text-left bg-light-bg min-h-screen">
+      {/* ========================================================================= */}
+      {/* 1. PANORAMIC HERO BANNER WITH DOODLE & EMBEDDED SEARCH BAR */}
+      {/* ========================================================================= */}
+      <section className="relative overflow-hidden border-b border-gray-200/80 bg-[#E8F4EE]">
+        {/* Mountain Vista Background with Hiker on Right */}
+        <div
+          className="absolute inset-0 bg-cover bg-right"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=85')`,
+            backgroundPosition: 'right 20% center',
+          }}
+        />
+
+        {/* Soft Multi-stop Gradient Overlay for Readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#F4FAF7] via-[#F4FAF7]/95 via-45% to-transparent" />
+
+        <div className="relative max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Left Content Area */}
+            <div className="max-w-2xl text-left z-10">
+              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                FIND YOUR NEXT ADVENTURE
+              </p>
+              <h1 className="font-heading font-extrabold text-3xl sm:text-4xl lg:text-5xl text-gray-900 tracking-tight">
+                Join Amazing Trips
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed max-w-lg">
+                Meet like-minded travellers, explore new places and create unforgettable memories
+                together.
+              </p>
+            </div>
+
+            {/* Center-Right Calligraphy Script Doodle */}
+            <div className="hidden lg:flex items-center gap-2 select-none -rotate-6 text-[#0A6044] pr-10 xl:pr-24">
+              <div
+                className="text-xl xl:text-2xl font-bold tracking-tight leading-snug drop-shadow-xs"
+                style={{
+                  fontFamily: '"Caveat", "Segoe Script", "Brush Script MT", cursive, sans-serif',
+                }}
+              >
+                New people
+                <br />
+                New places
+                <br />
+                Better journeys.
+              </div>
+              <div className="text-emerald-700 font-bold text-lg mt-2 -ml-0.5">彡</div>
+            </div>
+          </div>
+
+          {/* Unified Horizontal Search Bar inside Hero */}
+          <div className="mt-8 bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 shadow-md border border-gray-200/90 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-center">
+            {/* Field 1: Destination */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl hover:bg-gray-50/80 transition-colors border-b sm:border-b-0 sm:border-r border-gray-200/60">
+              <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] font-bold text-gray-900 leading-tight">
+                  Destination
+                </span>
+                <input
+                  type="text"
+                  placeholder="Where do you want to go?"
+                  value={destinationInput}
+                  onChange={(e) => setDestinationInput(e.target.value)}
+                  className="w-full bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none truncate"
+                />
+              </div>
+              {destinationInput && (
                 <button
                   type="button"
-                  onClick={() => setShowMoreFilters((prev) => !prev)}
-                  className={`flex-1 h-full min-h-[50px] flex items-center justify-center gap-2 px-3.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                    showMoreFilters || activeFiltersCount > 0
-                      ? 'bg-primary/10 text-primary border-primary shadow-xs'
-                      : 'bg-light-bg hover:bg-gray-100 text-text border-border'
-                  }`}
-                  aria-expanded={showMoreFilters}
-                  aria-haspopup="dialog"
+                  onClick={() => setDestinationInput('')}
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" />
-                  <span>Filters</span>
-                  {activeFiltersCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                  {showMoreFilters ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                  )}
+                  <X className="w-3.5 h-3.5" />
                 </button>
-
-
-              </div>
-            </div>
-
-            <Drawer isOpen={showMoreFilters} onClose={() => setShowMoreFilters(false)} title="Filter trips" footer={
-              <div className="flex items-center gap-3">
-                <Button type="button" variant="secondary" onClick={handleClearAllFilters} className="shrink-0">Reset all</Button>
-                <Button type="button" onClick={() => { setShowMoreFilters(false); document.getElementById('trips-catalog-view')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex-1">Show {filteredTrips.length} {filteredTrips.length === 1 ? 'trip' : 'trips'}</Button>
-              </div>
-            }>
-              <div className="space-y-5">
-            {/* Quick Destination Chips Row */}
-            <div className="rounded-2xl border border-border/70 bg-light-bg/60 p-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-text-muted w-full mb-1 flex items-center gap-1 shrink-0">
-                <Sparkles className="w-3 h-3 text-primary" />
-                <span>Trending destinations</span>
-              </span>
-              {QUICK_DESTINATIONS.map((dest) => {
-                const isActive =
-                  (dest === 'All' && !destinationQuery) ||
-                  destinationQuery.toLowerCase() === dest.toLowerCase();
-                return (
-                  <button
-                    key={dest}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => setDestinationQuery(dest === 'All' ? '' : dest)}
-                    className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
-                      isActive
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-light-bg hover:bg-gray-200 text-text border border-border/80'
-                    }`}
-                  >
-                    {dest}
-                  </button>
-                );
-              })}
-            </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Filter 1: Budget Range */}
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-light-bg/60 p-4">
-                    <label className="text-xs font-semibold text-text flex items-center gap-1.5">
-                      <Wallet className="w-3.5 h-3.5 text-primary" />
-                      <span>Max Budget / Person</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {BUDGET_PRESETS.map((preset) => {
-                        const isSelected = selectedBudgetMax === preset.max && !customBudgetInput;
-                        return (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => {
-                              setSelectedBudgetMax(preset.max);
-                              setCustomBudgetInput('');
-                            }}
-                            className={`text-xs min-h-[38px] py-2 px-2 rounded-lg border text-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                              isSelected
-                                ? 'bg-primary text-white border-primary shadow-xs'
-                                : 'bg-white hover:bg-emerald-50 hover:border-primary/40 text-text border-border/80'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* Custom budget input */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-xs text-text-muted font-medium shrink-0">Custom ₹</span>
-                      <input
-                        type="number"
-                        placeholder="e.g. 7500"
-                        value={customBudgetInput}
-                        onChange={(e) => {
-                          setCustomBudgetInput(e.target.value);
-                          setSelectedBudgetMax(undefined);
-                        }}
-                        aria-label="Custom maximum budget per person"
-                        className="w-full min-w-0 text-xs rounded-lg border border-border px-3 py-2 text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Filter 2: Trip Type */}
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-light-bg/60 p-4">
-                    <label className="text-xs font-semibold text-text flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-primary" />
-                      <span>Travel Group Type</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { value: 'all', label: 'All Types' },
-                        { value: 'group', label: '👥 Group Trips' },
-                        { value: 'solo', label: '🧭 Solo Explorers' },
-                        { value: 'couple', label: '💑 Couple Friendly' },
-                      ].map((t) => (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => setTripTypeFilter(t.value as any)}
-                          className={`text-xs min-h-[38px] py-2 px-2 rounded-lg border text-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                            tripTypeFilter === t.value
-                              ? 'bg-primary text-white border-primary shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 hover:border-primary/40 text-text border-border/80'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Filter 3: Difficulty */}
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-light-bg/60 p-4">
-                    <label className="text-xs font-semibold text-text flex items-center gap-1.5">
-                      <Flame className="w-3.5 h-3.5 text-primary" />
-                      <span>Trek & Route Difficulty</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { value: 'all', label: 'All Levels' },
-                        { value: 'easy', label: '🟢 Easy / Relaxed' },
-                        { value: 'medium', label: '🟡 Moderate' },
-                        { value: 'hard', label: '🔴 Challenging' },
-                      ].map((d) => (
-                        <button
-                          key={d.value}
-                          type="button"
-                          onClick={() => setDifficultyFilter(d.value as any)}
-                          className={`text-xs min-h-[38px] py-2 px-2 rounded-lg border text-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                            difficultyFilter === d.value
-                              ? 'bg-primary text-white border-primary shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 hover:border-primary/40 text-text border-border/80'
-                          }`}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Filter 4: Duration */}
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-light-bg/60 p-4">
-                    <label className="text-xs font-semibold text-text flex items-center gap-1.5">
-                      <Compass className="w-3.5 h-3.5 text-primary" />
-                      <span>Trip Duration</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { value: 'all', label: 'Any Days' },
-                        { value: 'short', label: '1–3 Days (Weekend)' },
-                        { value: 'medium', label: '4–6 Days (Week)' },
-                        { value: 'long', label: '7+ Days (Expedition)' },
-                      ].map((dur) => (
-                        <button
-                          key={dur.value}
-                          type="button"
-                          onClick={() => setDurationFilter(dur.value as any)}
-                          className={`text-xs min-h-[38px] py-2 px-2 rounded-lg border text-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                            durationFilter === dur.value
-                              ? 'bg-primary text-white border-primary shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 hover:border-primary/40 text-text border-border/80'
-                          }`}
-                        >
-                          {dur.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter 5: Trip Categories & Themes (Multi-select) */}
-                <div className="pt-3 border-t border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-text flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-primary" />
-                      <span>Trip Category & Travel Interests</span>
-                    </label>
-                    {selectedThemes.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedThemes([])}
-                        className="text-[11px] text-primary hover:underline font-medium"
-                      >
-                        Clear interests
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {THEME_OPTIONS.map((theme) => {
-                      const isSelected = selectedThemes.includes(theme.id);
-                      const Icon = theme.icon;
-                      return (
-                        <button
-                          key={theme.id}
-                          type="button"
-                          onClick={() => toggleTheme(theme.id)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
-                            isSelected
-                              ? 'bg-primary text-white border-primary shadow-xs'
-                              : 'bg-white hover:bg-emerald-50 hover:border-primary/40 text-text border-border/80'
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                          <span>{theme.label}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 ml-0.5 stroke-[2.5]" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Filter 6: Availability Checkbox */}
-                <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-text select-none">
-                    <input
-                      type="checkbox"
-                      checked={openOnlyFilter}
-                      onChange={(e) => setOpenOnlyFilter(e.target.checked)}
-                      className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary cursor-pointer"
-                    />
-                    <span>Only show trips with open spots for joining</span>
-                  </label>
-                </div>
-
-              </div>
-            </Drawer>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. ACTIVE FILTERS CHIPS (Summary bar if any active filters) */}
-      {activeFiltersCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 bg-light-bg/70 p-3 rounded-2xl border border-border">
-          <span className="text-xs font-bold text-text-muted flex items-center gap-1 mr-1">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
-            <span>Active Filters ({activeFiltersCount}):</span>
-          </span>
-
-          {destinationQuery && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs">
-              Destination: {destinationQuery}
-              <button
-                type="button"
-                onClick={() => setDestinationQuery('')}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {selectedCity !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs">
-              From: {selectedCity}
-              <button
-                type="button"
-                onClick={() => setSelectedCity('all')}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {(startDateQuery || endDateQuery) && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs">
-              Dates: {startDateQuery || 'Any'} → {endDateQuery || 'Any'}
-              <button
-                type="button"
-                onClick={() => {
-                  setStartDateQuery('');
-                  setEndDateQuery('');
-                }}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {(selectedBudgetMax !== undefined || customBudgetInput) && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs">
-              Max ₹{customBudgetInput || selectedBudgetMax?.toLocaleString('en-IN')}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedBudgetMax(undefined);
-                  setCustomBudgetInput('');
-                }}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {tripTypeFilter !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs capitalize">
-              Type: {tripTypeFilter}
-              <button
-                type="button"
-                onClick={() => setTripTypeFilter('all')}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {difficultyFilter !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs capitalize">
-              Difficulty: {difficultyFilter}
-              <button
-                type="button"
-                onClick={() => setDifficultyFilter('all')}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {durationFilter !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs capitalize">
-              Duration: {durationFilter}
-              <button
-                type="button"
-                onClick={() => setDurationFilter('all')}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {selectedThemes.map((theme) => (
-            <span
-              key={theme}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs"
-            >
-              {theme}
-              <button
-                type="button"
-                onClick={() => toggleTheme(theme)}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-
-          {openOnlyFilter && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-primary border border-primary/30 text-xs font-semibold shadow-xs">
-              Open spots only
-              <button
-                type="button"
-                onClick={() => setOpenOnlyFilter(false)}
-                className="hover:text-red-500"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={handleClearAllFilters}
-            className="text-xs text-primary font-bold hover:underline ml-auto"
-          >
-            Clear all
-          </button>
-        </div>
-      )}
-
-      {/* 3. SUB-TABS & SORT CONTROL ROW */}
-      <div id="trips-catalog-view" className="space-y-2 scroll-mt-24">
-        <div className="flex items-center justify-between gap-2 sm:gap-4 border-b border-border">
-          <div className="flex-1 min-w-0">
-            {!isMyTripsRoute ? <>
-              <div className="hidden sm:block"><Tabs tabs={filterTabs} activeTab={activeTab} onChange={(id) => setActiveTab(id as any)} variant="underline" /></div>
-              <div className="flex items-center gap-4 sm:hidden" aria-label="Trip categories">
-                {filterTabs.map((tab) => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as any)} className={`py-3 text-[11px] font-semibold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-primary'}`}>{tab.id === 'popular' ? 'Popular' : tab.label}</button>)}
-              </div>
-            </> : <p className="text-xs sm:text-sm font-semibold text-text py-3">Your joined & hosted trips</p>}
-          </div>
-          <div title={SORT_OPTIONS.find((option) => option.value === sortBy)?.label} className="relative shrink-0 flex items-center gap-1.5 bg-white px-2.5 sm:px-3 py-2 rounded-lg border border-primary/20 shadow-xs text-primary mb-1">
-            <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden text-xs font-semibold">Sort</span>
-            <ChevronDown className="sm:hidden w-3 h-3" />
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortOption)} aria-label="Sort trips by" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer sm:static sm:opacity-100 sm:w-auto sm:h-auto sm:max-w-[235px] text-xs font-semibold text-text bg-transparent outline-none">
-              {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <p className="text-xs text-text-muted font-medium">{sortedAndFilteredTrips.length} {sortedAndFilteredTrips.length === 1 ? 'trip found' : 'trips found'}</p>
-      </div>
-      {/* 4. RESPONSIVE TRIP CARDS GRID */}
-      {sortedAndFilteredTrips.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {sortedAndFilteredTrips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={<Frown className="w-8 h-8" />}
-          title={isMyTripsRoute ? 'No trips found in your account' : 'No trips match your filters'}
-          description={
-            isMyTripsRoute
-              ? "You haven't joined or created any trips yet. Explore popular open trips or host your own public room!"
-              : "We couldn't find any trips matching your selected destination, dates, budget or preferences. Try broadening your criteria or reset filters."
-          }
-          actionLabel={isMyTripsRoute ? 'Explore All Trips' : 'Reset all filters'}
-          onAction={
-            isMyTripsRoute
-              ? () => navigate(isInApp ? '/app/trips' : '/trips')
-              : handleClearAllFilters
-          }
-        />
-      )}
-
-      {/* 5. CREATE TRIP ROOM & PUBLIC SPACE MODAL */}
-      {isCreateRoomOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div role="dialog" aria-modal="true" aria-labelledby="create-trip-room-title" className="bg-white rounded-2xl sm:rounded-3xl max-w-5xl w-full shadow-2xl border border-border overflow-y-auto lg:overflow-hidden overscroll-contain text-left my-auto max-h-[calc(100dvh-16px)] sm:max-h-[94dvh] lg:flex lg:flex-col">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 lg:p-8 bg-gradient-to-r from-emerald-900 via-primary-dark to-emerald-800 text-white flex items-start justify-between shrink-0">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-7 h-7 rounded-lg bg-amber-400 text-text font-bold text-sm flex items-center justify-center">
-                    👑
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                    Host a Space · Trip Leader
-                  </span>
-                </div>
-                <h3 id="create-trip-room-title" className="font-heading font-extrabold text-xl sm:text-2xl lg:text-3xl text-white">
-                  <span className="lg:hidden">Create a trip room</span>
-                  <span className="hidden lg:inline">Create a Trip Room & Public Space</span>
-                </h3>
-                <p className="text-xs text-gray-200 mt-1 max-w-md">
-                  <span className="lg:hidden">Set your plans and choose who travels with you.</span>
-                  <span className="hidden lg:inline">Set the itinerary, choose who travels with you, and become the Trip Leader for this adventure.</span>
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsCreateRoomOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors shrink-0 ml-2"
-                aria-label="Close modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Scrollable Body */}
-            <form onSubmit={handleCreateRoomSubmit} className="p-4 sm:p-5 lg:p-8 overflow-visible lg:overflow-y-auto space-y-5 lg:space-y-6 lg:flex-1 min-h-0">
-              {formError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
-                  {formError}
-                </div>
               )}
+            </div>
 
-              {/* Step A: Space Visibility / Room Type */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-primary" />
-                  <span>Choose Room Space Visibility *</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setNewRoomType('public')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
-                      newRoomType === 'public'
-                        ? 'bg-primary/10 text-primary border-primary ring-2 ring-primary/30 shadow-xs'
-                        : 'bg-white hover:bg-light-bg text-text border-border'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-heading font-bold text-sm">
-                      <span className="flex items-center gap-1.5">
-                        <Globe className="w-4 h-4 text-primary" />
-                        <span>Public Space</span>
-                      </span>
-                      <span className="text-[10px] bg-primary text-white font-bold px-2 py-0.5 rounded-full">
-                        Recommended
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-muted mt-1 leading-snug">
-                      Listed on the public trips board. Travellers across Tripzobox can discover and request to join.
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setNewRoomType('private')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
-                      newRoomType === 'private'
-                        ? 'bg-primary/10 text-primary border-primary ring-2 ring-primary/30 shadow-xs'
-                        : 'bg-white hover:bg-light-bg text-text border-border'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-heading font-bold text-sm">
-                      <Lock className="w-4 h-4 text-primary" />
-                      <span>Private Room</span>
-                    </div>
-                    <p className="text-xs text-text-muted mt-1 leading-snug">
-                      Hidden from public search. Only companions with your secret Room Code can join.
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Step B: Room Title & Destination */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Trip Room Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={newRoomName}
-                    onChange={(e) => setNewRoomName(e.target.value)}
-                    placeholder="e.g. Munnar Misty Morning Treks"
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Destination *
-                  </label>
-                  <input
-                    type="text"
-                    value={newDestination}
-                    onChange={(e) => setNewDestination(e.target.value)}
-                    placeholder="e.g. Munnar, Kerala"
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary"
-                    required
-                  />
-                  {/* Quick destination suggestion pills */}
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {['Munnar', 'Varkala', 'Goa', 'Kochi', 'Coorg', 'Ooty'].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setNewDestination(`${d}, South India`)}
-                        className="text-[10px] bg-light-bg hover:bg-gray-200 text-text px-2 py-0.5 rounded-md border border-border"
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Step C: Departure Hub & Dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Starting Hub
-                  </label>
-                  <select
-                    value={newStartCity}
-                    onChange={(e) => setNewStartCity(e.target.value)}
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3 py-2.5 text-text outline-none focus:border-primary"
-                  >
-                    <option value="Kochi">Kochi, Kerala</option>
-                    <option value="Bengaluru">Bengaluru, Karnataka</option>
-                    <option value="Panaji">Goa (Panaji)</option>
-                    <option value="Coimbatore">Coimbatore</option>
-                    <option value="Mumbai">Mumbai</option>
-                    <option value="Delhi">Delhi</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newStartDate}
-                    onChange={(e) => setNewStartDate(e.target.value)}
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3 py-2.5 text-text outline-none focus:border-primary cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    min={newStartDate}
-                    value={newEndDate}
-                    onChange={(e) => setNewEndDate(e.target.value)}
-                    className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3 py-2.5 text-text outline-none focus:border-primary cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Step D: Budget & Max Room Capacity */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-text">
-                      Budget / Person
-                    </label>
-                    <span className="text-xs font-bold text-primary">
-                      ₹{newBudget.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1500"
-                    max="20000"
-                    step="500"
-                    value={newBudget}
-                    onChange={(e) => setNewBudget(parseInt(e.target.value, 10))}
-                    className="w-full accent-primary cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
-                    <span>₹1,500</span>
-                    <span>₹10,000</span>
-                    <span>₹20,000+</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="trip-room-capacity" className="block text-xs font-semibold text-text mb-1">
-                    Room Capacity (Max Travellers)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="trip-room-capacity"
-                      type="number"
-                      min={newTripType === 'solo' ? 1 : 2}
-                      max="20"
-                      value={newTripType === 'solo' ? 1 : newMaxMembers}
-                      disabled={newTripType === 'solo'}
-                      aria-describedby={newTripType === 'solo' ? 'solo-capacity-explanation' : undefined}
-                      onChange={(e) => setNewMaxMembers(parseInt(e.target.value, 10) || 6)}
-                      className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary disabled:bg-gray-100 disabled:text-text-muted disabled:cursor-not-allowed"
-                    />
-                    <span className="text-xs text-text-muted shrink-0">travellers</span>
-                  </div>
-                  {newTripType === 'solo' && (
-                    <p id="solo-capacity-explanation" role="status" className="mt-2 flex items-start gap-1.5 text-xs text-text-muted leading-relaxed">
-                      <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      Solo trips are for one traveller, so room capacity is fixed at 1. Choose Group or Couple to change it.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Step E: Group Type & Difficulty */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1.5">
-                    Travel Group Type
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { value: 'group', label: '👥 Group' },
-                      { value: 'solo', label: '🧭 Solo' },
-                      { value: 'couple', label: '💑 Couple' },
-                    ].map((gt) => (
-                      <button
-                        key={gt.value}
-                        type="button"
-                        onClick={() => setNewTripType(gt.value as any)}
-                        className={`text-xs py-2 rounded-xl border font-semibold transition-all ${
-                          newTripType === gt.value
-                            ? 'bg-primary text-white border-primary shadow-xs'
-                            : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                      >
-                        {gt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-text mb-1.5">
-                    Difficulty Level
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { value: 'easy', label: '🟢 Easy' },
-                      { value: 'medium', label: '🟡 Med' },
-                      { value: 'hard', label: '🔴 Hard' },
-                    ].map((df) => (
-                      <button
-                        key={df.value}
-                        type="button"
-                        onClick={() => setNewDifficulty(df.value as any)}
-                        className={`text-xs py-2 rounded-xl border font-semibold transition-all ${
-                          newDifficulty === df.value
-                            ? 'bg-primary text-white border-primary shadow-xs'
-                            : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                      >
-                        {df.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Step F: Travel Preferences Chips */}
-              <div>
-                <label className="block text-xs font-semibold text-text mb-1.5">
-                  Trip Themes & Preferences
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {THEME_OPTIONS.map((th) => {
-                    const isSelected = newPreferences.includes(th.id);
-                    return (
-                      <button
-                        key={th.id}
-                        type="button"
-                        onClick={() => toggleNewPref(th.id)}
-                        className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-all ${
-                          isSelected
-                            ? 'bg-primary text-white border-primary shadow-xs'
-                            : 'bg-white hover:bg-light-bg text-text border-border'
-                        }`}
-                      >
-                        {th.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Step G: Description & Note */}
-              <div>
-                <label className="block text-xs font-semibold text-text mb-1">
-                  Trip Room Description & Companion Note
-                </label>
-                <textarea
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Share your travel vision, itinerary thoughts, and what kind of travel buddies you'd love to join..."
-                  className="w-full text-xs sm:text-sm rounded-xl border border-border bg-white px-3.5 py-2.5 text-text outline-none focus:border-primary resize-none"
+            {/* Field 2: Departure Date */}
+            <div
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (!target.closest('button')) {
+                  const input = e.currentTarget.querySelector('input[type="date"]') as HTMLInputElement;
+                  input?.showPicker?.();
+                }
+              }}
+              className="flex items-center gap-3 px-3.5 py-2 rounded-2xl hover:bg-gray-50/80 transition-colors border-b sm:border-b-0 sm:border-r border-gray-200/60 cursor-pointer"
+            >
+              <Calendar className="w-4 h-4 text-emerald-700 shrink-0 pointer-events-none" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] font-bold text-gray-900 leading-tight pointer-events-none">
+                  Departure Date
+                </span>
+                <input
+                  type="date"
+                  value={departureDateInput}
+                  onChange={(e) => setDepartureDateInput(e.target.value)}
+                  onClick={(e) => (e.target as any).showPicker?.()}
+                  className="w-full bg-transparent text-xs font-medium text-gray-700 outline-none truncate cursor-pointer"
                 />
               </div>
-
-              {/* Step H: Cover Photo Preset */}
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <span className="text-xs font-semibold text-text flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-primary" />
-                  <span>Choose Cover Photo</span>
-                </span>
-                <input ref={coverFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCoverUpload} className="hidden" aria-label="Upload trip cover image" />
-                <Button type="button" variant="secondary" size="sm" onClick={() => coverFileInputRef.current?.click()} disabled={isReadingCover} icon={<Upload className="w-4 h-4" />}>
-                  {isReadingCover ? 'Reading image...' : 'Upload Image'}
-                </Button>
-                </div>
-                <p className="text-xs text-text-muted mb-3">Choose a cover below or upload your own JPG, PNG, or WebP (up to 2 MB).</p>
-                {coverUploadError && <p role="alert" className="text-xs text-red-600 mb-3">{coverUploadError}</p>}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {COVER_PRESETS.map((cov) => (
-                    <button
-                      key={cov.label}
-                      type="button"
-                      onClick={() => setNewCoverUrl(cov.url)}
-                      aria-pressed={newCoverUrl === cov.url}
-                      className={`relative aspect-[16/10] rounded-xl overflow-hidden border-2 transition-all ${
-                        newCoverUrl === cov.url
-                          ? 'border-primary ring-2 ring-primary/40 scale-105 shadow-sm'
-                          : 'border-transparent opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={cov.url} alt={cov.label} className="w-full h-full object-cover" />
-                      <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-white bg-black/60 px-1 rounded truncate">
-                        {cov.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                {uploadedCover && <button type="button" aria-pressed={newCoverUrl === uploadedCover.url} onClick={() => setNewCoverUrl(uploadedCover.url)} className={`mt-3 flex w-full items-center gap-3 rounded-xl border-2 p-2 text-left ${newCoverUrl === uploadedCover.url ? 'border-primary bg-emerald-50' : 'border-border bg-white'}`}>
-                  <img src={uploadedCover.url} alt="Uploaded trip cover preview" className="h-16 w-24 rounded-lg object-cover shrink-0" />
-                  <span className="min-w-0"><span className="block truncate text-sm font-semibold text-text">{uploadedCover.name}</span><span className="block text-xs text-primary mt-1">{newCoverUrl === uploadedCover.url ? 'Selected cover image' : 'Use uploaded image'}</span></span>
-                  {newCoverUrl === uploadedCover.url && <Check className="w-5 h-5 text-primary ml-auto shrink-0" />}
-                </button>}
-              </div>
-
-              {/* Leader Reminder Footer */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center gap-3">
-                <Crown className="w-5 h-5 text-amber-600 shrink-0" />
-                <p className="text-xs text-amber-900 leading-snug">
-                  <strong>You are the Trip Leader:</strong> You will be the host of this {newRoomType === 'public' ? 'Public Space' : 'Private Room'}. You can approve join requests, manage group chat, and coordinate trip details anytime.
-                </p>
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 border-t border-border">
-                <Button
+              {departureDateInput && (
+                <button
                   type="button"
-                  variant="ghost"
-                  size="lg"
-                  className="w-full sm:w-auto min-h-[48px]"
-                  onClick={() => setIsCreateRoomOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDepartureDateInput('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                  title="Clear date"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  disabled={isReadingCover}
-                  iconRight={<Crown className="w-4 h-4 text-amber-300" />}
-                  className="w-full sm:w-auto px-6 font-bold shadow-hover min-h-[48px]"
-                >
-                  <span>Create Room & Open {newRoomType === 'public' ? 'Public Space' : 'Private Room'}</span>
-                </Button>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Field 3: From City */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl hover:bg-gray-50/80 transition-colors border-b sm:border-b-0 lg:border-r border-gray-200/60">
+              <Navigation className="w-4 h-4 text-emerald-700 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] font-bold text-gray-900 leading-tight">
+                  From
+                </span>
+                <input
+                  type="text"
+                  placeholder="Your departure city"
+                  value={fromCityInput}
+                  onChange={(e) => setFromCityInput(e.target.value)}
+                  className="w-full bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none truncate"
+                />
               </div>
-            </form>
+              {fromCityInput && (
+                <button
+                  type="button"
+                  onClick={() => setFromCityInput('')}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Field 4: Search Trips Button */}
+            <button
+              type="button"
+              onClick={() => {
+                success('Applied search filters');
+              }}
+              className="bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm py-3 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer w-full"
+            >
+              <span>Search Trips</span>
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2. SUB-HEADER TOOLBAR (Category Pills & Sort Dropdown) */}
+      {/* ========================================================================= */}
+      <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {/* Left: Category Tab Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
+            {CATEGORY_TABS.map((tab) => {
+              const isSelected = activeCategoryTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveCategoryTab(tab)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0D5A46] text-white shadow-xs'
+                      : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200/90 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: Actions (Mobile Filter Toggle + Create Trip Button + Sort by Dropdown) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Mobile Filter Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="lg:hidden inline-flex items-center gap-1.5 bg-white hover:bg-gray-50 active:scale-95 text-gray-700 border border-gray-200/90 text-xs font-bold py-2 px-3 sm:px-3.5 rounded-full transition-all shadow-2xs hover:shadow-xs cursor-pointer whitespace-nowrap"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-emerald-700 text-white text-[10px] font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Create Trip Button matching red circle in screenshot */}
+            <button
+              type="button"
+              onClick={handleCreateTrip}
+              className="inline-flex items-center gap-1.5 bg-[#0D5A46] hover:bg-emerald-800 active:scale-[0.98] text-white text-xs font-bold py-2 px-3 sm:px-4 rounded-full transition-all shadow-xs hover:shadow-md cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="hidden xs:inline">Create Trip</span>
+              <span className="xs:hidden">Create</span>
+            </button>
+
+            {/* Sort by Dropdown */}
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0">
+              <span className="text-gray-500 font-medium hidden sm:inline">Sort by:</span>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Sort trips by"
+                  className="appearance-none bg-white border border-gray-200/90 rounded-xl px-2.5 sm:px-3.5 py-1.5 pr-7 sm:pr-8 text-xs font-semibold text-gray-800 shadow-2xs hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="duration">Trip Duration</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. MAIN PAGE CONTENT: 2-COLUMN SPLIT (SIDEBAR FILTERS + TRIPS GRID) */}
+      {/* ========================================================================= */}
+      {/* Mobile Slide-out Filter Sidebar Drawer */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setIsMobileFilterOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Slide-out Sidebar Drawer */}
+          <div className="fixed inset-y-0 left-0 w-full max-w-[340px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-left duration-300 text-left">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-emerald-700" />
+                <h2 className="font-heading font-extrabold text-base text-gray-900">Filters</h2>
+                {activeFilterCount > 0 && (
+                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs text-emerald-700 hover:text-emerald-950 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                  aria-label="Close filters"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Filter Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {renderFilterSections(true)}
+            </div>
+
+            {/* Sticky Drawer Footer */}
+            <div className="p-4 border-t border-gray-100 bg-white flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="flex-1 py-2.5 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all text-center cursor-pointer"
+              >
+                Reset All
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#0D5A46] hover:bg-emerald-800 text-white text-xs font-bold transition-all text-center shadow-xs cursor-pointer"
+              >
+                Show ({sortedTrips.length}) Trips
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      <main className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr] xl:grid-cols-[320px_1fr] gap-6 lg:gap-8 items-start">
+          {/* ===================================================================== */}
+          {/* LEFT COLUMN: FILTERS SIDEBAR */}
+          {/* ===================================================================== */}
+          <aside className="hidden lg:block bg-white rounded-3xl border border-gray-200/90 p-5 shadow-xs space-y-6 text-left lg:sticky lg:top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+            {renderFilterSections(false)}
+          </aside>
+
+          {/* ===================================================================== */}
+          {/* RIGHT COLUMN: ACTIVE FILTER TAGS + TRIPS CARDS GRID */}
+          {/* ===================================================================== */}
+          <div className="min-w-0 space-y-4">
+            {/* Active Filters Pill Bar (Allows customers to see & clear individual filters) */}
+            {activeFilterCount > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-3 flex flex-wrap items-center gap-2 shadow-2xs">
+                <span className="text-xs font-bold text-gray-500 mr-1">Active filters:</span>
+
+                {selectedTripType !== 'All' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Type: {selectedTripType}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTripType('All')}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {budgetMax < 10000 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Max: ₹{budgetMax.toLocaleString()}
+                    <button
+                      type="button"
+                      onClick={() => setBudgetMax(10000)}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedDurations.map((dId) => {
+                  const opt = DURATION_OPTIONS.find((o) => o.id === dId);
+                  return (
+                    <span
+                      key={dId}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    >
+                      {opt?.label || dId}
+                      <button
+                        type="button"
+                        onClick={() => toggleDuration(dId)}
+                        className="hover:text-emerald-950 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+
+                {selectedTravelStyles.map((style) => (
+                  <span
+                    key={style}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  >
+                    {style}
+                    <button
+                      type="button"
+                      onClick={() => toggleTravelStyle(style)}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  >
+                    {lang}
+                    <button
+                      type="button"
+                      onClick={() => toggleLanguage(lang)}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedGroupSizes.map((gs) => {
+                  const opt = GROUP_SIZE_OPTIONS.find((g) => g.id === gs);
+                  return (
+                    <span
+                      key={gs}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    >
+                      {opt?.label || gs}
+                      <button
+                        type="button"
+                        onClick={() => toggleGroupSize(gs)}
+                        className="hover:text-emerald-950 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+
+                {selectedInclusions.map((incId) => {
+                  const opt = INCLUSION_OPTIONS.find((i) => i.id === incId);
+                  return (
+                    <span
+                      key={incId}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    >
+                      {opt?.label || incId}
+                      <button
+                        type="button"
+                        onClick={() => toggleInclusion(incId)}
+                        className="hover:text-emerald-950 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+
+                {selectedDifficulties.map((diffId) => {
+                  const opt = DIFFICULTY_OPTIONS.find((d) => d.id === diffId);
+                  return (
+                    <span
+                      key={diffId}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    >
+                      {opt?.label || diffId}
+                      <button
+                        type="button"
+                        onClick={() => toggleDifficulty(diffId)}
+                        className="hover:text-emerald-950 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+
+                {onlyAvailableSpots && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Open Spots Only
+                    <button
+                      type="button"
+                      onClick={() => setOnlyAvailableSpots(false)}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {minRating > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    ★ 4.5+
+                    <button
+                      type="button"
+                      onClick={() => setMinRating(0)}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {startCityFilter !== 'All Cities' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    From: {startCityFilter}
+                    <button
+                      type="button"
+                      onClick={() => setStartCityFilter('All Cities')}
+                      className="hover:text-emerald-950 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline ml-auto cursor-pointer"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Results Count Summary */}
+            <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+              <span>
+                Showing <strong className="text-gray-900">{displayedTrips.length}</strong> of{' '}
+                <strong className="text-gray-900">{sortedTrips.length}</strong> trips
+              </span>
+              {activeFilterCount > 0 && (
+                <span className="text-emerald-700 font-medium">Filters active</span>
+              )}
+            </div>
+
+            {/* Cards Grid */}
+            {displayedTrips.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-5">
+                  {displayedTrips.map((trip) => (
+                    <TripCard key={trip.id} trip={trip} />
+                  ))}
+                </div>
+
+                {/* Centered Load More Trips Button */}
+                {hasMore && (
+                  <div className="mt-10 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((prev) => prev + 6)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-300 bg-white text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 hover:border-gray-400 transition-all cursor-pointer"
+                    >
+                      <span>Load More Trips</span>
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-3xl border border-gray-200/90 bg-white p-12 text-center shadow-xs">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3.5">
+                  <Compass className="w-7 h-7" />
+                </div>
+                <h3 className="font-heading font-extrabold text-lg text-gray-900">
+                  No trips match your filters
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  Try clearing some filter criteria or click the button below to view all available trips.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D5A46] hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset All Filters</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
+
+export default FindTripPage;

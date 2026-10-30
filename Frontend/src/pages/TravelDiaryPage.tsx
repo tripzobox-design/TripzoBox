@@ -53,7 +53,7 @@ export const TravelDiaryPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-left max-w-5xl mx-auto">
+    <div className="flex flex-col gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto">
       {/* 1. HEADER (Matching Screen 8) */}
       <div className="flex items-center justify-between gap-3 pb-0 sm:pb-2">
         <div className="min-w-0 flex-1">
@@ -139,7 +139,7 @@ export const TravelDiaryPage: React.FC = () => {
           <p className="text-xs sm:text-sm text-text-muted">
             Stories you have published for the global Tripzobox community:
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-5">
             {stories.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
