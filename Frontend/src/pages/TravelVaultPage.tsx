@@ -42,6 +42,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { DocumentRow } from '../components/feature/DocumentRow';
 import { VaultFileViewer } from '../components/feature/VaultFileViewer';
+import { DocumentOtpModal } from '../components/feature/DocumentOtpModal';
 import { Modal } from '../components/ui/Modal';
 import { Logo } from '../components/ui/Logo';
 import { VaultDocument, SharedAccessRecord } from '../types';
@@ -254,10 +255,28 @@ export const TravelVaultPage: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setUploadedPreviewUrl(url);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setUploadedPreviewUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
+
+  // Document OTP Verification State
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [pendingDocData, setPendingDocData] = useState<{
+    name: string;
+    type: VaultDocument['type'];
+    referenceNumber?: string;
+    validTill?: string;
+    issuingCountry?: string;
+    thumbnailUrl?: string;
+    visibility: VaultDocument['visibility'];
+    existingDocId?: string;
+  } | null>(null);
 
   const handleSaveDocument = (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,18 +288,85 @@ export const TravelVaultPage: React.FC = () => {
     const catObj = CATEGORIES.find((c) => c.name === selectedCategory);
     const type = catObj ? catObj.type : 'Other';
 
-    addDocument({
+    setPendingDocData({
       name: docName.trim(),
       type,
       referenceNumber: docNumber.trim() || undefined,
       validTill: expiryDate || undefined,
       issuingCountry,
       thumbnailUrl: uploadedPreviewUrl,
-      isVerified: true,
       visibility: 'trusted-contacts',
+      existingDocId: editingDoc?.id,
     });
 
-    success(`${docName} has been encrypted and added to your Travel Vault!`, 'Document Secured');
+    // Open OTP Verification Modal
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = () => {
+    if (!pendingDocData) return;
+
+    if (pendingDocData.existingDocId) {
+      updateDocument(pendingDocData.existingDocId, {
+        name: pendingDocData.name,
+        type: pendingDocData.type,
+        referenceNumber: pendingDocData.referenceNumber,
+        validTill: pendingDocData.validTill,
+        issuingCountry: pendingDocData.issuingCountry,
+        thumbnailUrl: pendingDocData.thumbnailUrl,
+        isVerified: true,
+      });
+      success(`${pendingDocData.name} verified and updated!`, 'Document Secured 🎉');
+    } else {
+      addDocument({
+        name: pendingDocData.name,
+        type: pendingDocData.type,
+        referenceNumber: pendingDocData.referenceNumber,
+        validTill: pendingDocData.validTill,
+        issuingCountry: pendingDocData.issuingCountry,
+        thumbnailUrl: pendingDocData.thumbnailUrl,
+        isVerified: true,
+        visibility: pendingDocData.visibility,
+      });
+      success(`${pendingDocData.name} has been verified with OTP and encrypted in your Travel Vault!`, 'Document Secured 🎉');
+    }
+
+    setPendingDocData(null);
+    setIsOtpModalOpen(false);
+    setEditingDoc(null);
+    setView('documents');
+  };
+
+  const handleSaveWithoutVerification = () => {
+    if (!pendingDocData) return;
+
+    if (pendingDocData.existingDocId) {
+      updateDocument(pendingDocData.existingDocId, {
+        name: pendingDocData.name,
+        type: pendingDocData.type,
+        referenceNumber: pendingDocData.referenceNumber,
+        validTill: pendingDocData.validTill,
+        issuingCountry: pendingDocData.issuingCountry,
+        thumbnailUrl: pendingDocData.thumbnailUrl,
+        isVerified: false,
+      });
+    } else {
+      addDocument({
+        name: pendingDocData.name,
+        type: pendingDocData.type,
+        referenceNumber: pendingDocData.referenceNumber,
+        validTill: pendingDocData.validTill,
+        issuingCountry: pendingDocData.issuingCountry,
+        thumbnailUrl: pendingDocData.thumbnailUrl,
+        isVerified: false,
+        visibility: pendingDocData.visibility,
+      });
+    }
+
+    success(`${pendingDocData.name} saved to your vault as unverified. You can verify it anytime via OTP.`, 'Document Stored');
+    setPendingDocData(null);
+    setIsOtpModalOpen(false);
+    setEditingDoc(null);
     setView('documents');
   };
 
@@ -536,94 +622,6 @@ export const TravelVaultPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto py-2 sm:py-6 px-3 sm:px-6 text-left space-y-6">
-      {/* Top Vault Horizontal Navigation Tabs */}
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-gray-200/70">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-          <button
-            type="button"
-            onClick={() => setView('dashboard')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              currentView === 'dashboard'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-white border border-gray-200/90 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            <span>Overview</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView('documents')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              currentView === 'documents' ||
-              currentView === 'add-category' ||
-              currentView === 'add-details' ||
-              currentView === 'share'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-white border border-gray-200/90 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>My Documents ({documents.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView('emergency')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              currentView === 'emergency' || currentView === 'emergency-edit'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-white border border-gray-200/90 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <PhoneCall className="w-4 h-4" />
-            <span>Emergency Info</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView('shared')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              currentView === 'shared'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-white border border-gray-200/90 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Shared Access ({sharedAccessRecords.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView('security')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-              currentView === 'security'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-white border border-gray-200/90 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Security Settings</span>
-          </button>
-        </div>
-
-        {/* Security Badge Pill on right */}
-        <div className="hidden md:flex items-center gap-2 text-xs">
-          <Link
-            to="/safety"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors"
-          >
-            <LifeBuoy className="w-3.5 h-3.5 text-primary" />
-            <span>Safety Guidelines</span>
-          </Link>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-[11px] font-medium text-gray-600">
-            <Lock className="w-3.5 h-3.5 text-emerald-600" />
-            <span>256-Bit Encrypted</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <main className="w-full space-y-6">
         {/* ===================================================================== */}
@@ -1080,13 +1078,23 @@ export const TravelVaultPage: React.FC = () => {
           <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
                 {/* Header with + Add Document Button */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
-                      My Documents
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      All your uploaded documents in one place.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setView('dashboard')}
+                      className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Back to Overview"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
+                        My Documents
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        All your uploaded documents in one place.
+                      </p>
+                    </div>
                   </div>
 
                   <button
@@ -1179,6 +1187,19 @@ export const TravelVaultPage: React.FC = () => {
                           success('Document removed from your vault.');
                         }}
                         onShare={(item) => handleOpenShare(item)}
+                        onVerify={(item) => {
+                          setPendingDocData({
+                            name: item.name,
+                            type: item.type,
+                            referenceNumber: item.referenceNumber,
+                            validTill: item.validTill,
+                            issuingCountry: item.issuingCountry,
+                            thumbnailUrl: item.thumbnailUrl,
+                            visibility: item.visibility,
+                            existingDocId: item.id,
+                          });
+                          setIsOtpModalOpen(true);
+                        }}
                       />
                     ))
                   ) : (
@@ -1393,13 +1414,23 @@ export const TravelVaultPage: React.FC = () => {
           <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
                 {/* Header with + Share Document Button */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
-                      Shared Access
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Manage who can access your documents.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setView('dashboard')}
+                      className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Back to Overview"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
+                        Shared Access
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Manage who can access your documents.
+                      </p>
+                    </div>
                   </div>
 
                   <button
@@ -1510,13 +1541,23 @@ export const TravelVaultPage: React.FC = () => {
           <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
-                      Emergency Access
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Add essential documents and contacts for emergency situations.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setView('dashboard')}
+                      className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Back to Overview"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
+                        Emergency Access
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Add essential documents and contacts for emergency situations.
+                      </p>
+                    </div>
                   </div>
 
                   <button
@@ -1931,6 +1972,20 @@ export const TravelVaultPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* OTP Document Verification Modal */}
+      <DocumentOtpModal
+        isOpen={isOtpModalOpen}
+        onClose={() => {
+          setIsOtpModalOpen(false);
+          setPendingDocData(null);
+        }}
+        documentName={pendingDocData?.name || docName || 'Document'}
+        documentType={pendingDocData?.type || 'Passport'}
+        documentId={pendingDocData?.existingDocId}
+        onVerified={handleOtpVerified}
+        onSaveWithoutVerification={handleSaveWithoutVerification}
+      />
     </div>
   );
 };

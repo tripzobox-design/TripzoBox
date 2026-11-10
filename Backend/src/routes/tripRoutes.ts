@@ -13,6 +13,7 @@ import {
   getTripJoinRequests,
   acceptJoinRequest,
   declineJoinRequest,
+  cancelJoinRequest,
 } from '../controllers/tripController.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
@@ -37,6 +38,7 @@ router.post('/:id/join', requireAuth, validateRequest({ body: joinRequestSchema 
 router.get('/:id/requests', requireAuth, getTripJoinRequests);
 router.post('/:id/requests/:requestId/accept', requireAuth, acceptJoinRequest);
 router.post('/:id/requests/:requestId/decline', requireAuth, declineJoinRequest);
+router.delete('/:id/requests/:requestId', requireAuth, cancelJoinRequest);
 
 export default router;
 

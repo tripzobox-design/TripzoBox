@@ -12,8 +12,16 @@ export const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   cookieSecret: process.env.COOKIE_SECRET || 'tripzobox_cookie_secret_dev_2026',
   frontendUrl: process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173',
+  adminUrl: process.env.ADMIN_ORIGIN || process.env.ADMIN_URL || 'http://localhost:5174',
   uploadDir: path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads'),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10),
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+  smtpSecure: process.env.SMTP_SECURE === 'true',
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  smtpFrom: process.env.SMTP_FROM || '"TripzoBox" <no-reply@tripzobox.com>',
+  fast2SmsApiKey: process.env.FAST2SMS_API_KEY || '',
 };
 
 export const validateEnv = (): void => {

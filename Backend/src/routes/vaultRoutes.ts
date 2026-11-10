@@ -4,6 +4,8 @@ import {
   createDocument,
   updateDocument,
   deleteDocument,
+  requestDocumentOtp,
+  verifyDocumentOtp,
   getEmergencyContacts,
   createEmergencyContact,
   deleteEmergencyContact,
@@ -25,6 +27,8 @@ router.use(requireAuth);
 // Documents
 router.get('/documents', getDocuments);
 router.post('/documents', createDocument);
+router.post('/documents/request-otp', requestDocumentOtp);
+router.post('/documents/verify-otp', verifyDocumentOtp);
 router.put('/documents/:id', updateDocument);
 router.delete('/documents/:id', deleteDocument);
 

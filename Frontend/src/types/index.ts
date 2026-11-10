@@ -17,7 +17,41 @@ export interface User {
   securityAnswer?: string;
   recoveryCodes?: string[];
   emailVerified?: boolean;
+  emailVerifiedAt?: string;
   phoneVerified?: boolean;
+  phoneVerifiedAt?: string;
+  identityVerificationStatus?: 'NOT_STARTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'FAILED';
+  identityVerifiedAt?: string;
+  identityRejectionReason?: string;
+  isGoogleConnected?: boolean;
+  emergencyContact?: {
+    name?: string;
+    phone?: string;
+    relationship?: string;
+  };
+  reputation?: {
+    averageRating: number;
+    reviewCount: number;
+    communicationRating?: number;
+    punctualityRating?: number;
+    cooperationRating?: number;
+    respectfulRating?: number;
+    completedTripsCount?: number;
+  };
+  role?: 'user' | 'admin' | 'superadmin' | 'moderator' | 'support' | 'content_manager';
+  isSuspended?: boolean;
+  suspensionReason?: string;
+  suspendedAt?: string;
+  suspendedBy?: string;
+  mustResetPassword?: boolean;
+  lastLoginAt?: string;
+  lastLoginIp?: string;
+  internalNotes?: Array<{
+    note: string;
+    author: string;
+    createdAt: string;
+  }>;
+  createdAt?: string;
   travelInterests: string[];
   budgetStyle: 'budget' | 'mid-range' | 'comfort';
   travelPace?: 'Relaxed' | 'Balanced' | 'Action-packed' | string;
@@ -210,3 +244,82 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+// ============================================================================
+// TRUST & SAFETY SYSTEM TYPES
+// ============================================================================
+
+export type IdentityStatus = 'NOT_STARTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'FAILED';
+
+export interface TravellerReviewItem {
+  id: string;
+  tripId: string;
+  tripName: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewerAvatar: string;
+  revieweeId: string;
+  revieweeName: string;
+  ratings: {
+    overall: number;
+    communication: number;
+    punctuality: number;
+    cooperation: number;
+    respectfulBehaviour: number;
+  };
+  comment: string;
+  createdAt: string;
+}
+
+export type ReportCategory =
+  | 'harassment'
+  | 'inappropriate_behaviour'
+  | 'suspicious_account'
+  | 'scam_fraud'
+  | 'fake_identity'
+  | 'threatening_behaviour'
+  | 'inappropriate_messages'
+  | 'safety_concern'
+  | 'other';
+
+export type ReportStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'DISMISSED';
+
+export interface UserReportItem {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  targetType: 'user' | 'trip' | 'message';
+  targetId: string;
+  targetName?: string;
+  category: ReportCategory;
+  description: string;
+  evidenceUrl?: string;
+  status: ReportStatus;
+  moderatorNotes?: string;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface BlockedUserItem {
+  id: string;
+  blockerId: string;
+  blockedUserId: string;
+  blockedUserName: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface ModerationAuditLog {
+  id: string;
+  adminId: string;
+  adminName: string;
+  reportId?: string;
+  targetUserId?: string;
+  targetType?: string;
+  targetId?: string;
+  action: string;
+  reason: string;
+  notes?: string;
+  createdAt: string;
+}
+

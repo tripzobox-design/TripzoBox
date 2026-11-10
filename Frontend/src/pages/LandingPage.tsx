@@ -16,8 +16,10 @@ import {
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { contentApi } from '../lib/api';
 import { HeroInteractiveShowcase } from '../components/feature/HeroInteractiveShowcase';
 import { MemberHome } from '../components/feature/MemberHome';
+import { SEO } from '../components/common/SEO';
 
 const communityHighlights = [
   {
@@ -42,6 +44,15 @@ export const LandingPage: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const { showToast } = useToast();
   const [communitySlide, setCommunitySlide] = useState(0);
+  const [cmsHero, setCmsHero] = useState<any>(null);
+
+  useEffect(() => {
+    contentApi.getHomepageContent().then((res) => {
+      if (res?.hero) {
+        setCmsHero(res.hero);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -72,6 +83,10 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left">
+      <SEO
+        title="Connect, Plan Trips & Discover Places Together"
+        description="TripzoBox brings verified travellers together. Discover curated destinations, join shared travel groups, secure documents offline in your Travel Vault, and record memories in your Travel Diary."
+      />
       {/* 1. HERO SECTION (Dark Background Image Carousel) */}
 
       <section
@@ -79,7 +94,13 @@ export const LandingPage: React.FC = () => {
         aria-label="Tripzobox Hero Showcase"
       >
         <div className="absolute inset-0 pointer-events-none">
-          <img src="https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=2400&q=90" alt="" className="w-full h-full object-cover object-center" fetchPriority="high" />
+          <img
+            src={cmsHero?.bgImageUrl || "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=2400&q=90"}
+            alt=""
+            className="w-full h-full object-cover object-center"
+            loading="eager"
+            {...{ fetchpriority: 'high' }}
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-slate-950/20" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-slate-950/20" />
         </div>
@@ -90,32 +111,44 @@ export const LandingPage: React.FC = () => {
             <div className="lg:col-span-5 text-left">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-accent text-xs font-bold tracking-wide uppercase mb-4">
                 <Sparkles className="w-3.5 h-3.5 text-accent" />
-                <span>Next-Gen Travel Community</span>
+                <span>{cmsHero?.badgeText || 'Next-Gen Travel Community'}</span>
               </div>
 
               <h1 className="font-heading font-extrabold text-[36px] min-[380px]:text-[42px] sm:text-[52px] lg:text-[58px] xl:text-[64px] text-white tracking-tight leading-[1.08] drop-shadow-sm">
-                <span className="block text-white">Your Journey.</span>
+                <span className="block text-white">{cmsHero?.headingLine1 || 'Your Journey.'}</span>
                 <span className="block text-white">
-                  Your <span className="text-[#a5f3d4]">People.</span>
+                  {cmsHero?.headingLine2 || (
+                    <>
+                      Your <span className="text-[#a5f3d4]">People.</span>
+                    </>
+                  )}
                 </span>
                 <span className="block text-white">
-                  Your <span className="text-[#00D285]">Story.</span>
+                  {cmsHero?.headingHighlight ? (
+                    <span className="text-[#00D285]">{cmsHero.headingHighlight}</span>
+                  ) : (
+                    <>
+                      Your <span className="text-[#00D285]">Story.</span>
+                    </>
+                  )}
                 </span>
               </h1>
 
               <p className="mt-3 lg:mt-5 text-sm lg:text-lg text-gray-200 font-body leading-relaxed max-w-xl drop-shadow-sm">
-                
-                <span>Plan your trip, connect with compatible travellers, keep important documents safe offline, and discover untouched secret spots with an authentic community.</span>
+                <span>
+                  {cmsHero?.description ||
+                    'Plan your trip, connect with compatible travellers, keep important documents safe offline, and discover untouched secret spots with an authentic community.'}
+                </span>
               </p>
 
               <div className="mt-4 lg:mt-8 flex flex-wrap items-center gap-2 lg:gap-4">
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => navigate('/explore')}
+                  onClick={() => navigate(cmsHero?.primaryCtaLink || '/explore')}
                   className="px-4 py-2.5 lg:px-8 lg:py-3.5 rounded-xl font-bold bg-[#00B074] hover:bg-[#009864] text-white shadow-lg shadow-emerald-950/40 text-sm sm:text-base transition-transform hover:-translate-y-0.5"
                 >
-                  Start Exploring
+                  {cmsHero?.primaryCtaText || 'Start Exploring'}
                 </Button>
                 <button
                   type="button"

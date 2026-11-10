@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { Trip } from '../models/Trip.js';
 import { Message } from '../models/Message.js';
 import { Notification } from '../models/Notification.js';
+import { UserBlock } from '../models/UserBlock.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { AuthRequest } from '../middleware/auth.js';
 
@@ -127,6 +128,25 @@ export const sendMessage = async (
     if (!isMember) {
       sendError(res, 'Only confirmed members can post messages in this trip', 403);
       return;
+    }
+
+    // Safety enforcement: Check if an active block exists between the sender and the trip leader
+    if (trip.leader.id !== req.user.id) {
+      const activeBlock = await UserBlock.findOne({
+        $or: [
+          { blockerId: trip.leader.id, blockedUserId: req.user.id },
+          { blockerId: req.user.id, blockedUserId: trip.leader.id },
+        ],
+      });
+
+      if (activeBlock) {
+        sendError(
+          res,
+          'Messaging is restricted because an active block exists between you and the trip organizer.',
+          403
+        );
+        return;
+      }
     }
 
     const newMsg = new Message({

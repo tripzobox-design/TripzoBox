@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Compass, Users, Shield, BookOpen, ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import { useDestinations } from '../context/DestinationsContext';
+import { SEO } from '../components/common/SEO';
 
 const values = [
   { icon: Users, title: 'Good company matters', description: 'Talk about your interests, budget, and travel pace before you set out. Shared expectations make space for better experiences together.' },
@@ -13,6 +14,10 @@ export const AboutPage: React.FC = () => {
   const { destinations } = useDestinations();
   return (
     <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-4 lg:py-10 space-y-5 sm:space-y-6 lg:space-y-10 text-left">
+      <SEO
+        title="About Us — Our Story & Mission"
+        description="Learn about TripzoBox's mission to make group travel connected, safe, and authentic. Bringing discovery, shared itineraries, and personal travel stories together."
+      />
       <section className="grid md:grid-cols-2 lg:grid-cols-[1.3fr_1fr] gap-4 lg:gap-10 items-center rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4 sm:p-5 lg:p-10">
         <div>
           <span className="inline-flex items-center gap-2 text-xs font-bold text-primary tracking-widest uppercase"><Sparkles className="w-4 h-4" />Our story</span>

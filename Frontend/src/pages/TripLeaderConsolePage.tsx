@@ -17,11 +17,15 @@ import {
   Check,
   X,
   ExternalLink,
+  Flag,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { tripsApi } from '../lib/api';
+import { VerificationBadges } from '../components/safety/VerificationBadges';
+import { ReportModal } from '../components/safety/ReportModal';
 
 export const TripLeaderConsolePage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -30,6 +34,9 @@ export const TripLeaderConsolePage: React.FC = () => {
   const { getTripById } = useTrips();
   const { user } = useAuth();
   const { success, info, error } = useToast();
+
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ id: string; name: string }>({ id: '', name: '' });
 
   const isRequestsRoute = location.pathname.endsWith('/requests');
   const [activeTab, setActiveTab] = useState<
@@ -330,11 +337,31 @@ export const TripLeaderConsolePage: React.FC = () => {
                     className="w-12 h-12 rounded-full object-cover shrink-0 border border-gray-100"
                   />
                   <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900">
                         {req.name}
                       </h4>
                       <span className="text-xs text-gray-400">· {req.time}</span>
+                      <VerificationBadges
+                        user={{
+                          emailVerified: true,
+                          phoneVerified: true,
+                          identityVerificationStatus: 'VERIFIED',
+                        } as any}
+                        size="xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReportTarget({ id: req.id, name: req.name });
+                          setReportModalOpen(true);
+                        }}
+                        className="text-[11px] text-gray-400 hover:text-red-600 flex items-center gap-1 transition-colors ml-auto sm:ml-2"
+                        title="Report suspicious applicant"
+                      >
+                        <Flag className="w-3 h-3" />
+                        <span>Report</span>
+                      </button>
                     </div>
                     <p className="text-xs text-gray-500">{req.location}</p>
 
@@ -584,6 +611,15 @@ export const TripLeaderConsolePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="user"
+        targetId={reportTarget.id}
+        targetName={reportTarget.name}
+      />
     </div>
   );
 };

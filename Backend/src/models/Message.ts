@@ -22,7 +22,7 @@ const MessageSchema = new Schema<IMessage>(
     sender: {
       id: { type: String, required: true },
       name: { type: String, required: true },
-      avatarUrl: { type: String, required: true },
+      avatarUrl: { type: String, default: '' },
     },
     text: { type: String, required: true },
     timestamp: { type: String, default: 'Just now' },

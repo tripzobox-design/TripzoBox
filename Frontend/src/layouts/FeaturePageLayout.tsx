@@ -14,14 +14,16 @@ export const FeaturePageLayout: React.FC = () => {
     location.pathname.includes('/diary');
   return (
     <div
-      className={`min-h-[calc(100vh-5rem)] bg-[radial-gradient(circle_at_top_left,_rgba(226,250,241,.72),_transparent_38%),linear-gradient(180deg,_#fbfffd_0%,_#f5fbf8_100%)] w-full ${
-        isExpandedLayout ? 'py-2 sm:py-3 px-2 sm:px-4' : 'py-5 sm:py-7 lg:py-10'
+      className={`bg-[radial-gradient(circle_at_top_left,_rgba(226,250,241,.72),_transparent_38%),linear-gradient(180deg,_#fbfffd_0%,_#f5fbf8_100%)] w-full ${
+        isExpandedLayout
+          ? 'h-full flex-1 min-h-0 py-1.5 sm:py-2.5 px-2 sm:px-4 lg:overflow-hidden overflow-y-auto flex flex-col'
+          : 'min-h-[calc(100vh-5rem)] py-5 sm:py-7 lg:py-10'
       }`}
     >
       <div
         className={`w-full ${
           isExpandedLayout
-            ? 'max-w-[1780px] 2xl:max-w-[1920px] px-1 sm:px-2'
+            ? 'max-w-[1780px] 2xl:max-w-[1920px] px-1 sm:px-2 h-full flex-1 min-h-0 flex flex-col'
             : 'max-w-7xl 2xl:max-w-[1536px] px-4 sm:px-6 lg:px-8'
         } mx-auto`}
       >

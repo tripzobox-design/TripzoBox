@@ -350,7 +350,7 @@ export const CreateTripPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setCurrentStep(1)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
             currentStep === 1
               ? 'bg-primary text-white shadow-xs'
               : 'text-gray-500 hover:text-gray-900'
@@ -367,10 +367,11 @@ export const CreateTripPage: React.FC = () => {
           >
             {currentStep > 1 ? <Check className="w-3 h-3 stroke-[3]" /> : '1'}
           </span>
-          <span>Trip Basics</span>
+          <span className="hidden min-[380px]:inline">Trip Basics</span>
+          <span className="min-[380px]:hidden">Basics</span>
         </button>
 
-        <div className="flex-1 h-0.5 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex-1 h-0.5 mx-1.5 sm:mx-4 bg-gray-200 rounded-full overflow-hidden min-w-[12px]">
           <div
             className={`h-full transition-all duration-300 ${
               currentStep > 1 ? 'bg-primary w-full' : 'w-0'
@@ -384,7 +385,7 @@ export const CreateTripPage: React.FC = () => {
           onClick={() => {
             if (validateStep1()) setCurrentStep(2);
           }}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
             currentStep === 2
               ? 'bg-primary text-white shadow-xs'
               : 'text-gray-500 hover:text-gray-900'
@@ -401,10 +402,11 @@ export const CreateTripPage: React.FC = () => {
           >
             {currentStep > 2 ? <Check className="w-3 h-3 stroke-[3]" /> : '2'}
           </span>
-          <span>Preferences</span>
+          <span className="hidden min-[380px]:inline">Preferences</span>
+          <span className="min-[380px]:hidden">Vibe</span>
         </button>
 
-        <div className="flex-1 h-0.5 mx-2 sm:mx-4 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex-1 h-0.5 mx-1.5 sm:mx-4 bg-gray-200 rounded-full overflow-hidden min-w-[12px]">
           <div
             className={`h-full transition-all duration-300 ${
               currentStep > 2 ? 'bg-primary w-full' : 'w-0'
@@ -418,7 +420,7 @@ export const CreateTripPage: React.FC = () => {
           onClick={() => {
             if (validateStep1()) setCurrentStep(3);
           }}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
             currentStep === 3
               ? 'bg-primary text-white shadow-xs'
               : 'text-gray-500 hover:text-gray-900'
@@ -431,7 +433,8 @@ export const CreateTripPage: React.FC = () => {
           >
             3
           </span>
-          <span>Final Details</span>
+          <span className="hidden min-[380px]:inline">Final Details</span>
+          <span className="min-[380px]:hidden">Details</span>
         </button>
       </div>
 
@@ -675,8 +678,8 @@ export const CreateTripPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+            {/* Bottom Actions — sticky on mobile */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-100 sticky bottom-0 bg-white py-4 -mx-6 sm:-mx-10 px-6 sm:px-10 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none sm:static sm:py-0 sm:mx-0 sm:px-0 mt-6 sm:mt-0">
               <button
                 type="button"
                 onClick={() => navigate('/app/trips')}
@@ -686,7 +689,7 @@ export const CreateTripPage: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer min-h-[44px]"
               >
                 <span>Next</span>
                 <ArrowRight className="w-4 h-4" />
@@ -875,19 +878,19 @@ export const CreateTripPage: React.FC = () => {
               )}
             </div>
 
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+            {/* Bottom Actions — sticky on mobile */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-100 sticky bottom-0 bg-white py-4 -mx-6 sm:-mx-10 px-6 sm:px-10 border-t shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none sm:static sm:py-0 sm:mx-0 sm:px-0 mt-6 sm:mt-0">
               <button
                 type="button"
                 onClick={() => setCurrentStep(1)}
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer min-h-[44px]"
               >
                 <span>Next</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1075,29 +1078,29 @@ export const CreateTripPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+            {/* Bottom Actions — sticky on mobile */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-100 sticky bottom-0 bg-white py-4 -mx-6 sm:-mx-10 px-6 sm:px-10 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:shadow-none sm:static sm:py-0 sm:mx-0 sm:px-0 mt-6 sm:mt-0">
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={handleSaveDraft}
-                  className="px-5 py-2.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+                  className="px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer min-h-[44px]"
                 >
-                  Save as Draft
+                  Save Draft
                 </button>
                 <button
                   type="button"
                   onClick={handlePublishTrip}
-                  className="px-7 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                  className="px-5 sm:px-7 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer min-h-[44px]"
                 >
                   Publish Trip
                 </button>

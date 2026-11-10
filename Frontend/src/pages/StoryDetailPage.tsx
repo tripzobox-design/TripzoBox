@@ -84,52 +84,55 @@ export const StoryDetailPage: React.FC = () => {
       {/* 2. MAIN STORY CONTENT & SIDEBAR (2-Column Grid matching Reference Screen 11) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
         {/* Left 2 Columns: Story Body Card */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-border p-6 sm:p-8 shadow-card space-y-6">
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-border p-4 sm:p-6 lg:p-8 shadow-card space-y-6">
           {/* Story Title below banner (Matching Reference Screen 11) */}
           <h1 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-text leading-tight">
             {story.title}
           </h1>
 
           {/* Author & Meta Row */}
-          <div className="flex items-center justify-between gap-4 py-2 border-b border-border/80">
-            <div className="flex items-center gap-3">
-              <Avatar src={story.author.avatarUrl} name={story.author.name} size="md" />
-              <div>
-                <h4 className="font-semibold text-sm sm:text-base text-text">{story.author.name}</h4>
-                <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-text-subtle" />
-                    {story.dates}
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 py-2.5 sm:py-3 border-b border-border/80">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <Avatar src={story.author.avatarUrl} name={story.author.name} size="md" className="shrink-0" />
+              <div className="min-w-0">
+                <h4 className="font-semibold text-sm sm:text-base text-text truncate leading-snug">
+                  {story.author.name}
+                </h4>
+                <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-text-muted mt-0.5 whitespace-nowrap">
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Calendar className="w-3 h-3 text-text-subtle shrink-0" />
+                    <span>{story.dates}</span>
                   </span>
-                  <span>·</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-text-subtle" />
-                    {story.readTimeMins} min read
+                  <span className="text-text-subtle">·</span>
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Clock className="w-3 h-3 text-text-subtle shrink-0" />
+                    <span>{story.readTimeMins} min read</span>
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Follow Button & Share (Matching Reference Screen 11) */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               <button
                 type="button"
                 onClick={() => {
                   setIsFollowing(!isFollowing);
                   success(isFollowing ? `Unfollowed ${story.author.name}` : `Following ${story.author.name}!`);
                 }}
-                className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                className={`whitespace-nowrap px-3.5 sm:px-5 py-1.5 rounded-full text-xs font-semibold transition-all border flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
                   isFollowing
                     ? 'bg-accent/35 text-primary border-accent'
                     : 'bg-white text-primary border-primary hover:bg-accent-light'
                 }`}
               >
-                {isFollowing ? 'Following ✓' : 'Follow'}
+                <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                {isFollowing && <Check className="w-3 h-3 text-primary stroke-[2.5]" />}
               </button>
               <button
                 type="button"
                 onClick={handleShare}
-                className="p-2 rounded-xl text-text-subtle hover:text-primary hover:bg-light-bg transition-colors"
+                className="p-1.5 sm:p-2 rounded-xl text-text-subtle hover:text-primary hover:bg-light-bg transition-colors shrink-0 cursor-pointer"
                 aria-label="Share Story"
               >
                 <Share2 className="w-4 h-4" />

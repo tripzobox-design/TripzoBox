@@ -21,6 +21,7 @@ import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { TripCard } from '../components/feature/TripCard';
+import { SEO } from '../components/common/SEO';
 
 const TRIP_TYPES = ['All', 'Group Trip', 'Solo Friendly', 'Couple', 'Family', 'Women Only'] as const;
 
@@ -959,6 +960,10 @@ export const FindTripPage: React.FC = () => {
 
   return (
     <div className="w-full text-left bg-light-bg min-h-screen">
+      <SEO
+        title="Find Trips & Group Travel Expeditions"
+        description="Browse confirmed upcoming group trips, weekend treks, and road trips. Connect with verified leaders and travel companions."
+      />
       {/* ========================================================================= */}
       {/* 1. PANORAMIC HERO BANNER WITH DOODLE & EMBEDDED SEARCH BAR */}
       {/* ========================================================================= */}
@@ -1482,9 +1487,9 @@ export const FindTripPage: React.FC = () => {
             {/* Cards Grid */}
             {displayedTrips.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-5">
+                <div className="space-y-3 sm:space-y-4">
                   {displayedTrips.map((trip) => (
-                    <TripCard key={trip.id} trip={trip} />
+                    <TripCard key={trip.id} trip={trip} variant="horizontal" />
                   ))}
                 </div>
 

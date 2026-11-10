@@ -1,0 +1,31 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /explore
+Allow: /trips
+Allow: /stories
+Allow: /safety
+Allow: /about
+Allow: /contact
+Allow: /how-it-works
+Allow: /community-rules
+Allow: /vault-security
+Allow: /terms
+Allow: /privacy
+
+# Disallow private user spaces & authentication
+Disallow: /admin
+Disallow: /admin/
+Disallow: /app/
+Disallow: /app/vault
+Disallow: /app/messages
+Disallow: /app/account-security
+Disallow: /app/profile
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://tripzobox.com/sitemap.xml
+

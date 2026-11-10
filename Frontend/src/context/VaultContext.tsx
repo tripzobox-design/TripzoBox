@@ -250,7 +250,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         month: 'short',
         year: 'numeric',
       }),
-      isVerified: doc.isVerified ?? true,
+      isVerified: doc.isVerified ?? false,
     };
     setDocuments((prev) => [newDoc, ...prev]);
 
@@ -325,7 +325,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         month: 'short',
         year: 'numeric',
       }),
-      isVerified: doc.isVerified ?? true,
+      isVerified: doc.isVerified ?? false,
     };
     const next = [newDoc, ...documents];
     try {

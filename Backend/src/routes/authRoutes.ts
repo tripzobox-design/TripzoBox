@@ -10,7 +10,16 @@ import {
   verifyOtp,
   resetPassword,
   getRecoveryCodes,
+  resendVerificationEmail,
+  verifyEmail,
+  checkVerificationStatus,
+  oauthLogin,
+  syncSession,
 } from '../controllers/authController.js';
+import {
+  requestEmailChangeOtp,
+  verifyEmailChangeOtp,
+} from '../controllers/safetyController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
@@ -65,6 +74,22 @@ router.post(
   validateRequest({ body: resetPasswordSchema }),
   resetPassword
 );
+
+// Email Verification Flow
+router.post('/resend-verification', authLimiter, resendVerificationEmail);
+router.get('/verification-status', checkVerificationStatus);
+router.get('/verify', verifyEmail);
+router.post('/verify-email', verifyEmail);
+
+// Email Change with OTP
+router.post('/email/request-otp', requireAuth, authLimiter, requestEmailChangeOtp);
+router.post('/email/verify-otp', requireAuth, verifyEmailChangeOtp);
+
+// OAuth / Social Login
+router.post('/oauth', authLimiter, oauthLogin);
+
+// Session Synchronization (Ensures valid token in dev mode & across clients)
+router.post('/session-sync', syncSession);
 
 export default router;
 

@@ -21,6 +21,7 @@ export interface DocumentRowProps {
   onEdit?: (doc: VaultDocument) => void;
   onDelete: (id: string) => void;
   onShare: (doc: VaultDocument) => void;
+  onVerify?: (doc: VaultDocument) => void;
 }
 
 export const DocumentRow: React.FC<DocumentRowProps> = ({
@@ -29,6 +30,7 @@ export const DocumentRow: React.FC<DocumentRowProps> = ({
   onEdit,
   onDelete,
   onShare,
+  onVerify,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -96,10 +98,15 @@ export const DocumentRow: React.FC<DocumentRowProps> = ({
             <span>Verified</span>
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/70">
+          <button
+            type="button"
+            onClick={() => onVerify?.(document)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-colors shadow-2xs cursor-pointer"
+            title="Click to verify with OTP via registered email or mobile"
+          >
             <AlertCircle className="w-3.5 h-3.5 text-amber-600 stroke-[2.5]" />
-            <span>Not Verified</span>
-          </span>
+            <span>Verify with OTP</span>
+          </button>
         )}
 
         {/* Upload Date */}
@@ -160,6 +167,19 @@ export const DocumentRow: React.FC<DocumentRowProps> = ({
                     <Eye className="w-3.5 h-3.5" />
                     <span>View Original</span>
                   </button>
+                  {!isVerified && onVerify && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onVerify(document);
+                      }}
+                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Verify with OTP</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {

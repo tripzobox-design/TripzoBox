@@ -1,5 +1,5 @@
 import { confirmAction } from '../lib/confirmAction';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
   MapPin,
@@ -13,6 +13,9 @@ import {
   Sparkles,
   Check,
   WifiOff,
+  Camera,
+  Upload,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTrips } from '../context/TripsContext';
@@ -26,22 +29,82 @@ import { TripCard } from '../components/feature/TripCard';
 import { StoryCard } from '../components/feature/StoryCard';
 import { Modal } from '../components/ui/Modal';
 import { Input, Textarea, Select } from '../components/ui/Input';
+import { TravellerRatingsCard } from '../components/feature/TravellerRatingsCard';
+import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
 
 export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly = false }) => {
   const { user, updateProfile } = useAuth();
   const { trips, savedTripIds } = useTrips();
   const { stories } = useDiary();
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
   const { documents } = useVault();
   const [offlineDocumentId, setOfflineDocumentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
   const initialTab = (searchParams.get('tab') as any) || 'trips';
-  const [activeTab, setActiveTab] = useState<'trips' | 'stories' | 'saved' | 'settings'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'trips' | 'stories' | 'saved' | 'settings' | 'reviews'>(initialTab);
 
   // Modals state
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
+
+  // Avatar changing refs & state
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      toastError?.('Please select a JPG, PNG, or WebP image.', 'Invalid Image');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toastError?.('Image size must be under 5 MB.', 'File Too Large');
+      return;
+    }
+
+    setAvatarLoading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = reader.result as string;
+      try {
+        await updateProfile({ avatarUrl: result });
+        setAvatarUrl(result);
+        success('Profile photo updated successfully!', 'Photo Changed');
+        setIsChangePhotoOpen(false);
+      } catch (err: any) {
+        toastError?.('Failed to update profile photo: ' + (err?.message || 'Unknown error'));
+      } finally {
+        setAvatarLoading(false);
+      }
+    };
+    reader.onerror = () => {
+      toastError?.('Could not read image file. Please try again.');
+      setAvatarLoading(false);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarLoading(true);
+    try {
+      await updateProfile({ avatarUrl: '' });
+      setAvatarUrl('');
+      success('Profile photo removed. First letter of your name is now used.', 'Photo Removed');
+      setIsChangePhotoOpen(false);
+    } catch (err: any) {
+      toastError?.('Failed to remove photo');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   // Edit Profile Form State
   const [name, setName] = useState(user.name);
@@ -74,6 +137,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
     { id: 'trips', label: 'My Trips', badge: user.stats.trips },
     { id: 'stories', label: 'My Stories', badge: user.stats.stories },
     { id: 'saved', label: 'Saved', badge: savedTripIds.length },
+    { id: 'reviews', label: 'Reviews', badge: user.reputation?.reviewCount || undefined },
   ];
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -118,37 +182,61 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
           <div className="flex items-end justify-between gap-3 -mt-12 sm:-mt-16 lg:-mt-20 mb-2 lg:mb-4">
             {/* Avatar overlapping cover banner */}
             <div className="relative">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-card overflow-hidden bg-white">
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsChangePhotoOpen(true)}
+                className="relative inline-block group cursor-pointer focus:outline-none rounded-full"
+                title="Click to change profile photo"
+                aria-label="Change profile photo"
+              >
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-card overflow-hidden bg-white">
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-3xl sm:text-4xl flex items-center justify-center select-none">
+                      {(user.name || 'U').trim().charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[11px] font-semibold border-4 border-white">
+                  <Camera className="w-5 h-5 mb-0.5 text-white stroke-[2.2]" />
+                  <span>Change</span>
+                </div>
+                <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#0D5A46] text-white flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform">
+                  <Camera className="w-4 h-4 stroke-[2.2]" />
+                </div>
+              </button>
             </div>
 
             <div className="flex items-center gap-2 self-end mb-1">
-            <Link to="/app/profile/settings" aria-label="Profile settings" className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border text-primary hover:bg-light-bg">
-              <SettingsIcon className="w-4 h-4" />
-            </Link>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={async () => {
-                if (!await confirmAction('edit', 'your profile')) return;
-                setAvatarUrl(user.avatarUrl);
-                setPhotoError('');
-                setName(user.name);
-                setCity(user.city);
-                setBio(user.bio);
-                setBudgetStyle(user.budgetStyle);
-                setIsEditProfileOpen(true);
-              }}
-              icon={<Edit3 className="w-3.5 h-3.5" />}
-              className="text-xs self-end bg-white mb-1"
-            >
-              Edit Profile
-            </Button>
+              <Link to="/app/profile/settings" aria-label="Profile settings" className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border text-primary hover:bg-light-bg">
+                <SettingsIcon className="w-4 h-4" />
+              </Link>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  if (!await confirmAction('edit', 'your profile')) return;
+                  setAvatarUrl(user.avatarUrl);
+                  setPhotoError('');
+                  setName(user.name);
+                  setCity(user.city);
+                  setBio(user.bio);
+                  setBudgetStyle(user.budgetStyle);
+                  setIsEditProfileOpen(true);
+                }}
+                icon={<Edit3 className="w-3.5 h-3.5" />}
+                className="text-xs self-end bg-white mb-1"
+              >
+                Edit Profile
+              </Button>
             </div>
           </div>
 
@@ -245,9 +333,9 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               </Link>
             </div>
             {myTrips.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-5">
+              <div className="space-y-3 sm:space-y-3.5">
                 {visibleTrips.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} />
+                  <TripCard key={trip.id} trip={trip} variant="horizontal" />
                 ))}
               </div>
             ) : (
@@ -263,9 +351,9 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               Published Stories
             </h3>
             {myStories.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-6">
+              <div className="space-y-3 sm:space-y-3.5">
                 {myStories.map((story) => (
-                  <StoryCard key={story.id} story={story} />
+                  <StoryCard key={story.id} story={story} variant="horizontal" />
                 ))}
               </div>
             ) : (
@@ -283,9 +371,9 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               Saved Trips ({savedTrips.length})
             </h3>
             {savedTrips.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-5">
+              <div className="space-y-3 sm:space-y-3.5">
                 {savedTrips.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} />
+                  <TripCard key={trip.id} trip={trip} variant="horizontal" />
                 ))}
               </div>
             ) : (
@@ -293,6 +381,18 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
                 No saved trips. Click the heart icon on any trip card to bookmark it here!
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 4: REPUTATION & REVIEWS */}
+        {!settingsOnly && activeTab === 'reviews' && (
+          <div className="pt-4 lg:pt-6">
+            <TravellerRatingsCard
+              userId={user.id}
+              userName={user.name}
+              canReview={true}
+              onOpenReviewModal={() => setIsReviewModalOpen(true)}
+            />
           </div>
         )}
 
@@ -515,6 +615,142 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
           </div>
         </div>
       </Modal>
+
+      {/* CHANGE PROFILE PHOTO MODAL */}
+      {isChangePhotoOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-left">
+            {/* Hidden native inputs for camera and file picker */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleAvatarFileSelect}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleAvatarFileSelect}
+            />
+
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-heading font-bold text-lg text-gray-900">
+                  Change Profile Photo
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Take a photo or choose an image from your device
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChangePhotoOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Avatar Display */}
+            <div className="flex flex-col items-center justify-center py-5">
+              <div className="relative">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="w-24 h-24 rounded-full object-cover border-4 border-emerald-100 shadow-md"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-3xl flex items-center justify-center border-4 border-emerald-100 shadow-md select-none">
+                    {(user.name || 'U').trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {avatarLoading && (
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-semibold text-gray-700 mt-2">
+                {user.avatarUrl ? 'Current Photo' : 'First Letter Initial Avatar'}
+              </span>
+            </div>
+
+            {/* Actions: Open Camera or Upload */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                disabled={avatarLoading}
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl border-2 border-emerald-600/30 bg-emerald-50/50 hover:bg-emerald-100/60 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#0D5A46] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <Camera className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-gray-900">Open Camera</div>
+                  <div className="text-xs text-gray-500">Take a new photo directly using your camera</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled={avatarLoading}
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-500 hover:bg-gray-50 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 group-hover:bg-emerald-50 group-hover:text-primary flex items-center justify-center shrink-0 transition-colors">
+                  <Upload className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-gray-900">Upload Photo</div>
+                  <div className="text-xs text-gray-500">Choose an image file from your device gallery</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Remove / Reset Option & Close */}
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
+              {user.avatarUrl ? (
+                <button
+                  type="button"
+                  disabled={avatarLoading}
+                  onClick={handleRemoveAvatar}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove photo</span>
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400">Showing initial</span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsChangePhotoOpen(false)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* SUBMIT REVIEW MODAL */}
+      <SubmitReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onSuccess={() => {
+          setActiveTab('reviews');
+        }}
+      />
     </div>
   );
 };

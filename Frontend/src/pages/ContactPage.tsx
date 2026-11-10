@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../context/ToastContext';
+import { SEO } from '../components/common/SEO';
 
 export const ContactPage: React.FC = () => {
   const { showToast } = useToast();
@@ -62,6 +63,10 @@ export const ContactPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-14 space-y-4 lg:space-y-12">
+      <SEO
+        title="Contact & Support — Get in Touch"
+        description="Need help with a trip, group booking, or verified profile? Contact the TripzoBox support team. We reply within 2 hours."
+      />
       {/* 1. HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-5 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">

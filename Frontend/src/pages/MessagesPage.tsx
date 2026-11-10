@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Users, Compass, Search, ArrowLeft } from 'lucide-react';
+import { Send, Users, Compass, Search, ArrowLeft, Flag, ShieldAlert } from 'lucide-react';
 import { mockChatThreads, ChatThread } from '../data/mockMessages';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { messagesApi } from '../lib/api';
+import { ReportModal } from '../components/safety/ReportModal';
+import { EmergencyAssistanceModal } from '../components/safety/EmergencyAssistanceModal';
 
 export const MessagesPage: React.FC = () => {
   const { user } = useAuth();
@@ -13,6 +15,10 @@ export const MessagesPage: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [threadQuery, setThreadQuery] = useState('');
+
+  // Safety Modals
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
 
   useEffect(() => {
     messagesApi
@@ -152,6 +158,26 @@ export const MessagesPage: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* Safety & Emergency Quick Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEmergencyModalOpen(true)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                title="Emergency Assistance"
+              >
+                <ShieldAlert className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportModalOpen(true)}
+                className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-50 rounded-xl transition-colors"
+                title="Report Suspicious Message or Behaviour"
+              >
+                <Flag className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages Container */}
@@ -209,6 +235,21 @@ export const MessagesPage: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Trust & Safety Modals */}
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="message"
+        targetId={activeThread.id}
+        targetName={`Chat in ${activeThread.tripName}`}
+      />
+      <EmergencyAssistanceModal
+        isOpen={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+        tripId={activeThread.tripId}
+        tripTitle={activeThread.tripName}
+      />
     </div>
   );
 };

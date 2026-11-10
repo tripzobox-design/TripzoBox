@@ -22,6 +22,50 @@ export interface IUser extends Document {
   recoveryCodes?: string[];
   emailVerified: boolean;
   phoneVerified: boolean;
+  phoneVerifiedAt?: Date;
+  emailVerifiedAt?: Date;
+  // Trust & Safety Identity Verification
+  identityVerificationStatus: 'NOT_STARTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'FAILED';
+  identityVerifiedAt?: Date;
+  identityProviderRef?: string;
+  identityRejectionReason?: string;
+  // OAuth Connections
+  googleId?: string;
+  isGoogleConnected: boolean;
+  // Traveller Reputation (Calculated on backend from completed trip reviews)
+  reputation: {
+    averageRating: number;
+    reviewCount: number;
+    friendlinessRating: number;
+    communicationRating: number;
+    punctualityRating: number;
+    cooperationRating: number;
+    responsibilityRating: number;
+    respectfulRating: number;
+    completedTripsCount: number;
+    ratingDistribution?: {
+      1: number;
+      2: number;
+      3: number;
+      4: number;
+      5: number;
+    };
+    topTags?: string[];
+  };
+  // Account Status & Moderation
+  isSuspended: boolean;
+  suspensionReason?: string;
+  suspendedAt?: Date;
+  suspendedBy?: string;
+  mustResetPassword?: boolean;
+  tokenVersion?: number;
+  lastLoginAt?: Date;
+  lastLoginIp?: string;
+  internalNotes?: Array<{
+    note: string;
+    author: string;
+    createdAt: Date;
+  }>;
   travelInterests: string[];
   budgetStyle: 'budget' | 'mid-range' | 'comfort';
   travelPace?: string;
@@ -33,7 +77,7 @@ export interface IUser extends Document {
     followers: number;
     following: number;
   };
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'superadmin' | 'moderator' | 'support' | 'content_manager';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -57,8 +101,7 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, select: false },
     avatarUrl: {
       type: String,
-      default:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      default: '',
     },
     coverUrl: {
       type: String,
@@ -80,7 +123,58 @@ const UserSchema = new Schema<IUser>(
     securityAnswer: { type: String, select: false },
     recoveryCodes: { type: [String], select: false },
     emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date },
     phoneVerified: { type: Boolean, default: false },
+    phoneVerifiedAt: { type: Date },
+    // Trust & Safety Verification
+    identityVerificationStatus: {
+      type: String,
+      enum: ['NOT_STARTED', 'PENDING', 'VERIFIED', 'REJECTED', 'EXPIRED', 'FAILED'],
+      default: 'NOT_STARTED',
+      index: true,
+    },
+    identityVerifiedAt: { type: Date },
+    identityProviderRef: { type: String },
+    identityRejectionReason: { type: String },
+    // OAuth Connections
+    googleId: { type: String, sparse: true },
+    isGoogleConnected: { type: Boolean, default: false },
+    // Traveller Reputation
+    reputation: {
+      averageRating: { type: Number, default: 0, min: 0, max: 5 },
+      reviewCount: { type: Number, default: 0, min: 0 },
+      friendlinessRating: { type: Number, default: 0 },
+      communicationRating: { type: Number, default: 0 },
+      punctualityRating: { type: Number, default: 0 },
+      cooperationRating: { type: Number, default: 0 },
+      responsibilityRating: { type: Number, default: 0 },
+      respectfulRating: { type: Number, default: 0 },
+      completedTripsCount: { type: Number, default: 0 },
+      ratingDistribution: {
+        1: { type: Number, default: 0 },
+        2: { type: Number, default: 0 },
+        3: { type: Number, default: 0 },
+        4: { type: Number, default: 0 },
+        5: { type: Number, default: 0 },
+      },
+      topTags: { type: [String], default: [] },
+    },
+    // Account Status & Moderation
+    isSuspended: { type: Boolean, default: false, index: true },
+    suspensionReason: { type: String },
+    suspendedAt: { type: Date },
+    suspendedBy: { type: String },
+    mustResetPassword: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 },
+    lastLoginAt: { type: Date },
+    lastLoginIp: { type: String },
+    internalNotes: [
+      {
+        note: { type: String, required: true },
+        author: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     travelInterests: { type: [String], default: ['Hiking', 'Nature', 'Photography', 'Food'] },
     budgetStyle: {
       type: String,
@@ -96,7 +190,11 @@ const UserSchema = new Schema<IUser>(
       followers: { type: Number, default: 0 },
       following: { type: Number, default: 0 },
     },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: {
+      type: String,
+      enum: ['user', 'admin', 'superadmin', 'moderator', 'support', 'content_manager'],
+      default: 'user',
+    },
   },
   {
     timestamps: true,
@@ -144,4 +242,3 @@ UserSchema.methods.toSafeUser = function (): Record<string, any> {
 };
 
 export const User: Model<IUser> = mongoose.model<IUser>('User', UserSchema);
-

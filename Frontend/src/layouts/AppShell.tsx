@@ -41,7 +41,7 @@ export const AppShell: React.FC = () => {
     { label: 'Home', path: '/', icon: LayoutDashboard },
     { label: 'Travel Vault', path: '/app/vault', icon: Shield },
     { label: 'Trips', path: '/app/trips', icon: Compass },
-    { label: 'Travel Diary', path: '/app/diary', icon: BookOpen },
+    { label: 'Trip Diary', path: '/app/diary', icon: BookOpen },
     { label: 'Explore', path: '/explore', icon: MapPin },
     { label: 'Messages', path: '/app/messages', icon: MessageSquare, badge: 2 },
     { label: 'Notifications', path: '/app/notifications', icon: Bell, badge: 1 },

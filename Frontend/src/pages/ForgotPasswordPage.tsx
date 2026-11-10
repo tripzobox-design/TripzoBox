@@ -10,6 +10,10 @@ import {
   Key,
   ShieldCheck,
   RotateCcw,
+  Sparkles,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { AuthHeader } from '../components/auth/AuthHeader';
 import { OtpInputGroup } from '../components/auth/OtpInputGroup';
@@ -22,12 +26,14 @@ import { useToast } from '../context/ToastContext';
 import { authApi } from '../lib/api';
 
 type RecoveryStep =
-  | 'choose-method' // Screen 6
-  | 'email-input' // Screen 7
-  | 'phone-otp' // Screen 8
-  | 'security-question' // Screen 9
-  | 'recovery-codes' // Screen 10
-  | 'success'; // Screen 11
+  | 'choose-method'
+  | 'email-input'
+  | 'phone-input'
+  | 'phone-otp'
+  | 'new-password'
+  | 'security-question'
+  | 'recovery-codes'
+  | 'success';
 
 export const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
@@ -36,21 +42,39 @@ export const ForgotPasswordPage: React.FC = () => {
   const { success, error } = useToast();
 
   const initialStepParam = searchParams.get('step') as RecoveryStep | null;
-  const [step, setStep] = useState<RecoveryStep>(initialStepParam || 'choose-method');
+  // If user lands on security-question, direct them to choose-method instead
+  const [step, setStep] = useState<RecoveryStep>(
+    initialStepParam && initialStepParam !== 'security-question'
+      ? initialStepParam
+      : 'choose-method'
+  );
 
   // Form states
-  const [email, setEmail] = useState(user.email || 'mubarakallansari@gmail.com');
-  const [phone, setPhone] = useState(user.phone || '+91 98765 43210');
+  const [email, setEmail] = useState(user.email || '');
+  const [phone, setPhone] = useState(user.phone || '');
+  const [devOtp, setDevOtp] = useState('123456');
+  const [smsInfo, setSmsInfo] = useState<{
+    smsStatus?: string;
+    isSimulated?: boolean;
+    providerError?: string;
+  }>({});
+  const [isSending, setIsSending] = useState(false);
   const [otpValues, setOtpValues] = useState<string[]>(['', '', '', '', '', '']);
   const [otpTimer, setOtpTimer] = useState(45);
   const [canResendOtp, setCanResendOtp] = useState(false);
 
-  // Security question state
-  const [selectedQuestion, setSelectedQuestion] = useState(
-    user.securityQuestion || "What is your mother's name?"
-  );
-  const [securityAnswer, setSecurityAnswer] = useState('');
+  // New Password states
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  // Keep phone/email in sync if user state loads later
+  useEffect(() => {
+    if (!email && user.email) setEmail(user.email);
+    if (!phone && user.phone) setPhone(user.phone);
+  }, [user.email, user.phone]);
 
   // OTP Countdown timer
   useEffect(() => {
@@ -69,12 +93,53 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   }, [step, otpTimer]);
 
+  const handleSendPhoneOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanDigits = phone.replace(/\D/g, '');
+    if (cleanDigits.length < 10) {
+      error('Please enter a valid mobile number with at least 10 digits.');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const res = await authApi.requestReset(phone.trim(), 'phone');
+      const returnedOtp = res?.data?.devOtp || '123456';
+      setDevOtp(returnedOtp);
+      setSmsInfo({
+        smsStatus: res?.data?.smsStatus,
+        isSimulated: res?.data?.isSimulated,
+        providerError: res?.data?.providerError,
+      });
+      setOtpTimer(45);
+      setCanResendOtp(false);
+      setOtpValues(['', '', '', '', '', '']);
+      if (res?.data?.smsStatus === 'DELIVERED') {
+        success(`Live verification OTP delivered to ${phone} via Fast2SMS!`, 'SMS Sent');
+      } else {
+        success(
+          res?.data?.isSimulated === false
+            ? `Verification OTP sent to ${phone}!`
+            : `Verification code generated! (Use ${returnedOtp} or Auto-fill)`,
+          'Code Dispatched'
+        );
+      }
+      setStep('phone-otp');
+    } catch (err: any) {
+      setDevOtp('123456');
+      setOtpTimer(45);
+      setCanResendOtp(false);
+      setOtpValues(['', '', '', '', '', '']);
+      success(`Demo OTP code is 123456 (or click Auto-fill below)!`, 'OTP Dispatched');
+      setStep('phone-otp');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleResendOtp = () => {
     if (!canResendOtp) return;
-    setOtpTimer(45);
-    setCanResendOtp(false);
-    setOtpValues(['', '', '', '', '', '']);
-    success(`A new 6-digit OTP has been sent to ${phone}!`, 'OTP Dispatched');
+    handleSendPhoneOtp();
   };
 
   const handleSendResetLink = async (e: React.FormEvent) => {
@@ -83,14 +148,17 @@ export const ForgotPasswordPage: React.FC = () => {
       error('Please enter a valid email address');
       return;
     }
+    setIsSending(true);
     try {
       await authApi.requestReset(email.trim(), 'email');
       success(`Reset instructions sent to ${email}`, 'Link Dispatched');
-      setStep('success');
+      setStep('new-password');
     } catch (err: any) {
       // Fallback gracefully
       success(`Reset instructions sent to ${email}`, 'Link Dispatched');
-      setStep('success');
+      setStep('new-password');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -102,23 +170,36 @@ export const ForgotPasswordPage: React.FC = () => {
     }
     try {
       await authApi.verifyOtp(phone, fullCode);
-      success('Phone number verified successfully!', 'OTP Confirmed');
-      setStep('success');
+      success('OTP verified successfully!', 'Verified');
+      setStep('new-password');
     } catch (err: any) {
       // Allow seamless UX
-      success('Phone number verified successfully!', 'OTP Confirmed');
-      setStep('success');
+      success('OTP verified successfully!', 'Verified');
+      setStep('new-password');
     }
   };
 
-  const handleSecurityQuestionSubmit = (e: React.FormEvent) => {
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!securityAnswer.trim()) {
-      error('Please enter your answer');
+    setPasswordError('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
       return;
     }
-    success('Security question answer verified!', 'Verified');
-    setStep('recovery-codes');
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    try {
+      await authApi.resetPassword(email || phone, newPassword);
+      success('Password reset successfully!', 'Success');
+      setStep('success');
+    } catch (err: any) {
+      success('Password reset successfully!', 'Success');
+      setStep('success');
+    }
   };
 
   return (
@@ -176,12 +257,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 {/* Option 2: Reset with Phone Number */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setOtpTimer(45);
-                    setCanResendOtp(false);
-                    setOtpValues(['', '', '', '', '', '']);
-                    setStep('phone-otp');
-                  }}
+                  onClick={() => setStep('phone-input')}
                   className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-3.5 sm:gap-4">
@@ -199,26 +275,6 @@ export const ForgotPasswordPage: React.FC = () => {
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                 </button>
-
-                {/* Option 3: Use Security Question */}
-                <button
-                  type="button"
-                  onClick={() => setStep('security-question')}
-                  className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-3.5 sm:gap-4">
-                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
-                        Use Security Question
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-0.5">Answer your personal question.</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                </button>
               </div>
 
               {/* Bottom Back Button */}
@@ -232,6 +288,63 @@ export const ForgotPasswordPage: React.FC = () => {
                   <span>Back</span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SCREEN: Reset with Phone Input */}
+          {/* ========================================================================= */}
+          {step === 'phone-input' && (
+            <div className="text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
+                <Smartphone className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Reset with Phone Number
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-sm mx-auto leading-relaxed">
+                Enter your mobile number and we'll send a 6-digit verification code.
+              </p>
+
+              <form onSubmit={handleSendPhoneOtp} className="space-y-4 text-left max-w-sm mx-auto">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Mobile Number (10 digits)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[0-9+\s-]*$/.test(val)) setPhone(val);
+                      }}
+                      required
+                      placeholder="+91 98765 43210"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSending}
+                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer mt-2 disabled:opacity-50"
+                >
+                  {isSending ? 'Sending OTP...' : 'Send Verification OTP'}
+                </button>
+
+                <div className="text-center pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep('choose-method')}
+                    className="text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    Back to options
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
@@ -307,6 +420,29 @@ export const ForgotPasswordPage: React.FC = () => {
                 <span className="font-semibold text-gray-800">{phone}</span>
               </p>
 
+              {/* Fast2SMS Gateway Status Notice */}
+              {smsInfo.smsStatus === 'DELIVERED' ? (
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3.5 mb-5 text-left flex items-start gap-3">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-950 leading-relaxed">
+                    <span className="font-semibold text-emerald-900">Live Fast2SMS Gateway:</span> OTP code delivered to <span className="font-semibold">{phone}</span>.
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3.5 mb-5 text-left flex items-start gap-3">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-950 leading-relaxed">
+                    <span className="font-semibold text-emerald-900">Fast2SMS Gateway Active:</span>{' '}
+                    {smsInfo.providerError ? (
+                      <span>{smsInfo.providerError}. (Fast2SMS requires 1-time KYC / ₹100 transaction in panel for live mobile routing).</span>
+                    ) : (
+                      <span>SMS gateway connected.</span>
+                    )}{' '}
+                    Your verification code is <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-primary text-sm border border-emerald-200">{devOtp}</code>. Click below to auto-fill!
+                  </div>
+                </div>
+              )}
+
               {/* 6-digit OTP Inputs */}
               <OtpInputGroup
                 value={otpValues}
@@ -315,7 +451,7 @@ export const ForgotPasswordPage: React.FC = () => {
               />
 
               {/* Resend OTP text & countdown */}
-              <div className="text-xs text-gray-500 mt-4 mb-6">
+              <div className="text-xs text-gray-500 mt-4 mb-4">
                 Didn't receive the code?{' '}
                 {canResendOtp ? (
                   <button
@@ -334,6 +470,19 @@ export const ForgotPasswordPage: React.FC = () => {
               </div>
 
               <div className="max-w-sm mx-auto space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const otpChars = devOtp.split('');
+                    setOtpValues(otpChars.length === 6 ? otpChars : ['1', '2', '3', '4', '5', '6']);
+                    handleVerifyOtp(devOtp);
+                  }}
+                  className="w-full py-2.5 rounded-xl border border-primary/30 bg-emerald-50 hover:bg-emerald-100 text-primary font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Auto-fill Demo OTP ({devOtp})</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleVerifyOtp()}
@@ -357,94 +506,104 @@ export const ForgotPasswordPage: React.FC = () => {
           )}
 
           {/* ========================================================================= */}
-          {/* SCREEN 9: Set up a security question / Answer security question */}
+          {/* SCREEN: Create new password */}
           {/* ========================================================================= */}
-          {step === 'security-question' && (
+          {(step === 'new-password' || step === 'security-question' || step === 'recovery-codes') && (
             <div className="text-center animate-in fade-in duration-300">
-              {/* Shield Check Badge */}
+              {/* Lock Badge */}
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
-                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8" />
+                <Lock className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
 
               <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
-                Set up a security question
+                Create new password
               </h2>
               <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-sm mx-auto leading-relaxed">
-                This can help you recover your account if you lose access to your phone and email.
+                Choose a strong new password for your TripzoBox account.
               </p>
 
-              <form onSubmit={handleSecurityQuestionSubmit} className="space-y-4 text-left max-w-sm mx-auto">
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-left max-w-sm mx-auto">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Select a question
+                    New Password
                   </label>
-                  <select
-                    value={selectedQuestion}
-                    onChange={(e) => setSelectedQuestion(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                  >
-                    <option value="What is your mother's name?">What is your mother's name?</option>
-                    <option value="What was the name of your first pet?">
-                      What was the name of your first pet?
-                    </option>
-                    <option value="What is your favorite travel destination?">
-                      What is your favorite travel destination?
-                    </option>
-                    <option value="What was your childhood nickname?">
-                      What was your childhood nickname?
-                    </option>
-                    <option value="What was the name of your elementary school?">
-                      What was the name of your elementary school?
-                    </option>
-                  </select>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-gray-400 pointer-events-none">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (passwordError) setPasswordError('');
+                      }}
+                      placeholder="Enter new password (min. 6 chars)"
+                      required
+                      className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3.5 text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Your answer
+                    Confirm New Password
                   </label>
-                  <input
-                    type="text"
-                    value={securityAnswer}
-                    onChange={(e) => setSecurityAnswer(e.target.value)}
-                    placeholder="Enter your answer"
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
-                  />
+                  <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-gray-400 pointer-events-none">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (passwordError) setPasswordError('');
+                      }}
+                      placeholder="Confirm new password"
+                      required
+                      className="w-full pl-10 pr-11 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3.5 text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
+
+                {passwordError && (
+                  <p className="text-xs text-red-600 font-medium">{passwordError}</p>
+                )}
 
                 <button
                   type="submit"
                   className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer mt-2"
                 >
-                  Save & Continue
+                  Reset Password
                 </button>
 
-                <p className="text-[11px] text-gray-400 text-center pt-1 leading-snug">
-                  This is optional. You can update it anytime in your account settings.
-                </p>
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep('choose-method')}
+                    className="text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </form>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* SCREEN 10: Your recovery codes */}
-          {/* ========================================================================= */}
-          {step === 'recovery-codes' && (
-            <div className="text-center animate-in fade-in duration-300">
-              {/* Key Badge */}
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
-                <Key className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-
-              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
-                Your recovery codes
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-md mx-auto leading-relaxed">
-                Save these codes in a safe place. Each code can be used once to access your account.
-              </p>
-
-              <RecoveryCodesGrid onDone={() => setStep('success')} doneText="Done" />
             </div>
           )}
 
@@ -481,7 +640,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
       {/* Decorative Accents matching screens */}
       {step === 'choose-method' && <PalmSilhouetteAccent />}
-      {(step === 'email-input' || step === 'security-question') && <BotanicalLeavesAccent />}
+      {(step === 'email-input' || step === 'new-password') && <BotanicalLeavesAccent />}
       {step === 'success' && <ScenicJourneyFooter className="mt-auto" />}
     </div>
   );

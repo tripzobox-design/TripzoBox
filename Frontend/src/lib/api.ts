@@ -135,6 +135,14 @@ export const authApi = {
     return res.data;
   },
 
+  syncSession: async (data: { email?: string; phone?: string; name?: string }) => {
+    const res = await api.post('/auth/session-sync', data);
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
+  },
+
   logout: async () => {
     try {
       await api.post('/auth/logout');
@@ -172,6 +180,44 @@ export const authApi = {
   getRecoveryCodes: async () => {
     const res = await api.get('/auth/recovery-codes');
     return res.data?.recoveryCodes || [];
+  },
+
+  resendVerification: async (emailOrPhone: string) => {
+    return api.post('/auth/resend-verification', { emailOrPhone });
+  },
+
+  verifyEmail: async (token?: string, email?: string, otp?: string) => {
+    const res = await api.post('/auth/verify-email', { token, email, otp });
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res;
+  },
+
+  checkVerificationStatus: async (email: string) => {
+    const res = await api.get('/auth/verification-status', { email });
+    return res.data;
+  },
+
+  requestEmailChangeOtp: async (newEmail: string) => {
+    const res = await api.post('/auth/email/request-otp', { newEmail });
+    return res.data;
+  },
+
+  verifyEmailChangeOtp: async (newEmail: string, otp: string) => {
+    const res = await api.post('/auth/email/verify-otp', { newEmail, otp });
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
+  },
+
+  oauthLogin: async (data: { provider: 'Google' | 'Apple'; email: string; name?: string; avatarUrl?: string }) => {
+    const res = await api.post('/auth/oauth', data);
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
   },
 };
 
@@ -379,6 +425,25 @@ export const vaultApi = {
     return res.data;
   },
 
+  requestDocumentOtp: async (data: {
+    channel: 'email' | 'phone';
+    documentName?: string;
+    documentType?: string;
+  }) => {
+    const res = await api.post('/vault/documents/request-otp', data);
+    return res.data;
+  },
+
+  verifyDocumentOtp: async (data: {
+    identifier: string;
+    otp: string;
+    documentId?: string;
+    documentType?: string;
+  }) => {
+    const res = await api.post('/vault/documents/verify-otp', data);
+    return res.data;
+  },
+
   updateDocument: async (id: string, updates: any) => {
     const res = await api.put(`/vault/documents/${id}`, updates);
     return res.data;
@@ -444,4 +509,213 @@ export const vaultApi = {
     return res.data;
   },
 };
+
+// ============================================================================
+// 9. TRUST & SAFETY APIS
+// ============================================================================
+export const safetyApi = {
+  // Mobile Phone OTP
+  requestPhoneOtp: async (phone: string) => {
+    const res = await api.post('/safety/phone/request-otp', { phone });
+    return res.data;
+  },
+
+  verifyPhoneOtp: async (phone: string, otp: string) => {
+    const res = await api.post('/safety/phone/verify-otp', { phone, otp });
+    return res.data;
+  },
+
+  // Email Change OTP
+  requestEmailChangeOtp: async (newEmail: string) => {
+    const res = await api.post('/safety/email/request-otp', { newEmail });
+    return res.data;
+  },
+
+  verifyEmailChangeOtp: async (newEmail: string, otp: string) => {
+    const res = await api.post('/safety/email/verify-otp', { newEmail, otp });
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
+  },
+
+  // Government ID Verification
+  initiateIdentityVerification: async (documentType: string, consentGiven: boolean = true) => {
+    const res = await api.post('/safety/identity/initiate', { documentType, consentGiven });
+    return res.data;
+  },
+
+  getIdentityStatus: async () => {
+    const res = await api.get('/safety/identity/status');
+    return res.data;
+  },
+
+  simulateIdentityResult: async (status: 'VERIFIED' | 'REJECTED' | 'FAILED', rejectionReason?: string) => {
+    const res = await api.post('/safety/identity/simulate-result', { status, rejectionReason });
+    return res.data;
+  },
+
+  // Traveller Ratings & Reviews
+  submitTravellerReview: async (reviewData: {
+    tripId: string;
+    revieweeId: string;
+    ratings: {
+      overall?: number;
+      friendliness?: number;
+      communication: number;
+      punctuality: number;
+      cooperation: number;
+      responsibility?: number;
+      respectfulBehaviour?: number;
+    };
+    tags?: string[];
+    comment?: string;
+  }) => {
+    const res = await api.post('/reviews', reviewData);
+    return res.data;
+  },
+
+  getUserReviews: async (userId: string) => {
+    const res = await api.get(`/reviews/user/${userId}`);
+    return res.data;
+  },
+
+  reportReview: async (reviewId: string, reason: string) => {
+    const res = await api.post(`/reviews/${reviewId}/report`, { reason });
+    return res.data;
+  },
+
+  getReviewableCompanions: async () => {
+    const res = await api.get('/safety/reviews/companions');
+    return res.data?.companions || [];
+  },
+
+  getTripEligibility: async (tripId: string) => {
+    const res = await api.get(`/reviews/trip/${tripId}`);
+    return res.data;
+  },
+
+  getUserSummary: async (userId: string) => {
+    const res = await api.get(`/reviews/summary/${userId}`);
+    return res.data;
+  },
+
+  // Reports
+  submitReport: async (reportData: {
+    targetType: 'user' | 'trip' | 'message';
+    targetId: string;
+    targetName?: string;
+    category: string;
+    description: string;
+    evidenceUrl?: string;
+  }) => {
+    const res = await api.post('/safety/reports', reportData);
+    return res.data;
+  },
+
+  getMyReports: async () => {
+    const res = await api.get('/safety/reports/my');
+    return res.data?.reports || [];
+  },
+
+  // Blocks
+  blockUser: async (targetUserId: string, reason?: string) => {
+    const res = await api.post('/safety/block', { targetUserId, reason });
+    return res.data;
+  },
+
+  unblockUser: async (targetUserId: string) => {
+    const res = await api.post('/safety/unblock', { targetUserId });
+    return res.data;
+  },
+
+  getBlockedUsers: async () => {
+    const res = await api.get('/safety/blocked-users');
+    return res.data?.blockedUsers || [];
+  },
+
+  // Emergency & Safety Guidelines
+  getEmergencyInfo: async () => {
+    const res = await api.get('/safety/emergency-info');
+    return res.data;
+  },
+
+  shareTripWithEmergencyContact: async (data: {
+    tripId: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    shareLocationConsent?: boolean;
+  }) => {
+    const res = await api.post('/safety/emergency-share', data);
+    return res.data;
+  },
+
+  // Admin Moderation
+  getAdminReports: async (params?: { status?: string; category?: string }) => {
+    const res = await api.get('/safety/admin/reports', params);
+    return res.data;
+  },
+
+  getAdminReportById: async (reportId: string) => {
+    const res = await api.get(`/safety/admin/reports/${reportId}`);
+    return res.data?.report;
+  },
+
+  updateReportStatus: async (reportId: string, status: string, moderatorNotes?: string) => {
+    const res = await api.put(`/safety/admin/reports/${reportId}/status`, { status, moderatorNotes });
+    return res.data;
+  },
+
+  suspendUser: async (userId: string, reason: string, reportId?: string) => {
+    const res = await api.post(`/safety/admin/users/${userId}/suspend`, { reason, reportId });
+    return res.data;
+  },
+
+  restoreUser: async (userId: string, reason?: string) => {
+    const res = await api.post(`/safety/admin/users/${userId}/restore`, { reason });
+    return res.data;
+  },
+
+  getAuditLogs: async () => {
+    const res = await api.get('/safety/admin/audit-logs');
+    return res.data?.logs || [];
+  },
+};
+
+// ============================================================================
+// 10. PUBLIC CMS CONTENT APIS
+// ============================================================================
+export const contentApi = {
+  getHomepageContent: async () => {
+    try {
+      const res = await api.get('/content/homepage');
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
+
+  getPageContent: async (slug: string) => {
+    try {
+      const res = await api.get(`/content/pages/${slug}`);
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
+};
+
+// ============================================================================
+// 11. TRAVELLER REVIEWS ALIAS API
+// ============================================================================
+export const reviewsApi = {
+  submitReview: safetyApi.submitTravellerReview,
+  getUserReviews: safetyApi.getUserReviews,
+  getUserSummary: safetyApi.getUserSummary,
+  getTripEligibility: safetyApi.getTripEligibility,
+  reportReview: safetyApi.reportReview,
+  getReviewableCompanions: safetyApi.getReviewableCompanions,
+};
+
+
 

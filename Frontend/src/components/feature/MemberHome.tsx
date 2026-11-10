@@ -24,8 +24,8 @@ export const MemberHome: React.FC = () => {
           ))}
         </div>
         {selectedTrips.length ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
-            {selectedTrips.slice(0, 4).map((trip) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+            {selectedTrips.slice(0, 3).map((trip) => (
               <TripCard key={trip.id} trip={trip} />
             ))}
           </div>
@@ -37,7 +37,7 @@ export const MemberHome: React.FC = () => {
             <Link to="/trips" className="inline-flex items-center gap-2 mt-5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">Explore trips <ArrowRight className="w-4 h-4" /></Link>
           </div>
         )}
-        {selectedTrips.length > 4 && <Link to="/trips" className="block w-fit mx-auto rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-primary hover:border-primary">Show all {selectedTrips.length} trips</Link>}
+        {selectedTrips.length > 3 && <Link to="/trips" className="block w-fit mx-auto rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-primary hover:border-primary">Show all {selectedTrips.length} trips</Link>}
       </div>
     </section>
   );

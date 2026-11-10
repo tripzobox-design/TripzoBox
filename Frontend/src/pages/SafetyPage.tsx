@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { SEO } from '../components/common/SEO';
 
 export const SafetyPage: React.FC = () => {
   const safetyProtocols = [
@@ -53,6 +54,10 @@ export const SafetyPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-5 sm:pt-3 sm:pb-7 lg:py-14 space-y-6 lg:space-y-12">
+      <SEO
+        title="Trust & Safety Guidelines"
+        description="Learn how TripzoBox protects travellers with multi-factor identity verification, peer reputation reviews, offline document vaults, and emergency contact integration."
+      />
       {/* 1. HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-4 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">

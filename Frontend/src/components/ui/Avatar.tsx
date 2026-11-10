@@ -14,6 +14,12 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   className = '',
 }) => {
+  const [imgError, setImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
   const sizeMap = {
     xs: 'w-6 h-6 text-[10px]',
     sm: 'w-8 h-8 text-xs',
@@ -23,31 +29,30 @@ export const Avatar: React.FC<AvatarProps> = ({
     '2xl': 'w-24 h-24 text-2xl',
   };
 
-  const getInitials = (str: string) => {
-    return str
-      .split(' ')
-      .map((part) => part[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
+  const getFirstLetter = (str: string) => {
+    if (!str || !str.trim()) return 'T';
+    return str.trim().charAt(0).toUpperCase();
   };
+
+  const hasPhoto = src && src.trim() && !imgError;
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm bg-accent/40 text-primary-dark font-semibold select-none ${sizeMap[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm select-none ${
+        hasPhoto
+          ? 'bg-gray-100 text-gray-700'
+          : 'bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold'
+      } ${sizeMap[size]} ${className}`}
     >
-      {src ? (
+      {hasPhoto ? (
         <img
           src={src}
           alt={name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLElement).style.display = 'none';
-          }}
+          onError={() => setImgError(true)}
         />
       ) : (
-        <span>{getInitials(name)}</span>
+        <span>{getFirstLetter(name)}</span>
       )}
     </div>
   );

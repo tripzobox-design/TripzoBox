@@ -56,7 +56,7 @@ const StorySchema = new Schema<IStory>(
     author: {
       id: { type: String, required: true, index: true },
       name: { type: String, required: true },
-      avatarUrl: { type: String, required: true },
+      avatarUrl: { type: String, default: '' },
       city: { type: String },
     },
     entries: { type: [Schema.Types.Mixed], default: [] },

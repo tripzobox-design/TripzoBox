@@ -11,7 +11,7 @@ const startServer = async (): Promise<void> => {
 
     const app = createApp();
 
-    const server = app.listen(config.port, () => {
+    const server = app.listen(config.port, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(`🚀 TripzoBox Backend API Server running on port ${config.port}`);
       console.log(`🔗 Health Check: http://localhost:${config.port}/health`);

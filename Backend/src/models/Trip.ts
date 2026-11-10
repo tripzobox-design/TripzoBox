@@ -94,7 +94,7 @@ const TripSchema = new Schema<ITrip>(
       id: { type: String, required: true, index: true },
       name: { type: String, required: true },
       username: { type: String },
-      avatarUrl: { type: String, required: true },
+      avatarUrl: { type: String, default: '' },
       city: { type: String },
       email: { type: String },
       phone: { type: String },
@@ -103,7 +103,7 @@ const TripSchema = new Schema<ITrip>(
       {
         id: { type: String, required: true },
         name: { type: String, required: true },
-        avatarUrl: { type: String, required: true },
+        avatarUrl: { type: String, default: '' },
         role: { type: String, default: 'Member' },
         city: { type: String },
         email: { type: String },

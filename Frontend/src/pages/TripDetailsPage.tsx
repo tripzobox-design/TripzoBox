@@ -28,6 +28,11 @@ import {
   Car,
   Home,
   ShieldAlert,
+  Flag,
+  Star,
+  ShieldCheck,
+  PhoneCall,
+  UserX,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +43,12 @@ import { Avatar, AvatarGroup } from '../components/ui/Avatar';
 import { StarRating } from '../components/ui/StarRating';
 import { Modal } from '../components/ui/Modal';
 import { User } from '../types';
+import { VerificationBadges } from '../components/safety/VerificationBadges';
+import { ReportModal } from '../components/safety/ReportModal';
+import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
+import { EmergencyAssistanceModal } from '../components/safety/EmergencyAssistanceModal';
+import { safetyApi, reviewsApi } from '../lib/api';
+import { EcommerceImageGallery } from '../components/common/EcommerceImageGallery';
 
 export const TripDetailsPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -60,12 +71,84 @@ export const TripDetailsPage: React.FC = () => {
   const trip = getTripById(tripId || '');
   const isLeader = Boolean(user && trip && trip.leader.id === user.id);
 
-  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact' | 'rate'>('about');
   const [infoTab, setInfoTab] = useState<'reviews' | 'images' | 'contact'>('reviews');
   const [selectedTraveller, setSelectedTraveller] = useState<User | null>(null);
   const [showRoomTypeConfirm, setShowRoomTypeConfirm] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
+
+  // Trust & Safety Modals
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ type: 'user' | 'trip' | 'message'; id: string; name: string }>({
+    type: 'trip',
+    id: '',
+    name: '',
+  });
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [revieweeTarget, setRevieweeTarget] = useState<{
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    existingReview?: any;
+    readOnly?: boolean;
+  }>({ id: '', name: '' });
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
+
+  // Review eligibility state for completed trips
+  const [eligibilityData, setEligibilityData] = useState<{
+    isEligible: boolean;
+    canReviewCount: number;
+    participants: Array<{
+      id: string;
+      name: string;
+      avatarUrl: string;
+      role: string;
+      isEligible: boolean;
+      hasReviewed: boolean;
+      reviewData?: any;
+    }>;
+  } | null>(null);
+
+  const fetchEligibility = React.useCallback(async () => {
+    if (!trip?.id || !isLoggedIn) return;
+    try {
+      const res = await reviewsApi.getTripEligibility(trip.id);
+      if (res?.data) {
+        setEligibilityData(res.data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch review eligibility:', err);
+    }
+  }, [trip?.id, isLoggedIn]);
+
+  React.useEffect(() => {
+    fetchEligibility();
+  }, [fetchEligibility]);
+
+  const handleOpenReport = (type: 'user' | 'trip' | 'message', id: string, name: string) => {
+    setSelectedTraveller(null);
+    setReportTarget({ type, id, name });
+    setReportModalOpen(true);
+  };
+
+  const handleOpenReview = (
+    revieweeId: string,
+    revieweeName: string,
+    avatarUrl?: string,
+    existingReview?: any,
+    readOnly?: boolean
+  ) => {
+    setSelectedTraveller(null);
+    setRevieweeTarget({
+      id: revieweeId,
+      name: revieweeName,
+      avatarUrl,
+      existingReview,
+      readOnly: Boolean(readOnly || existingReview),
+    });
+    setReviewModalOpen(true);
+  };
 
   const handleConfirmRoomTypeChange = () => {
     if (!trip) return;
@@ -133,10 +216,20 @@ export const TripDetailsPage: React.FC = () => {
     setChatInput('');
   };
 
+  const isTripCompleted =
+    (trip.status as string) === 'completed' ||
+    trip.status === 'closed' ||
+    (trip.endDate && !isNaN(new Date(trip.endDate).getTime()) && new Date(trip.endDate) <= new Date());
+  const isUserParticipant =
+    trip.leader.id === user.id || trip.members.some((m) => m.id === user.id);
+
   const tabs = [
     { id: 'about', label: 'About' },
     { id: 'itinerary', label: 'Itinerary' },
     { id: 'members', label: `Members (${trip.members.length}/${trip.maxMembers})` },
+    ...(isTripCompleted && isUserParticipant
+      ? [{ id: 'rate', label: `Rate Travellers (${eligibilityData?.canReviewCount ?? 0})` }]
+      : []),
     { id: 'chat', label: 'Chat' },
   ];
 
@@ -262,7 +355,7 @@ export const TripDetailsPage: React.FC = () => {
 
         {/* Tag Badges row matching Screen 4: Nature, Trekking, Photography, Food */}
         <div className="flex flex-wrap items-center gap-2 pt-4">
-          {(trip.preferences.length > 0 ? trip.preferences : ['Nature', 'Trekking', 'Photography', 'Food']).map(
+          {(trip.preferences && trip.preferences.length > 0 ? trip.preferences : ['Nature', 'Trekking', 'Photography', 'Food']).map(
             (tag) => (
               <span
                 key={tag}
@@ -459,6 +552,41 @@ export const TripDetailsPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Post-Trip Notification Banner */}
+          {isTripCompleted && isUserParticipant && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-700 via-[#0D5A46] to-teal-800 text-white shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-white/20 text-white flex items-center justify-center shrink-0 border border-white/20">
+                  <Star className="w-6 h-6 fill-amber-300 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-emerald-950 uppercase">
+                      Trip Completed
+                    </span>
+                    <span className="text-xs text-emerald-100">
+                      {eligibilityData?.canReviewCount ?? 0} companion{(eligibilityData?.canReviewCount ?? 0) === 1 ? '' : 's'} awaiting rating
+                    </span>
+                  </div>
+                  <h4 className="font-heading font-bold text-sm sm:text-base mt-1 text-white">
+                    Rate Your Travel Companions
+                  </h4>
+                  <p className="text-xs text-emerald-100/90 mt-0.5 max-w-xl leading-relaxed">
+                    How was your experience travelling with fellow group members? Verified reviews help travellers build trust across TripzoBox.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('rate' as any)}
+                className="px-4 py-2.5 rounded-xl bg-white text-emerald-900 font-bold text-xs hover:bg-emerald-50 transition shadow-xs self-start sm:self-auto shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Star className="w-3.5 h-3.5 fill-emerald-800 text-emerald-800" />
+                <span>Rate Travellers Section &rarr;</span>
+              </button>
+            </div>
+          )}
+
           {/* TABS CONTAINER */}
           <div id="trip-main-details" className="scroll-mt-24 bg-white rounded-2xl border border-border p-3 sm:p-4 lg:p-6 shadow-subtle">
             {/* Tabs */}
@@ -468,8 +596,8 @@ export const TripDetailsPage: React.FC = () => {
               onChange={(tabId) => setActiveTab(tabId as any)}
               variant="underline"
             /></div>
-            <div className="grid grid-cols-4 gap-1 border-b border-border sm:hidden" aria-label="Trip details">
-              {tabs.map((tab) => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as any)} className={`min-w-0 py-3 text-[11px] font-semibold border-b-2 ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted'}`}>{tab.id === 'members' ? 'Members' : tab.label}</button>)}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-border sm:hidden" aria-label="Trip details">
+              {tabs.map((tab) => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => setActiveTab(tab.id as any)} className={`whitespace-nowrap px-3 py-3 text-[11px] font-semibold border-b-2 shrink-0 ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-text-muted'}`}>{tab.label}</button>)}
             </div>
 
             {/* TAB: ABOUT */}
@@ -519,7 +647,7 @@ export const TripDetailsPage: React.FC = () => {
                     Trip Highlights
                   </h4>
                   <div className="flex flex-wrap gap-2.5">
-                    {trip.highlights.map((h, i) => (
+                    {(trip.highlights || []).map((h, i) => (
                       <span
                         key={i}
                         className="inline-flex items-center gap-2 text-xs bg-light-bg text-text font-medium px-3.5 py-2 rounded-full border border-border shadow-xs"
@@ -584,14 +712,14 @@ export const TripDetailsPage: React.FC = () => {
             {activeTab === 'members' && (
               <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <h4 className="font-heading font-semibold text-base text-text mb-3">
-                  Trip Travellers ({trip.members.length}/{trip.maxMembers})
+                  Trip Travellers ({(trip.members || []).length}/{trip.maxMembers})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {trip.members.map((member) => (
+                  {(trip.members || []).map((member) => (
                     <button
                       key={member.id}
                       type="button"
-                      onClick={() => setSelectedTraveller(member)}
+                      onClick={() => setSelectedTraveller(member as any)}
                       aria-label={`View ${member.name}'s profile`}
                       className="w-full p-3.5 rounded-xl bg-light-bg border border-border flex items-center gap-3 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
                     >
@@ -599,16 +727,132 @@ export const TripDetailsPage: React.FC = () => {
                       <div className="min-w-0 text-left">
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-sm text-text truncate">{member.name}</p>
-                          {member.id === trip.leader.id && (
+                          {member.id === trip.leader?.id && (
                             <span className="text-[10px] font-semibold bg-primary text-white px-2 py-0.2 rounded-full">
                               Leader
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-text-muted truncate">{member.city}, {member.country || 'India'}</p>
+                        <div className="mt-1">
+                          <VerificationBadges user={member} size="xs" />
+                        </div>
                       </div>
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: RATE TRAVELLERS */}
+            {activeTab === 'rate' && (
+              <div className="pt-3 sm:pt-4 lg:pt-6 space-y-5 text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                  <div>
+                    <h4 className="font-heading font-bold text-base sm:text-lg text-gray-900 flex items-center gap-2">
+                      <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                      <span>Rate Fellow Travellers</span>
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Confirmed companions on this completed journey. You can submit one rating per traveller.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      {eligibilityData?.participants?.filter((p) => p.hasReviewed).length || 0} /{' '}
+                      {eligibilityData?.participants?.length || 0} Reviewed
+                    </span>
+                  </div>
+                </div>
+
+                {/* Companions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {(eligibilityData?.participants && eligibilityData.participants.length > 0
+                    ? eligibilityData.participants
+                    : [
+                        ...(trip.leader.id !== user.id
+                          ? [{ id: trip.leader.id, name: trip.leader.name, avatarUrl: trip.leader.avatarUrl, role: 'leader', hasReviewed: false }]
+                          : []),
+                        ...trip.members
+                          .filter((m) => m.id !== user.id)
+                          .map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl, role: 'member', hasReviewed: false })),
+                      ]
+                  ).map((comp: any) => {
+                    const hasSubmitted = comp.hasReviewed;
+                    return (
+                      <div
+                        key={comp.id}
+                        className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs flex flex-col justify-between gap-3 hover:border-emerald-300 transition-all text-left"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar src={comp.avatarUrl} name={comp.name} size="md" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-bold text-sm text-gray-900 truncate">{comp.name}</h5>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  comp.role === 'leader'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {comp.role === 'leader' ? 'Trip Leader' : 'Traveller'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">Verified Journey Participant</p>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${
+                              hasSubmitted
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                            }`}
+                          >
+                            {hasSubmitted ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
+                                <span>Submitted</span>
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Pending</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-[11px] text-gray-400">
+                            {hasSubmitted ? 'Rating recorded' : 'Awaiting your rating'}
+                          </span>
+
+                          {hasSubmitted ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReview(comp.id, comp.name, comp.avatarUrl, comp.reviewData, true)}
+                              className="px-3.5 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                              <span>View Your Rating</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReview(comp.id, comp.name, comp.avatarUrl, undefined, false)}
+                              className="px-4 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Star className="w-3.5 h-3.5 fill-white" />
+                              <span>Rate Traveller</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -686,14 +930,18 @@ export const TripDetailsPage: React.FC = () => {
             )}
             {infoTab === 'images' && (
               <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
-                <h4 className="font-heading font-semibold text-base text-text">Trip Images</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])].map((src, index) => (
-                    <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-border focus-visible:outline-primary">
-                      <img src={src} alt={`${trip.name} — photo ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform hover:scale-105" />
-                    </a>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-heading font-semibold text-base text-text">Trip Images</h4>
+                  <span className="text-xs text-text-muted">
+                    {[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])].filter(Boolean).length} Photos
+                  </span>
                 </div>
+                {/* Flipkart / Amazon Style Interactive Image Showcase & Thumbnail Rail */}
+                <EcommerceImageGallery
+                  images={[...new Set([trip.coverImageUrl, ...(trip.galleryImages || [])])]}
+                  title={trip.name}
+                  aspectRatio="aspect-[4/3] sm:aspect-[16/10]"
+                />
               </div>
             )}
 
@@ -740,6 +988,9 @@ export const TripDetailsPage: React.FC = () => {
                 <p className="text-xs text-text-muted mt-0.5">
                   Trip Leader · {trip.leader.stats?.trips || 4} trips
                 </p>
+                <div className="mt-1.5">
+                  <VerificationBadges user={trip.leader} size="xs" />
+                </div>
               </div>
             </div>
             <button
@@ -747,7 +998,34 @@ export const TripDetailsPage: React.FC = () => {
               onClick={() => setSelectedTraveller(trip.leader)}
               className="w-full mt-3.5 py-2 px-3 rounded-xl border border-gray-200 hover:border-primary text-xs font-semibold text-text hover:text-primary transition-colors cursor-pointer text-center"
             >
-              View Profile
+              View Profile & Badges
+            </button>
+          </div>
+
+          {/* Safety & Emergency Help Card */}
+          <div className="bg-gradient-to-br from-red-50 to-amber-50 rounded-2xl border border-red-200/80 p-5 shadow-xs text-left space-y-3">
+            <div className="flex items-center gap-2.5 text-red-700">
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <h4 className="font-heading font-bold text-sm text-gray-900">
+                Trust & Emergency Help
+              </h4>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Quick access to 112, 100, 108 helplines and real-time itinerary sharing with your trusted contacts.
+            </p>
+            <button
+              type="button"
+              onClick={() => setEmergencyModalOpen(true)}
+              className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <PhoneCall className="w-3.5 h-3.5" /> Emergency Help & Sharing
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpenReport('trip', trip.id, trip.name || trip.destination)}
+              className="w-full py-1 text-center text-xs text-gray-500 hover:text-red-600 font-medium transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Flag className="w-3.5 h-3.5" /> Report Safety Concern on Trip
             </button>
           </div>
 
@@ -843,25 +1121,96 @@ export const TripDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <Modal isOpen={selectedTraveller !== null} onClose={() => setSelectedTraveller(null)} title="Traveller profile">
+      <Modal isOpen={selectedTraveller !== null} onClose={() => setSelectedTraveller(null)} title="Traveller Profile & Trust">
         {selectedTraveller && <div className="space-y-4 text-left">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <Avatar src={selectedTraveller.avatarUrl} name={selectedTraveller.name} size="lg" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h3 className="font-heading font-bold text-lg text-text break-words">{selectedTraveller.name}</h3>
-              <p className="text-xs text-text-muted">@{selectedTraveller.username}</p>
-              <p className="text-sm text-text-muted mt-1">{selectedTraveller.city}, {selectedTraveller.country || 'India'}</p>
-              {selectedTraveller.id === trip.leader.id && <span className="text-xs font-semibold text-primary">Trip leader</span>}
+              <p className="text-xs text-text-muted">@{selectedTraveller.username || selectedTraveller.name.toLowerCase().replace(/\s+/g, '_')}</p>
+              <p className="text-sm text-text-muted mt-0.5">{selectedTraveller.city || 'India'}, {selectedTraveller.country || 'India'}</p>
+              {selectedTraveller.id === trip.leader?.id && <span className="text-xs font-semibold text-primary block mt-0.5">Trip Leader</span>}
+              <div className="mt-2">
+                <VerificationBadges user={selectedTraveller} size="xs" showLabels />
+              </div>
             </div>
           </div>
           {selectedTraveller.bio && <p className="text-sm text-text leading-relaxed">{selectedTraveller.bio}</p>}
-          <div className="flex flex-wrap gap-2">{selectedTraveller.travelInterests.map((interest) => <span key={interest} className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">{interest}</span>)}</div>
+          <div className="flex flex-wrap gap-2">
+            {(selectedTraveller.travelInterests || ['Exploring', 'Adventure', 'Nature']).map((interest) => (
+              <span key={interest} className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">
+                {interest}
+              </span>
+            ))}
+          </div>
           <dl className="grid grid-cols-2 gap-3 rounded-xl bg-light-bg p-3 text-sm">
-            <div><dt className="text-xs text-text-muted">Trips</dt><dd className="font-semibold text-text">{selectedTraveller.stats.trips}</dd></div>
-            <div><dt className="text-xs text-text-muted">Stories</dt><dd className="font-semibold text-text">{selectedTraveller.stats.stories}</dd></div>
-            <div><dt className="text-xs text-text-muted">Budget style</dt><dd className="font-semibold text-text capitalize">{selectedTraveller.budgetStyle}</dd></div>
-            <div><dt className="text-xs text-text-muted">Languages</dt><dd className="font-semibold text-text">{selectedTraveller.languages.join(', ') || 'Not shared'}</dd></div>
+            <div><dt className="text-xs text-text-muted">Trips</dt><dd className="font-semibold text-text">{selectedTraveller.stats?.trips ?? 0}</dd></div>
+            <div><dt className="text-xs text-text-muted">Stories</dt><dd className="font-semibold text-text">{selectedTraveller.stats?.stories ?? 0}</dd></div>
+            <div><dt className="text-xs text-text-muted">Budget style</dt><dd className="font-semibold text-text capitalize">{selectedTraveller.budgetStyle || 'Standard'}</dd></div>
+            <div><dt className="text-xs text-text-muted">Languages</dt><dd className="font-semibold text-text">{(selectedTraveller.languages || ['English']).join(', ') || 'Not shared'}</dd></div>
           </dl>
+
+          {/* Safety Actions on this Traveller */}
+          {user && user.id !== selectedTraveller.id && (
+            <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const comp = eligibilityData?.participants?.find((p) => p.id === selectedTraveller.id);
+                  const travellerId = selectedTraveller.id;
+                  const travellerName = selectedTraveller.name;
+                  const travellerAvatar = selectedTraveller.avatarUrl;
+                  setSelectedTraveller(null);
+                  handleOpenReview(
+                    travellerId,
+                    travellerName,
+                    travellerAvatar,
+                    comp?.reviewData,
+                    Boolean(comp?.hasReviewed)
+                  );
+                }}
+                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Star className="w-3.5 h-3.5 fill-white" />
+                <span>
+                  {eligibilityData?.participants?.find((p) => p.id === selectedTraveller.id)?.hasReviewed
+                    ? 'View Your Review'
+                    : 'Leave Review'}
+                </span>
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const travellerName = selectedTraveller.name;
+                    const travellerId = selectedTraveller.id;
+                    setSelectedTraveller(null);
+                    try {
+                      await safetyApi.blockUser(travellerId, 'Blocked from trip page');
+                      success(`Blocked ${travellerName}`);
+                    } catch (err: any) {
+                      info(err?.response?.data?.message || 'Action completed');
+                    }
+                  }}
+                  className="px-3 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <UserX className="w-3.5 h-3.5" /> Block
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const travellerName = selectedTraveller.name;
+                    const travellerId = selectedTraveller.id;
+                    setSelectedTraveller(null);
+                    handleOpenReport('user', travellerId, travellerName);
+                  }}
+                  className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Flag className="w-3.5 h-3.5" /> Report
+                </button>
+              </div>
+            </div>
+          )}
         </div>}
       </Modal>
 
@@ -943,6 +1292,39 @@ export const TripDetailsPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Trust & Safety Modals */}
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType={reportTarget.type}
+        targetId={reportTarget.id}
+        targetName={reportTarget.name}
+      />
+      {trip && (
+        <>
+          <SubmitReviewModal
+            isOpen={reviewModalOpen}
+            onClose={() => setReviewModalOpen(false)}
+            onSuccess={() => {
+              fetchEligibility();
+            }}
+            defaultTripId={trip.id}
+            defaultTripName={trip.name || trip.destination}
+            defaultRevieweeId={revieweeTarget.id}
+            defaultRevieweeName={revieweeTarget.name}
+            defaultRevieweeAvatar={revieweeTarget.avatarUrl}
+            existingReview={revieweeTarget.existingReview}
+            readOnly={revieweeTarget.readOnly}
+          />
+          <EmergencyAssistanceModal
+            isOpen={emergencyModalOpen}
+            onClose={() => setEmergencyModalOpen(false)}
+            tripId={trip.id}
+            tripTitle={trip.name || trip.destination}
+          />
+        </>
+      )}
     </div>
   );
 };

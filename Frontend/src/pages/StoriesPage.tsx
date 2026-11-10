@@ -10,6 +10,11 @@ import {
   Check,
   X,
   Compass,
+  SlidersHorizontal,
+  Plus,
+  LayoutGrid,
+  List,
+  BookOpen,
 } from 'lucide-react';
 import { useDiary } from '../context/DiaryContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +43,18 @@ export const StoriesPage: React.FC = () => {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('latest');
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (destinationFilter.trim()) count++;
+    if (selectedTripType !== 'All') count++;
+    if (selectedDuration !== 'All') count++;
+    if (selectedStyles.length > 0) count += selectedStyles.length;
+    if (selectedLanguages.length > 0) count += selectedLanguages.length;
+    return count;
+  }, [destinationFilter, selectedTripType, selectedDuration, selectedStyles, selectedLanguages]);
 
   const createPath = '/app/diary/create-story';
 
@@ -176,7 +193,220 @@ export const StoriesPage: React.FC = () => {
     destinationFilter ||
     selectedTripType !== 'All' ||
     selectedDuration !== 'All' ||
-    selectedStyles.length > 0;
+    selectedStyles.length > 0 ||
+    selectedLanguages.length > 0;
+
+  // Reusable Filter Sections (shared by sticky desktop sidebar and mobile slide-out drawer)
+  const renderFilterSections = (isDrawer = false) => (
+    <div className="space-y-4 text-left">
+      {/* 1. Destination Input */}
+      <div>
+        <label
+          htmlFor={isDrawer ? 'drawer-destination-filter' : 'destination-filter'}
+          className="block text-xs font-semibold text-gray-700 mb-1.5"
+        >
+          Destination
+        </label>
+        <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <input
+            id={isDrawer ? 'drawer-destination-filter' : 'destination-filter'}
+            type="text"
+            placeholder="Search destinations..."
+            value={destinationFilter}
+            onChange={(e) => setDestinationFilter(e.target.value)}
+            className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 outline-none"
+          />
+          {destinationFilter && (
+            <button
+              type="button"
+              onClick={() => setDestinationFilter('')}
+              className="text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+              aria-label="Clear destination"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Trip Type Pills */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Trip Type
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {TRIP_TYPES.map((type) => {
+            const isSelected = selectedTripType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setSelectedTripType(type)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#0D5A46] text-white font-semibold shadow-2xs'
+                    : 'border border-gray-200 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50'
+                }`}
+              >
+                {type}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Duration Pills */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Duration
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {DURATIONS.map((dur) => {
+            const isSelected = selectedDuration === dur;
+            return (
+              <button
+                key={dur}
+                type="button"
+                onClick={() => setSelectedDuration(dur)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#0D5A46] text-white font-semibold shadow-2xs'
+                    : 'border border-gray-200 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50'
+                }`}
+              >
+                {dur}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. Travel Style (2-column checkboxes) */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Travel Style
+        </label>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+          <div className="space-y-1">
+            {TRAVEL_STYLES_COL1.map((style) => {
+              const isChecked = selectedStyles.includes(style);
+              return (
+                <label
+                  key={style}
+                  onClick={() => toggleStyle(style)}
+                  className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      isChecked
+                        ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                        : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="font-medium text-xs text-gray-700">{style}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="space-y-1">
+            {TRAVEL_STYLES_COL2.map((style) => {
+              const isChecked = selectedStyles.includes(style);
+              return (
+                <label
+                  key={style}
+                  onClick={() => toggleStyle(style)}
+                  className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      isChecked
+                        ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                        : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="font-medium text-xs text-gray-700">{style}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Languages (2-column checkboxes) */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Languages
+        </label>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+          <div className="space-y-1">
+            {LANGUAGES_COL1.map((lang) => {
+              const isChecked = selectedLanguages.includes(lang);
+              return (
+                <label
+                  key={lang}
+                  onClick={() => toggleLanguage(lang)}
+                  className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      isChecked
+                        ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                        : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="font-medium text-xs text-gray-700">{lang}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="space-y-1">
+            {LANGUAGES_COL2.map((lang) => {
+              const isChecked = selectedLanguages.includes(lang);
+              return (
+                <label
+                  key={lang}
+                  onClick={() => toggleLanguage(lang)}
+                  className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      isChecked
+                        ? 'bg-[#0D5A46] border-[#0D5A46] text-white'
+                        : 'border-gray-300 bg-white group-hover:border-emerald-600'
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="font-medium text-xs text-gray-700">{lang}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Reset Filters Button (desktop only) */}
+      {!isDrawer && (
+        <button
+          type="button"
+          onClick={handleResetFilters}
+          className="w-full py-2.5 px-4 rounded-xl border border-emerald-600/30 text-emerald-800 hover:bg-emerald-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer mt-2"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Reset Filters</span>
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="w-full text-left bg-light-bg min-h-screen">
@@ -200,6 +430,22 @@ export const StoriesPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             {/* Left Content Area */}
             <div className="max-w-xl text-left z-10">
+              {/* Tab Switcher: My Diary Entries vs Travel Stories */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/app/diary')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/80 hover:bg-white text-gray-700 border border-gray-200/80 transition-all cursor-pointer shadow-2xs"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-primary" />
+                  <span>My Trip Diary</span>
+                </button>
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0D5A46] text-white shadow-2xs">
+                  <Compass className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Travel Stories</span>
+                </div>
+              </div>
+
               <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1.5">
                 REAL PEOPLE. REAL JOURNEYS.
               </p>
@@ -254,16 +500,16 @@ export const StoriesPage: React.FC = () => {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. SUB-HEADER TOOLBAR (All Stories / My Stories & Sort Dropdown) */}
+      {/* 2. SUB-HEADER TOOLBAR (All / My Stories, Mobile Filter, View Mode & Sort) */}
       {/* ========================================================================= */}
       <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-2">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
           {/* Left: Tab Pills */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-[#0D5A46] text-white shadow-xs'
                   : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200/90 hover:bg-gray-50'
@@ -280,7 +526,7 @@ export const StoriesPage: React.FC = () => {
                   setActiveTab('mine');
                 }
               }}
-              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'mine'
                   ? 'bg-[#0D5A46] text-white shadow-xs'
                   : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200/90 hover:bg-gray-50'
@@ -288,44 +534,291 @@ export const StoriesPage: React.FC = () => {
             >
               My Stories
             </button>
+            {isLoggedIn && (
+              <button
+                type="button"
+                onClick={() => navigate('/app/diary')}
+                className="px-4 sm:px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer bg-white text-gray-600 hover:text-[#0D5A46] border border-gray-200/90 hover:bg-gray-50 flex items-center gap-1.5 shrink-0"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+                <span>My Diary Entries</span>
+              </button>
+            )}
           </div>
 
-          {/* Right: Sort by Dropdown */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500 font-medium">Sort by:</span>
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sort stories by"
-                className="appearance-none bg-white border border-gray-200/90 rounded-xl px-3.5 py-1.5 pr-8 text-xs font-semibold text-gray-800 shadow-2xs hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+          {/* Right Toolbar: Mobile Filter Trigger, Create Story, View Mode, Sort */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
+            {/* Mobile Filter Button (lg:hidden) */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200/90 bg-white hover:bg-emerald-50/50 text-xs font-semibold text-gray-700 hover:text-[#0D5A46] shadow-2xs transition-all cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="bg-[#0D5A46] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Create Story Button (lg:hidden) */}
+            <button
+              type="button"
+              onClick={handleCreateStory}
+              className="lg:hidden inline-flex items-center gap-1 bg-[#0D5A46] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-800 shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Create</span>
+            </button>
+
+            {/* View Mode Toggle (List / Grid) */}
+            <div className="flex items-center bg-white border border-gray-200/90 rounded-xl p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                title="Diary List View"
+                aria-label="Diary List View"
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-[#0D5A46] text-white shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
               >
-                <option value="latest">Latest</option>
-                <option value="popular">Most Popular</option>
-                <option value="rating">Highest Rated</option>
-                <option value="photos">Most Photos</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+                aria-label="Grid View"
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-[#0D5A46] text-white shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Sort by Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500 font-medium hidden sm:inline">Sort:</span>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Sort stories by"
+                  className="appearance-none bg-white border border-gray-200/90 rounded-xl px-3 py-1.5 pr-7 text-xs font-semibold text-gray-800 shadow-2xs hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="latest">Latest</option>
+                  <option value="popular">Most Popular</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="photos">Most Photos</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAIN CONTENT: 2-COLUMN SPLIT (GRID + SIDEBAR WIDGETS) */}
+      {/* 3. MOBILE SLIDE-OUT FILTER SIDEBAR DRAWER */}
+      {/* ========================================================================= */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setIsMobileFilterOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Slide-out Sidebar Drawer */}
+          <div className="fixed inset-y-0 left-0 w-full max-w-[340px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-left duration-300 text-left">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-emerald-700" />
+                <h2 className="font-heading font-extrabold text-base text-gray-900">Filter Stories</h2>
+                {activeFilterCount > 0 && (
+                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                  aria-label="Close filters"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {renderFilterSections(true)}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 text-center transition-colors cursor-pointer"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[#0D5A46] text-white text-xs font-bold hover:bg-emerald-800 text-center shadow-xs transition-colors cursor-pointer"
+              >
+                Show {visibleStories.length} Stories
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. MAIN CONTENT: 2-COLUMN SPLIT (GRID/LIST + DESKTOP STICKY SIDEBAR) */}
       {/* ========================================================================= */}
       <main className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] gap-6 lg:gap-8 items-start">
           {/* ===================================================================== */}
-          {/* LEFT COLUMN: STORY CARDS (3 COLS GRID) */}
+          {/* LEFT COLUMN: ACTIVE FILTERS TRAY + STORY CARDS */}
           {/* ===================================================================== */}
-          <div className="min-w-0">
-            {visibleStories.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-5">
-                {visibleStories.map((story) => (
-                  <StoryCard key={story.id} story={story} />
+          <div className="min-w-0 space-y-4">
+            {/* Active Filters Pill Bar */}
+            {activeFilterCount > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-3 flex flex-wrap items-center gap-2 shadow-2xs">
+                <span className="text-xs font-bold text-gray-500 mr-1">Active filters:</span>
+
+                {destinationFilter && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Destination: {destinationFilter}
+                    <button
+                      type="button"
+                      onClick={() => setDestinationFilter('')}
+                      className="hover:text-emerald-950 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedTripType !== 'All' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Type: {selectedTripType}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTripType('All')}
+                      className="hover:text-emerald-950 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedDuration !== 'All' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Duration: {selectedDuration}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDuration('All')}
+                      className="hover:text-emerald-950 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedStyles.map((style) => (
+                  <span
+                    key={style}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  >
+                    {style}
+                    <button
+                      type="button"
+                      onClick={() => toggleStyle(style)}
+                      className="hover:text-emerald-950 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
                 ))}
+
+                {selectedLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  >
+                    {lang}
+                    <button
+                      type="button"
+                      onClick={() => toggleLanguage(lang)}
+                      className="hover:text-emerald-950 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline ml-auto cursor-pointer"
+                >
+                  Clear all
+                </button>
               </div>
+            )}
+
+            {/* Results Count Summary */}
+            <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+              <span>
+                Showing <strong className="text-gray-900">{visibleStories.length}</strong> of{' '}
+                <strong className="text-gray-900">{stories.length}</strong> stories
+              </span>
+              {activeFilterCount > 0 && (
+                <span className="text-emerald-700 font-medium">Filters active</span>
+              )}
+            </div>
+
+            {/* Story Cards List or Grid */}
+            {visibleStories.length > 0 ? (
+              viewMode === 'list' ? (
+                <div className="space-y-3.5 sm:space-y-4">
+                  {visibleStories.map((story) => (
+                    <StoryCard key={story.id} story={story} variant="horizontal" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-5">
+                  {visibleStories.map((story) => (
+                    <StoryCard key={story.id} story={story} />
+                  ))}
+                </div>
+              )
             ) : (
               <div className="rounded-2xl border border-gray-200/90 bg-white p-12 text-center shadow-xs">
                 <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
@@ -353,9 +846,9 @@ export const StoriesPage: React.FC = () => {
           </div>
 
           {/* ===================================================================== */}
-          {/* RIGHT COLUMN: STICKY SIDEBAR WIDGETS */}
+          {/* RIGHT COLUMN: STICKY DESKTOP SIDEBAR (HIDDEN ON MOBILE) */}
           {/* ===================================================================== */}
-          <aside className="space-y-5 lg:sticky lg:top-24">
+          <aside className="hidden lg:block space-y-5 lg:sticky lg:top-24">
             {/* WIDGET 1: SHARE YOUR STORY */}
             <div className="rounded-2xl bg-[#0B543F] p-5 sm:p-6 text-white shadow-xs text-left relative overflow-hidden">
               {/* Paper Plane Icon */}
@@ -381,212 +874,7 @@ export const StoriesPage: React.FC = () => {
             {/* WIDGET 2: FILTER STORIES */}
             <div className="rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs text-left space-y-4">
               <h2 className="font-heading font-bold text-sm text-gray-900">Filter Stories</h2>
-
-              {/* 1. Destination Input */}
-              <div>
-                <label htmlFor="destination-filter" className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Destination
-                </label>
-                <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <input
-                    id="destination-filter"
-                    type="text"
-                    placeholder="Search destinations..."
-                    value={destinationFilter}
-                    onChange={(e) => setDestinationFilter(e.target.value)}
-                    className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 outline-none"
-                  />
-                  {destinationFilter && (
-                    <button
-                      type="button"
-                      onClick={() => setDestinationFilter('')}
-                      className="text-gray-400 hover:text-gray-600 p-0.5"
-                      aria-label="Clear destination"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 2. Trip Type Pills */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Trip Type
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TRIP_TYPES.map((type) => {
-                    const isSelected = selectedTripType === type;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setSelectedTripType(type)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#0D5A46] text-white font-semibold shadow-2xs'
-                            : 'border border-gray-200 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. Duration Pills */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Duration
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {DURATIONS.map((dur) => {
-                    const isSelected = selectedDuration === dur;
-                    return (
-                      <button
-                        key={dur}
-                        type="button"
-                        onClick={() => setSelectedDuration(dur)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#0D5A46] text-white font-semibold shadow-2xs'
-                            : 'border border-gray-200 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        {dur}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 4. Travel Style (2-column checkboxes) */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Travel Style
-                </label>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                  <div className="space-y-1">
-                    {TRAVEL_STYLES_COL1.map((style) => {
-                      const isChecked = selectedStyles.includes(style);
-                      return (
-                        <label
-                          key={style}
-                          onClick={() => toggleStyle(style)}
-                          className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
-                        >
-                          <div
-                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                              isChecked
-                                ? 'bg-primary border-primary text-white'
-                                : 'border-gray-300 bg-white group-hover:border-primary/60'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium text-xs text-gray-700">
-                            {style}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-1">
-                    {TRAVEL_STYLES_COL2.map((style) => {
-                      const isChecked = selectedStyles.includes(style);
-                      return (
-                        <label
-                          key={style}
-                          onClick={() => toggleStyle(style)}
-                          className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
-                        >
-                          <div
-                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                              isChecked
-                                ? 'bg-primary border-primary text-white'
-                                : 'border-gray-300 bg-white group-hover:border-primary/60'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium text-xs text-gray-700">
-                            {style}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* 5. Languages (2-column checkboxes) */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Languages
-                </label>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                  <div className="space-y-1">
-                    {LANGUAGES_COL1.map((lang) => {
-                      const isChecked = selectedLanguages.includes(lang);
-                      return (
-                        <label
-                          key={lang}
-                          onClick={() => toggleLanguage(lang)}
-                          className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
-                        >
-                          <div
-                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                              isChecked
-                                ? 'bg-primary border-primary text-white'
-                                : 'border-gray-300 bg-white group-hover:border-primary/60'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium text-xs text-gray-700">{lang}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-1">
-                    {LANGUAGES_COL2.map((lang) => {
-                      const isChecked = selectedLanguages.includes(lang);
-                      return (
-                        <label
-                          key={lang}
-                          onClick={() => toggleLanguage(lang)}
-                          className="flex items-center gap-2 text-xs text-gray-700 hover:text-gray-900 cursor-pointer select-none py-1 group"
-                        >
-                          <div
-                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                              isChecked
-                                ? 'bg-primary border-primary text-white'
-                                : 'border-gray-300 bg-white group-hover:border-primary/60'
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <span className="font-medium text-xs text-gray-700">{lang}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* 6. Reset Filters Button */}
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="w-full py-2.5 px-4 rounded-xl border border-emerald-600/30 text-emerald-800 hover:bg-emerald-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer mt-2"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
-              </button>
+              {renderFilterSections(false)}
             </div>
           </aside>
         </div>

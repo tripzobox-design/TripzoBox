@@ -28,8 +28,12 @@ export const updateProfileSchema = z.object({
   travelPace: z.string().optional(),
   preferredGroupSize: z.string().optional(),
   dreamDestination: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
-  coverUrl: z.string().url().optional(),
+  avatarUrl: z.string().optional(),
+  coverUrl: z.string().optional(),
+  emailVerified: z.never({ message: 'Manual email verification is forbidden' }).optional(),
+  phoneVerified: z.never({ message: 'Manual phone verification is forbidden' }).optional(),
+  identityVerificationStatus: z.never({ message: 'Manual identity status modification is forbidden' }).optional(),
+  role: z.never({ message: 'Manual role modification is forbidden' }).optional(),
 });
 
 export const securityQuestionSchema = z.object({

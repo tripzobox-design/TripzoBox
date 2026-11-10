@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Trip, ITrip } from '../models/Trip.js';
 import { JoinRequest } from '../models/JoinRequest.js';
 import { Notification } from '../models/Notification.js';
+import { UserBlock } from '../models/UserBlock.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { AuthRequest } from '../middleware/auth.js';
 
@@ -522,6 +523,21 @@ export const requestJoinTrip = async (
       return;
     }
 
+    // Safety check: prevent join request if an active block exists between applicant and trip leader
+    if (trip.leader && trip.leader.id) {
+      const activeBlock = await UserBlock.findOne({
+        $or: [
+          { blockerId: trip.leader.id, blockedUserId: req.user.id },
+          { blockerId: req.user.id, blockedUserId: trip.leader.id },
+        ],
+      });
+
+      if (activeBlock) {
+        sendError(res, 'Unable to request to join this trip due to an active user block.', 403);
+        return;
+      }
+    }
+
     // Check if user is already a member
     if (trip.members.some((m) => m.id === req.user!.id)) {
       sendError(res, 'You are already a member of this trip', 409);
@@ -629,19 +645,43 @@ export const acceptJoinRequest = async (
       return;
     }
 
-    if (trip.leader.id !== req.user.id && req.user.role !== 'admin') {
+    if (trip.leader.id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       sendError(res, 'Only the trip leader can approve requests', 403);
       return;
     }
 
-    const joinReq = await JoinRequest.findOne({ id: requestId, tripId: id });
+    if (trip.status === 'closed') {
+      sendError(res, 'This trip is closed and cannot accept new participants', 409);
+      return;
+    }
+
+    const now = new Date();
+    if (trip.startDate && new Date(trip.startDate) <= now) {
+      sendError(res, 'Cannot approve request: this trip has already started or departed', 409);
+      return;
+    }
+    if (trip.endDate && new Date(trip.endDate) <= now) {
+      sendError(res, 'Cannot approve request: this trip has already completed', 409);
+      return;
+    }
+
+    const joinReq = await JoinRequest.findOne({
+      $or: [{ id: requestId }, { _id: requestId.match(/^[0-9a-fA-F]{24}$/) ? requestId : null }],
+      tripId: id,
+    });
     if (!joinReq) {
       sendError(res, 'Join request not found', 404);
       return;
     }
 
-    if (joinReq.status === 'accepted') {
+    if (joinReq.status === 'accepted' || joinReq.status === 'approved') {
       sendError(res, 'Request has already been accepted', 409);
+      return;
+    }
+
+    const applicantId = joinReq.userId || joinReq.user.id;
+    if (trip.members.some((m) => m.id === applicantId)) {
+      sendError(res, 'Applicant is already a confirmed participant in this trip', 409);
       return;
     }
 
@@ -649,17 +689,17 @@ export const acceptJoinRequest = async (
     const updatedTrip = await Trip.findOneAndUpdate(
       {
         id,
-        'members.id': { $ne: joinReq.user.id },
+        'members.id': { $ne: applicantId },
         $expr: { $lt: [{ $size: '$members' }, '$maxMembers'] },
       },
       {
         $push: {
           members: {
-            id: joinReq.user.id,
+            id: applicantId,
             name: joinReq.user.name,
             avatarUrl: joinReq.user.avatarUrl,
             role: 'Member',
-            city: joinReq.user.city,
+            city: joinReq.user.city || 'Traveler',
           },
         },
       },
@@ -667,12 +707,18 @@ export const acceptJoinRequest = async (
     );
 
     // If trip was not updated because capacity was full
-    if (!updatedTrip && !trip.members.some((m) => m.id === joinReq.user.id)) {
+    if (!updatedTrip) {
       sendError(res, 'This trip has reached maximum capacity', 409);
       return;
     }
 
-    joinReq.status = 'accepted';
+    updatedTrip.spotsLeft = Math.max(0, updatedTrip.maxMembers - updatedTrip.members.length);
+    if (updatedTrip.members.length >= updatedTrip.maxMembers && updatedTrip.status === 'open') {
+      updatedTrip.status = 'full';
+    }
+    await updatedTrip.save();
+
+    joinReq.status = 'approved';
     await joinReq.save();
 
     // Create notification for accepted applicant
@@ -687,7 +733,7 @@ export const acceptJoinRequest = async (
       link: `/app/trips/${trip.id}`,
     });
 
-    sendSuccess(res, { request: joinReq, trip }, 'Applicant accepted into trip');
+    sendSuccess(res, { request: joinReq, trip: updatedTrip }, 'Applicant accepted into trip');
   } catch (error) {
     next(error);
   }
@@ -712,21 +758,92 @@ export const declineJoinRequest = async (
       return;
     }
 
-    if (trip.leader.id !== req.user.id && req.user.role !== 'admin') {
+    if (trip.leader.id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       sendError(res, 'Only the trip leader can decline requests', 403);
       return;
     }
 
-    const joinReq = await JoinRequest.findOne({ id: requestId, tripId: id });
+    const joinReq = await JoinRequest.findOne({
+      $or: [{ id: requestId }, { _id: requestId.match(/^[0-9a-fA-F]{24}$/) ? requestId : null }],
+      tripId: id,
+    });
     if (!joinReq) {
       sendError(res, 'Join request not found', 404);
       return;
     }
 
-    joinReq.status = 'declined';
+    joinReq.status = 'rejected';
     await joinReq.save();
 
+    // Send notification to applicant
+    await Notification.create({
+      id: `notif_${Date.now()}`,
+      userId: joinReq.userId,
+      type: 'trip_update',
+      title: 'Join request update',
+      message: `Your request to join "${trip.name}" was declined by the trip leader.`,
+      timestamp: 'Just now',
+      read: false,
+      link: `/find-trip`,
+    });
+
     sendSuccess(res, joinReq, 'Join request declined');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelJoinRequest = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Unauthenticated', 401);
+      return;
+    }
+
+    const { id, requestId } = req.params;
+    const joinReq = await JoinRequest.findOne({
+      $or: [{ id: requestId }, { _id: requestId.match(/^[0-9a-fA-F]{24}$/) ? requestId : null }],
+      tripId: id,
+    });
+
+    if (!joinReq) {
+      sendError(res, 'Join request not found', 404);
+      return;
+    }
+
+    const isOwner = joinReq.userId === req.user.id;
+    const isAdmin = ['admin', 'superadmin'].includes(req.user.role as any);
+
+    if (!isOwner && !isAdmin) {
+      sendError(res, 'You can only cancel or withdraw your own join requests', 403);
+      return;
+    }
+
+    const previousStatus = joinReq.status;
+    joinReq.status = 'withdrawn';
+    await joinReq.save();
+
+    // If it was approved, remove applicant from members
+    if (previousStatus === 'approved' || previousStatus === 'accepted') {
+      const updatedTrip = await Trip.findOneAndUpdate(
+        { id },
+        { $pull: { members: { id: joinReq.userId } } },
+        { new: true }
+      );
+      if (updatedTrip) {
+        updatedTrip.spotsLeft = Math.max(0, updatedTrip.maxMembers - updatedTrip.members.length);
+        if (updatedTrip.status === 'full' && updatedTrip.members.length < updatedTrip.maxMembers) {
+          updatedTrip.status = 'open';
+        }
+        await updatedTrip.save();
+      }
+    }
+
+    sendSuccess(res, joinReq, 'Join request withdrawn');
   } catch (error) {
     next(error);
   }

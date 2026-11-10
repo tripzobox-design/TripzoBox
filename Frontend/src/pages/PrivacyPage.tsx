@@ -1,8 +1,13 @@
 import React from 'react';
+import { SEO } from '../components/common/SEO';
 
 export const PrivacyPage: React.FC = () => {
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-8">
+      <SEO
+        title="Privacy Policy & Data Protection"
+        description="Learn how TripzoBox safeguards your personal information, Travel Vault documents, and encryption keys with privacy-by-design architecture."
+      />
       <div>
         <h1 className="font-heading font-extrabold text-3xl text-text">
           Privacy Policy

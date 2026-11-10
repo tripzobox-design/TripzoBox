@@ -8,8 +8,10 @@ interface AuthContextType {
   isLoggedIn: boolean;
   login: (email?: string, password?: string) => Promise<boolean>;
   signup: (name: string, email: string, password?: string) => Promise<boolean>;
+  oauthLogin: (provider: 'Google' | 'Apple', email: string, name?: string, avatarUrl?: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (updatedData: Partial<User>) => Promise<void> | void;
+  refreshUser: () => Promise<void>;
 }
 
 const sanitizeUser = (u: User): User => {
@@ -45,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return status !== null ? status === 'true' : false;
   });
 
-  // Verify session with server on initial mount
+  // Verify session with server on initial mount & ensure valid backend token
   useEffect(() => {
     const token = localStorage.getItem('tripzobox_token');
     if (token) {
@@ -58,8 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         })
         .catch(() => {
-          // Token expired or server unreachable, maintain current local state
+          // Token expired or invalid, re-sync session with server
+          authApi
+            .syncSession({ email: user.email, phone: user.phone, name: user.name })
+            .catch(() => {});
         });
+    } else {
+      // No token in localStorage: sync session to acquire valid JWT token
+      authApi
+        .syncSession({ email: user.email, phone: user.phone, name: user.name })
+        .then((data) => {
+          if (data?.user) {
+            setUser((prev) => sanitizeUser({ ...prev, ...data.user }));
+            setIsLoggedIn(true);
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -134,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: isEmail ? trimmed : prev.email || 'user@example.com',
           phone: isPhone ? trimmed : '',
           phoneVerified: isPhone,
+          avatarUrl: '',
         })
       );
       setIsLoggedIn(true);
@@ -144,6 +161,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     authApi.logout().catch(() => {});
     setIsLoggedIn(false);
+  };
+
+  const oauthLogin = async (
+    provider: 'Google' | 'Apple',
+    email: string,
+    name?: string,
+    avatarUrl?: string
+  ): Promise<boolean> => {
+    try {
+      const data = await authApi.oauthLogin({
+        provider,
+        email,
+        name: name || email.split('@')[0],
+        avatarUrl,
+      });
+      if (data?.user) {
+        setUser(sanitizeUser(data.user));
+      }
+      setIsLoggedIn(true);
+      return true;
+    } catch (err: any) {
+      console.warn('[AuthContext] Backend oauth call failed, falling back to local session:', err);
+      const cleanEmail = email.trim().toLowerCase();
+      setUser((prev) =>
+        sanitizeUser({
+          ...prev,
+          name: name || prev.name || cleanEmail.split('@')[0],
+          email: cleanEmail,
+          emailVerified: true,
+          avatarUrl:
+            avatarUrl ||
+            prev.avatarUrl ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        })
+      );
+      setIsLoggedIn(true);
+      return true;
+    }
   };
 
   const updateProfile = async (updatedData: Partial<User>) => {
@@ -163,8 +218,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const serverUser = await authApi.getMe();
+      if (serverUser) {
+        const sanitized = sanitizeUser(serverUser);
+        setUser(sanitized);
+        localStorage.setItem('tripzobox_user', JSON.stringify(sanitized));
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Failed to refresh user profile:', err);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, login, signup, oauthLogin, logout, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   User as UserIcon,
@@ -32,6 +32,12 @@ import {
   AlertCircle,
   Check,
   MessageSquare,
+  Upload,
+  Trash2,
+  LayoutGrid,
+  Loader2,
+  Mail,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -44,9 +50,11 @@ import { TripCard } from '../components/feature/TripCard';
 import { StoryCard } from '../components/feature/StoryCard';
 import { DocumentRow } from '../components/feature/DocumentRow';
 import { VaultFileViewer } from '../components/feature/VaultFileViewer';
+import { TravellerRatingsCard } from '../components/feature/TravellerRatingsCard';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { VaultDocument } from '../types';
+import { authApi } from '../lib/api';
 
 export type SettingsTab =
   | 'profile'
@@ -54,6 +62,7 @@ export type SettingsTab =
   | 'vault'
   | 'trips'
   | 'diary'
+  | 'stories'
   | 'notifications'
   | 'help';
 
@@ -73,7 +82,7 @@ export const isValidPhone = (val?: string): boolean => {
 export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   initialTab = 'security',
 }) => {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, refreshUser, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const { trips, savedTripIds } = useTrips();
   const { entries, stories } = useDiary();
@@ -87,14 +96,30 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [activeTab, setActiveTab] = useState<SettingsTab>(paramTab || initialTab);
 
   React.useEffect(() => {
+    if (paramTab === 'diary' || initialTab === 'diary') {
+      navigate('/app/diary', { replace: true });
+      return;
+    }
+    if (paramTab === 'stories' || initialTab === 'stories') {
+      navigate('/app/diary?tab=travel-stories', { replace: true });
+      return;
+    }
     if (paramTab) {
       setActiveTab(paramTab);
     } else if (initialTab) {
       setActiveTab(initialTab);
     }
-  }, [paramTab, initialTab]);
+  }, [paramTab, initialTab, navigate]);
 
   const handleTabChange = (tabId: SettingsTab) => {
+    if (tabId === 'diary') {
+      navigate('/app/diary');
+      return;
+    }
+    if (tabId === 'stories') {
+      navigate('/app/diary?tab=travel-stories');
+      return;
+    }
     setActiveTab(tabId);
     setSearchParams({ tab: tabId });
   };
@@ -104,11 +129,82 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [showAllDocs, setShowAllDocs] = useState(false);
   const [modalType, setModalType] = useState<
-    'email' | 'phone' | 'password' | 'recovery-question' | 'recovery-codes' | 'edit-profile' | null
+    'email' | 'phone' | 'password' | 'recovery-question' | 'recovery-codes' | 'edit-profile' | 'change-avatar' | null
   >(null);
+
+  // Avatar changing refs & state
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [isMobileTabsOpen, setIsMobileTabsOpen] = useState(false);
+
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      toastError('Please select a JPG, PNG, or WebP image.', 'Invalid Image');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toastError('Image size must be under 5 MB.', 'File Too Large');
+      return;
+    }
+
+    setAvatarLoading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = reader.result as string;
+      try {
+        await updateProfile({ avatarUrl: result });
+        success('Profile photo updated successfully!', 'Photo Changed');
+        setModalType(null);
+      } catch (err: any) {
+        toastError('Failed to update profile photo: ' + (err?.message || 'Unknown error'));
+      } finally {
+        setAvatarLoading(false);
+      }
+    };
+    reader.onerror = () => {
+      toastError('Could not read image file. Please try again.');
+      setAvatarLoading(false);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarLoading(true);
+    try {
+      await updateProfile({ avatarUrl: '' });
+      success('Profile photo removed. First letter of your name is now used.', 'Photo Removed');
+      setModalType(null);
+    } catch (err: any) {
+      toastError('Failed to remove photo');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   // Form states for modals
   const [newEmail, setNewEmail] = useState(user.email || 'user@example.com');
+  const [emailStep, setEmailStep] = useState<'input' | 'otp'>('input');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
+  const [emailDevOtp, setEmailDevOtp] = useState<string | null>(null);
+
+  // Email resend timer countdown
+  React.useEffect(() => {
+    if (emailResendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setEmailResendTimer((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [emailResendTimer]);
+
   const [newPhone, setNewPhone] = useState(isValidPhone(user.phone) ? user.phone! : '');
   const [phoneError, setPhoneError] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -127,8 +223,8 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [editCity, setEditCity] = useState(user.city);
   const [editBudget, setEditBudget] = useState(user.budgetStyle);
 
-  // Profile sub-tab (trips vs stories vs saved)
-  const [profileSubTab, setProfileSubTab] = useState<'trips' | 'stories' | 'saved'>('trips');
+  // Profile sub-tab (trips vs stories vs saved vs reviews)
+  const [profileSubTab, setProfileSubTab] = useState<'trips' | 'stories' | 'saved' | 'reviews'>('trips');
 
   // Diary sub-tab (entries vs stories)
   const [diarySubTab, setDiarySubTab] = useState<'entries' | 'stories'>('entries');
@@ -156,12 +252,60 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
     return trips.filter((t) => savedTripIds.includes(t.id));
   }, [trips, savedTripIds]);
 
-  const handleUpdateEmail = (e: React.FormEvent) => {
+  // Request OTP for new email
+  const handleRequestEmailOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = newEmail.trim().toLowerCase();
+    if (!clean.includes('@') || !clean.includes('.')) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+    if (clean === user.email?.toLowerCase().trim()) {
+      setEmailError('This is already your current registered email.');
+      return;
+    }
+
+    setEmailLoading(true);
+    setEmailError('');
+    try {
+      const res = await authApi.requestEmailChangeOtp(clean);
+      setEmailStep('otp');
+      setEmailResendTimer(60);
+      if (res?.devOtp) {
+        setEmailDevOtp(res.devOtp);
+      }
+      success(`Verification code sent to ${clean}`, 'Code Sent');
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to send verification code. Please try again.');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // Verify OTP and complete email change
+  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail.includes('@')) return;
-    updateProfile({ email: newEmail.trim(), emailVerified: true });
-    success('Email updated and verified successfully!', 'Account Updated');
-    setModalType(null);
+    const cleanOtp = emailOtp.trim();
+    if (cleanOtp.length !== 6) {
+      setEmailError('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    setEmailLoading(true);
+    setEmailError('');
+    try {
+      await authApi.verifyEmailChangeOtp(newEmail.trim().toLowerCase(), cleanOtp);
+      await refreshUser();
+      success('Email updated and verified successfully!', 'Account Updated');
+      setModalType(null);
+      setEmailStep('input');
+      setEmailOtp('');
+      setEmailDevOtp(null);
+    } catch (err: any) {
+      setEmailError(err.message || 'Invalid or expired verification code.');
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const handleUpdatePhone = (e: React.FormEvent) => {
@@ -227,26 +371,31 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
     navigate('/login');
   };
 
-  const sidebarNavItems: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const sidebarNavItems: {
+    id: SettingsTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
     { id: 'profile', label: 'Profile', icon: UserIcon },
     { id: 'security', label: 'Account Security', icon: Shield },
     { id: 'vault', label: 'Travel Vault', icon: FolderLock },
     { id: 'trips', label: 'My Trips', icon: Compass },
-    { id: 'diary', label: 'Travel Diary', icon: BookOpen },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'help', label: 'Help & Support', icon: HelpCircle },
   ];
 
+  const desktopNavItems = sidebarNavItems;
+
   const isPhoneValid = isValidPhone(user.phone);
 
   return (
-    <div className="w-full min-h-[calc(100vh-5rem)] py-2 sm:py-3">
-      {/* Container with White Card Layout */}
-      <div className="bg-white rounded-3xl border border-gray-200/90 shadow-card overflow-hidden flex flex-col md:flex-row min-h-[680px]">
+    <div className="w-full h-full flex-1 min-h-0 py-1 sm:py-2 flex flex-col">
+      {/* Container with White Card Layout: 100% static on desktop, only content inside scrolls */}
+      <div className="bg-white rounded-3xl border border-gray-200/90 shadow-card overflow-hidden flex flex-col md:flex-row h-full flex-1 min-h-0 md:h-[calc(100vh-5.5rem)] md:max-h-[calc(100vh-5.5rem)]">
         {/* ========================================================================= */}
-        {/* LEFT SIDEBAR (Desktop permanent sidebar) */}
+        {/* LEFT SIDEBAR (Desktop permanent sidebar: Static, pinned logout button) */}
         {/* ========================================================================= */}
-        <aside className="hidden md:flex md:w-64 border-r border-gray-200 bg-gray-50/50 p-4 sm:p-5 shrink-0 flex-col justify-between">
+        <aside className="hidden md:flex md:w-64 border-r border-gray-200 bg-gray-50/50 p-4 sm:p-5 shrink-0 flex-col justify-between h-full select-none">
           <div className="space-y-4">
             <div className="px-3 py-1">
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -255,7 +404,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
             </div>
 
             <nav className="space-y-1">
-              {sidebarNavItems.map((item) => {
+              {desktopNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -288,8 +437,8 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
             </nav>
           </div>
 
-          {/* Bottom Logout Button */}
-          <div className="pt-4 border-t border-gray-200/60">
+          {/* Bottom Logout Button: Static and pinned at bottom */}
+          <div className="pt-4 border-t border-gray-200/60 mt-auto shrink-0">
             <button
               type="button"
               onClick={handleLogout}
@@ -302,21 +451,52 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
         </aside>
 
         {/* ========================================================================= */}
-        {/* MAIN CONTENT PANEL (Rendered right here on this page) */}
+        {/* MAIN CONTENT PANEL (Only this area scrolls inside on desktop) */}
         {/* ========================================================================= */}
-        <main className="flex-1 p-4 sm:p-8 lg:p-10 flex flex-col justify-between overflow-x-hidden">
-          {/* Mobile Top Navigation Bar */}
-          <div className="md:hidden flex items-center pb-3 mb-4 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tab:</span>
-              <span className="text-sm font-bold text-gray-900 capitalize flex items-center gap-1.5">
+        <main className="flex-1 p-4 sm:p-8 lg:p-10 flex flex-col justify-start overflow-y-auto overflow-x-hidden h-full min-h-0">
+          {/* Mobile Top Navigation Bar with Tabs Switcher & Logout */}
+          <div className="md:hidden flex items-center justify-between pb-3.5 mb-4 border-b border-gray-100 gap-2">
+            {/* Left: Active Tab Indicator */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider shrink-0">Tab:</span>
+              <span className="text-sm font-bold text-gray-900 capitalize flex items-center gap-1.5 truncate">
                 {sidebarNavItems.find((i) => i.id === activeTab)?.icon && (
-                  <span className="text-primary">
+                  <span className="text-primary shrink-0">
                     {React.createElement(sidebarNavItems.find((i) => i.id === activeTab)!.icon, { className: 'w-4 h-4' })}
                   </span>
                 )}
-                {sidebarNavItems.find((i) => i.id === activeTab)?.label || 'Settings'}
+                <span className="truncate">{sidebarNavItems.find((i) => i.id === activeTab)?.label || 'Settings'}</span>
               </span>
+            </div>
+
+            {/* Right: Tab Switcher Button & Log Out Button */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* All Tabs Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsMobileTabsOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-600/30 bg-emerald-50/80 hover:bg-emerald-100 text-xs font-bold text-[#0D5A46] shadow-2xs transition-all active:scale-95 cursor-pointer"
+                aria-label="Switch account tab"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Tabs</span>
+                <ChevronDown className="w-3.5 h-3.5 text-emerald-700 opacity-80" />
+                {unreadCount > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                )}
+              </button>
+
+              {/* Mobile Logout Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Log Out"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-red-200/90 bg-red-50/80 hover:bg-red-100 text-xs font-semibold text-red-600 transition-all active:scale-95 cursor-pointer"
+                aria-label="Log out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
             </div>
           </div>
           {/* ----------------------------------------------------------------------- */}
@@ -366,7 +546,14 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setModalType('email')}
+                    onClick={() => {
+                      setNewEmail('');
+                      setEmailStep('input');
+                      setEmailOtp('');
+                      setEmailError('');
+                      setEmailDevOtp(null);
+                      setModalType('email');
+                    }}
                     className="self-start sm:self-center text-xs font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer"
                   >
                     Change
@@ -525,13 +712,35 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                 {/* Profile Details Container */}
                 <div className="p-5 sm:p-6 sm:pt-0 relative">
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
-                    <div className="relative inline-block">
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.name}
-                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-md bg-white"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setModalType('change-avatar')}
+                      className="relative inline-block group cursor-pointer focus:outline-none rounded-full"
+                      title="Click to change profile photo"
+                      aria-label="Change profile photo"
+                    >
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.name}
+                          className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white shadow-md bg-white transition-transform duration-200 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-3xl sm:text-4xl flex items-center justify-center border-4 border-white shadow-md transition-transform duration-200 group-hover:scale-105 select-none">
+                          {(user.name || 'U').trim().charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[11px] font-semibold border-4 border-white">
+                        <Camera className="w-5 h-5 mb-0.5 text-white stroke-[2.2]" />
+                        <span>Change</span>
+                      </div>
+                      <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#0D5A46] text-white flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform">
+                        <Camera className="w-4 h-4 stroke-[2.2]" />
+                      </div>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -615,6 +824,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     { id: 'trips', label: `My Trips (${myTrips.length})` },
                     { id: 'stories', label: `My Stories (${stories.length})` },
                     { id: 'saved', label: `Saved (${savedTrips.length})` },
+                    { id: 'reviews', label: 'Traveller Reviews' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -632,26 +842,32 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                 </div>
 
                 {profileSubTab === 'trips' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {myTrips.map((trip) => (
-                      <TripCard key={trip.id} trip={trip} />
+                      <TripCard key={trip.id} trip={trip} variant="horizontal" />
                     ))}
                   </div>
                 )}
 
                 {profileSubTab === 'stories' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {stories.map((story) => (
-                      <StoryCard key={story.id} story={story} />
+                      <StoryCard key={story.id} story={story} variant="horizontal" />
                     ))}
                   </div>
                 )}
 
                 {profileSubTab === 'saved' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {savedTrips.map((trip) => (
-                      <TripCard key={trip.id} trip={trip} />
+                      <TripCard key={trip.id} trip={trip} variant="horizontal" />
                     ))}
+                  </div>
+                )}
+
+                {profileSubTab === 'reviews' && (
+                  <div className="pt-2">
+                    <TravellerRatingsCard userId={user.id} userName={user.name} />
                   </div>
                 )}
               </div>
@@ -762,6 +978,9 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                         deleteDocument(id);
                         success('Document removed from your vault.');
                       }}
+                      onVerify={() => {
+                        navigate('/app/vault?view=documents');
+                      }}
                     />
                   ))}
                 </div>
@@ -837,20 +1056,56 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
               </div>
 
               {myTrips.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+                <div className="flex flex-col gap-3.5">
                   {myTrips.map((trip) => (
-                    <TripCard key={trip.id} trip={trip} />
+                    <TripCard key={trip.id} trip={trip} variant="horizontal" />
                   ))}
                 </div>
               ) : (
-                <div className="p-8 text-center bg-gray-50 rounded-2xl border border-gray-200">
-                  <p className="text-xs text-gray-500">You haven't joined or created any trips yet.</p>
-                  <Link
-                    to="/app/trips"
-                    className="inline-block mt-3 text-xs font-semibold text-primary hover:underline"
-                  >
-                    Find your next adventure &rarr;
-                  </Link>
+                <div className="p-8 sm:p-12 text-center bg-gradient-to-b from-gray-50/80 to-white rounded-3xl border border-gray-200/90 shadow-2xs flex flex-col items-center justify-center my-4">
+                  <div className="w-16 h-16 rounded-3xl bg-emerald-100/80 text-[#0D5A46] flex items-center justify-center mb-4 shadow-xs">
+                    <Compass className="w-8 h-8 stroke-[2.2]" />
+                  </div>
+                  <h3 className="font-heading font-bold text-lg sm:text-xl text-gray-900">
+                    No Trips Yet? Adventure Awaits!
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto mt-1.5 leading-relaxed">
+                    You haven't joined or created any trips yet. Discover upcoming group journeys with verified travellers, or take the lead and create your very own expedition.
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+                    <Link
+                      to="/app/trips"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Search className="w-4 h-4" />
+                      <span>Browse Upcoming Trips</span>
+                    </Link>
+                    <Link
+                      to="/app/trips/create"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-gray-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-primary" />
+                      <span>Create a Trip</span>
+                    </Link>
+                  </div>
+
+                  <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-center gap-4 text-[11px] font-semibold text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      100% Verified Travellers
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-emerald-600" />
+                      Women-Only Groups Available
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                      Trip Escrow Protection
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -932,9 +1187,9 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-3.5">
                   {stories.map((story) => (
-                    <StoryCard key={story.id} story={story} />
+                    <StoryCard key={story.id} story={story} variant="horizontal" />
                   ))}
                 </div>
               )}
@@ -1065,51 +1320,201 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL 1: CHANGE EMAIL */}
+      {/* MODAL 1: CHANGE EMAIL WITH SECURE OTP VERIFICATION */}
       {/* ========================================================================= */}
       {modalType === 'email' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-float border border-gray-100 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="font-heading font-bold text-lg text-gray-900">Change Email Address</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading font-bold text-lg text-gray-900">
+                  {emailStep === 'input' ? 'Change Email Address' : 'Verify Email Address'}
+                </h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setModalType(null)}
+                onClick={() => {
+                  setModalType(null);
+                  setEmailStep('input');
+                  setEmailOtp('');
+                  setEmailError('');
+                  setEmailDevOtp(null);
+                }}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleUpdateEmail} className="space-y-4 pt-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  New Email Address *
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  required
-                  placeholder="name@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-xs cursor-pointer"
-                >
-                  Save Email
-                </button>
-              </div>
-            </form>
+
+            {emailStep === 'input' ? (
+              <form onSubmit={handleRequestEmailOtp} className="space-y-4 pt-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 text-xs text-gray-600">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400 font-medium">Current Email:</span>
+                    <span className="font-semibold text-gray-800">{user.email}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    New Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => {
+                      setNewEmail(e.target.value);
+                      if (emailError) setEmailError('');
+                    }}
+                    required
+                    placeholder="name@example.com"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all ${
+                      emailError
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                    }`}
+                  />
+                  {emailError ? (
+                    <p className="text-[11px] text-red-600 font-medium mt-1">{emailError}</p>
+                  ) : (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      A 6-digit verification code will be sent to this email. Your email will only update once verified.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="px-4 py-2 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={emailLoading || !newEmail.trim()}
+                    className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {emailLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Sending Code...</span>
+                      </>
+                    ) : (
+                      <span>Send Verification Code</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyEmailOtp} className="space-y-4 pt-4">
+                <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 text-xs text-emerald-900">
+                  <p className="text-gray-600 leading-relaxed">
+                    We sent a 6-digit verification code to:
+                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="font-bold text-emerald-950 text-sm truncate mr-2">{newEmail}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailStep('input');
+                        setEmailOtp('');
+                        setEmailError('');
+                      }}
+                      className="text-primary hover:underline font-semibold text-xs shrink-0 cursor-pointer"
+                    >
+                      Edit email
+                    </button>
+                  </div>
+                </div>
+
+                {emailDevOtp && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-xs text-amber-800">
+                    <span className="font-medium">Dev Test Code:</span>
+                    <span className="font-mono font-bold tracking-widest text-amber-950">{emailDevOtp}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Enter 6-Digit Verification Code *
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={emailOtp}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setEmailOtp(val);
+                      if (emailError) setEmailError('');
+                    }}
+                    required
+                    placeholder="••••••"
+                    className={`w-full px-4 py-3 rounded-xl border text-center font-mono text-xl tracking-[0.4em] font-bold outline-none transition-all ${
+                      emailError
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                    }`}
+                  />
+                  {emailError ? (
+                    <p className="text-[11px] text-red-600 font-medium mt-1 text-center">{emailError}</p>
+                  ) : (
+                    <p className="text-[11px] text-gray-400 mt-1 text-center">
+                      Code expires in 15 minutes. Check spam or junk folder if not seen.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  {emailResendTimer > 0 ? (
+                    <span className="text-gray-400 font-medium">
+                      Resend code in <strong className="text-gray-700">{emailResendTimer}s</strong>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={emailLoading}
+                      onClick={() => handleRequestEmailOtp()}
+                      className="inline-flex items-center gap-1 text-primary hover:text-primary-hover font-semibold cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Resend Code</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailStep('input');
+                      setEmailError('');
+                    }}
+                    className="px-4 py-2 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={emailLoading || emailOtp.length !== 6}
+                    className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {emailLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <span>Verify &amp; Save Email</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -1446,6 +1851,136 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL: CHANGE PROFILE PHOTO */}
+      {/* ========================================================================= */}
+      {modalType === 'change-avatar' && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-left">
+            {/* Hidden native inputs for camera and file picker */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleAvatarFileSelect}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleAvatarFileSelect}
+            />
+
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-heading font-bold text-lg text-gray-900">
+                  Change Profile Photo
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Take a photo or choose an image from your device
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Avatar Display */}
+            <div className="flex flex-col items-center justify-center py-5">
+              <div className="relative">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="w-24 h-24 rounded-full object-cover border-4 border-emerald-100 shadow-md"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-3xl flex items-center justify-center border-4 border-emerald-100 shadow-md select-none">
+                    {(user.name || 'U').trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {avatarLoading && (
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-semibold text-gray-700 mt-2">
+                {user.avatarUrl ? 'Current Photo' : 'First Letter Initial Avatar'}
+              </span>
+            </div>
+
+            {/* Actions: Open Camera or Upload */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                disabled={avatarLoading}
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl border-2 border-emerald-600/30 bg-emerald-50/50 hover:bg-emerald-100/60 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#0D5A46] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <Camera className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-gray-900">Open Camera</div>
+                  <div className="text-xs text-gray-500">Take a new photo directly using your camera</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled={avatarLoading}
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl border border-gray-200 hover:border-emerald-500 hover:bg-gray-50 transition-all text-left group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 group-hover:bg-emerald-50 group-hover:text-primary flex items-center justify-center shrink-0 transition-colors">
+                  <Upload className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-gray-900">Upload Photo</div>
+                  <div className="text-xs text-gray-500">Choose an image file from your device gallery</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Remove / Reset Option & Close */}
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
+              {user.avatarUrl ? (
+                <button
+                  type="button"
+                  disabled={avatarLoading}
+                  onClick={handleRemoveAvatar}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove photo</span>
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400">Showing initial</span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setModalType(null)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL 7: VAULT DOCUMENT VIEWER */}
       {/* ========================================================================= */}
       {selectedDocForViewer && (
@@ -1469,6 +2004,121 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MOBILE ALL TABS BOTTOM SHEET / DRAWER */}
+      {/* ========================================================================= */}
+      {isMobileTabsOpen && (
+        <div className="md:hidden fixed inset-0 z-[70] flex flex-col justify-end" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200 animate-in fade-in"
+            onClick={() => setIsMobileTabsOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Sheet Canvas */}
+          <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col overflow-hidden z-10 animate-in slide-in-from-bottom duration-250 text-left">
+            {/* Top Drag Handle */}
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <LayoutGrid className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-base text-gray-900">
+                    Account Sections
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Select a section to view it right here
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileTabsOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-pointer transition-colors"
+                aria-label="Close tab menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Tabs List */}
+            <div className="flex-1 overflow-y-auto px-4 pt-2 pb-16 sm:pb-8 space-y-1.5">
+              {sidebarNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      handleTabChange(item.id);
+                      setIsMobileTabsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all text-left cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0D5A46] text-white shadow-xs'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50 border border-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span>{item.label}</span>
+                        {isActive && (
+                          <span className="block text-[11px] font-normal text-emerald-100">
+                            Currently viewing
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {item.id === 'notifications' && unreadCount > 0 && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            isActive ? 'bg-white text-emerald-900' : 'bg-emerald-600 text-white'
+                          }`}
+                        >
+                          {unreadCount}
+                        </span>
+                      )}
+                      {isActive && <Check className="w-4 h-4 text-white stroke-[2.5]" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Bottom Actions: Log Out */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/70">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileTabsOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 font-bold text-sm transition-colors shadow-2xs cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log Out of Tripzobox</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

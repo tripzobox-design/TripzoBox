@@ -18,6 +18,11 @@ import messageRoutes from './routes/messageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import vaultRoutes from './routes/vaultRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import safetyRoutes from './routes/safetyRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import contentRoutes from './routes/contentRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -32,13 +37,42 @@ export const createApp = (): Express => {
     })
   );
 
-  // CORS configuration
+  // CORS configuration (Supporting Frontend, Admin Panel, Cloudflare Workers/Pages, and Production domains)
+  const allowedOrigins = [
+    config.frontendUrl,
+    config.adminUrl,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'https://tripzobox.com',
+    'https://admin.tripzobox.com',
+    'https://tripzobox.tripzobox.workers.dev',
+  ].filter(Boolean);
+
   app.use(
     cors({
-      origin: [config.frontendUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (
+          allowedOrigins.includes(origin) ||
+          origin.includes('tripzobox') ||
+          origin.endsWith('.tripzobox.com') ||
+          origin.endsWith('.workers.dev') ||
+          origin.endsWith('.pages.dev') ||
+          origin.endsWith('.vercel.app') ||
+          origin.endsWith('.netlify.app') ||
+          origin.startsWith('http://localhost:') ||
+          origin.startsWith('http://127.0.0.1:')
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, false);
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     })
   );
 
@@ -60,6 +94,27 @@ export const createApp = (): Express => {
     sendSuccess(res, { status: 'healthy', timestamp: new Date().toISOString() }, 'TripzoBox API Server OK');
   });
 
+  // SEO Endpoints for crawlers querying API root
+  app.get('/robots.txt', (req: Request, res: Response) => {
+    res.type('text/plain');
+    res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /admin/\nDisallow: /api/\nSitemap: https://tripzobox.com/sitemap.xml\n`);
+  });
+
+  app.get('/sitemap.xml', (req: Request, res: Response) => {
+    res.type('application/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://tripzobox.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://tripzobox.com/explore</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://tripzobox.com/trips</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://tripzobox.com/stories</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tripzobox.com/how-it-works</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tripzobox.com/safety</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tripzobox.com/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://tripzobox.com/contact</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+</urlset>`);
+  });
+
   // Mount API v1 routes
   const apiV1 = express.Router();
   apiV1.get('/health', (req: Request, res: Response) => {
@@ -75,8 +130,14 @@ export const createApp = (): Express => {
   apiV1.use('/notifications', notificationRoutes);
   apiV1.use('/vault', vaultRoutes);
   apiV1.use('/upload', uploadRoutes);
+  apiV1.use('/safety', safetyRoutes);
+  apiV1.use('/admin', adminRoutes);
+  apiV1.use('/content', contentRoutes);
+  apiV1.use('/settings', settingsRoutes);
+  apiV1.use('/reviews', reviewRoutes);
 
   app.use('/api/v1', apiV1);
+  app.use('/api/reviews', reviewRoutes);
 
   // 404 Route Not Found
   app.use('*', (req: Request, res: Response) => {
