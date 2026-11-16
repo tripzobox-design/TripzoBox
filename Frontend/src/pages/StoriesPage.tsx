@@ -29,7 +29,15 @@ const TRAVEL_STYLES_COL2 = ['Relaxation', 'Backpacking', 'Photography'] as const
 const LANGUAGES_COL1 = ['Hindi', 'Tamil'] as const;
 const LANGUAGES_COL2 = ['English', 'Others'] as const;
 
-export const StoriesPage: React.FC = () => {
+export interface StoriesPageProps {
+  embedded?: boolean;
+  onSelectDiaryEntries?: () => void;
+}
+
+export const StoriesPage: React.FC<StoriesPageProps> = ({
+  embedded = false,
+  onSelectDiaryEntries,
+}) => {
   const { stories } = useDiary();
   const { user, isLoggedIn } = useAuth();
   const navigate = useNavigate();
@@ -90,6 +98,12 @@ export const StoriesPage: React.FC = () => {
     setSortBy('latest');
   };
 
+  const isOwnStory = (story: (typeof stories)[number]) =>
+    Boolean(
+      (story.author?.id && user?.id && story.author.id === user.id) ||
+        (Boolean(user?.username) && story.author?.username === user.username)
+    );
+
   // Filtered & Sorted Stories
   const visibleStories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -97,10 +111,10 @@ export const StoriesPage: React.FC = () => {
 
     const filtered = stories.filter((story) => {
       // Visibility / Tab
-      if (story.visibility === 'private' && (!isLoggedIn || story.author.id !== user?.id)) {
+      if (story.visibility === 'private' && (!isLoggedIn || !isOwnStory(story))) {
         return false;
       }
-      if (activeTab === 'mine' && (!isLoggedIn || story.author.id !== user?.id)) {
+      if (activeTab === 'mine' && (!isLoggedIn || !isOwnStory(story))) {
         return false;
       }
 
@@ -409,7 +423,13 @@ export const StoriesPage: React.FC = () => {
   );
 
   return (
-    <div className="w-full text-left bg-light-bg min-h-screen">
+    <div
+      className={
+        embedded
+          ? 'w-full text-left bg-light-bg rounded-3xl border border-gray-200/80 overflow-hidden shadow-xs'
+          : 'w-full text-left bg-light-bg min-h-screen'
+      }
+    >
       {/* ========================================================================= */}
       {/* 1. PANORAMIC HERO BANNER WITH DOODLE QUOTE & EMBEDDED SEARCH */}
       {/* ========================================================================= */}
@@ -426,7 +446,11 @@ export const StoriesPage: React.FC = () => {
         {/* Soft Multi-stop Gradient Overlay for Readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#F4FAF7] via-[#F4FAF7]/95 via-45% to-transparent" />
 
-        <div className="relative max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+        <div
+          className={`relative max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 ${
+            embedded ? 'py-6 sm:py-9 lg:py-11' : 'py-8 sm:py-12 lg:py-16'
+          }`}
+        >
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             {/* Left Content Area */}
             <div className="max-w-xl text-left z-10">
@@ -434,7 +458,7 @@ export const StoriesPage: React.FC = () => {
               <div className="flex items-center gap-2 mb-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/app/diary')}
+                  onClick={() => (onSelectDiaryEntries ? onSelectDiaryEntries() : navigate('/app/diary'))}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/80 hover:bg-white text-gray-700 border border-gray-200/80 transition-all cursor-pointer shadow-2xs"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-primary" />
@@ -537,7 +561,7 @@ export const StoriesPage: React.FC = () => {
             {isLoggedIn && (
               <button
                 type="button"
-                onClick={() => navigate('/app/diary')}
+                onClick={() => (onSelectDiaryEntries ? onSelectDiaryEntries() : navigate('/app/diary'))}
                 className="px-4 sm:px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer bg-white text-gray-600 hover:text-[#0D5A46] border border-gray-200/90 hover:bg-gray-50 flex items-center gap-1.5 shrink-0"
               >
                 <BookOpen className="w-3.5 h-3.5 text-emerald-700" />

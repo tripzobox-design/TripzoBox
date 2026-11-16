@@ -32,6 +32,7 @@ export interface IUser extends Document {
   // OAuth Connections
   googleId?: string;
   isGoogleConnected: boolean;
+  isAppleConnected?: boolean;
   // Traveller Reputation (Calculated on backend from completed trip reviews)
   reputation: {
     averageRating: number;
@@ -57,6 +58,11 @@ export interface IUser extends Document {
   suspensionReason?: string;
   suspendedAt?: Date;
   suspendedBy?: string;
+  isDeleted: boolean;
+  deletedAt?: Date;
+  deletionReason?: string;
+  deletionInProgress?: boolean;
+  recentReauthAt?: Date;
   mustResetPassword?: boolean;
   tokenVersion?: number;
   lastLoginAt?: Date;
@@ -139,6 +145,7 @@ const UserSchema = new Schema<IUser>(
     // OAuth Connections
     googleId: { type: String, sparse: true },
     isGoogleConnected: { type: Boolean, default: false },
+    isAppleConnected: { type: Boolean, default: false },
     // Traveller Reputation
     reputation: {
       averageRating: { type: Number, default: 0, min: 0, max: 5 },
@@ -164,6 +171,11 @@ const UserSchema = new Schema<IUser>(
     suspensionReason: { type: String },
     suspendedAt: { type: Date },
     suspendedBy: { type: String },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletionReason: { type: String },
+    deletionInProgress: { type: Boolean, default: false },
+    recentReauthAt: { type: Date },
     mustResetPassword: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
     lastLoginAt: { type: Date },

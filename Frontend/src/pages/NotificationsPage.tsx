@@ -55,39 +55,53 @@ export const NotificationsPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-border shadow-card divide-y divide-border overflow-hidden">
-        {notifications.map((notif) => (
-          <button
-            type="button"
-            key={notif.id}
-            onClick={() => {
-              markRead(notif.id);
-              navigate(notif.link || (notif.type === 'system' ? '/safety' : '/app/diary'));
-            }}
-            className={`w-full text-left p-4 sm:p-5 flex items-start gap-3 transition-colors cursor-pointer ${
-              notif.read ? 'bg-white hover:bg-light-bg' : 'bg-emerald-50/40 hover:bg-emerald-50/70'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-light-bg flex items-center justify-center shrink-0 border border-border">
-              {getNotificationIcon(notif.type)}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
-                <h4 className="font-semibold text-sm text-text">{notif.title}</h4>
-                <span className="text-[11px] text-text-subtle shrink-0">
-                  {notif.timestamp}
-                </span>
+        {notifications.length > 0 ? (
+          notifications.map((notif) => (
+            <button
+              type="button"
+              key={notif.id}
+              onClick={() => {
+                markRead(notif.id);
+                navigate(notif.link || (notif.type === 'system' ? '/safety' : '/app/diary'));
+              }}
+              className={`w-full text-left p-4 sm:p-5 flex items-start gap-3 transition-colors cursor-pointer ${
+                notif.read ? 'bg-white hover:bg-light-bg' : 'bg-emerald-50/40 hover:bg-emerald-50/70'
+              }`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-light-bg flex items-center justify-center shrink-0 border border-border">
+                {getNotificationIcon(notif.type)}
               </div>
-              <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
-                {notif.message}
-              </p>
-            </div>
 
-            {!notif.read && (
-              <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0 self-center" />
-            )}
-          </button>
-        ))}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                  <h4 className="font-semibold text-sm text-text">{notif.title}</h4>
+                  <span className="text-[11px] text-text-subtle shrink-0">
+                    {notif.timestamp}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-text-muted mt-1 leading-relaxed">
+                  {notif.message}
+                </p>
+              </div>
+
+              {!notif.read && (
+                <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0 self-center" />
+              )}
+            </button>
+          ))
+        ) : (
+          <div className="p-8 sm:p-10 text-center space-y-2">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center mx-auto">
+              <Bell className="w-5 h-5" />
+            </div>
+            <h3 className="font-heading font-semibold text-sm sm:text-base text-text">
+              No notifications yet
+            </h3>
+            <p className="text-xs sm:text-sm text-text-muted max-w-sm mx-auto">
+              Updates about your trips, join requests, messages, and account activity will appear here.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ import { BotanicalLeavesAccent } from '../components/auth/BotanicalLeavesAccent'
 import { ScenicJourneyFooter } from '../components/auth/ScenicJourneyFooter';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { authApi } from '../lib/api';
+import { authApi, configApi } from '../lib/api';
 
 type RecoveryStep =
   | 'choose-method'
@@ -53,6 +53,26 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [devOtp, setDevOtp] = useState('123456');
+  const [authConfig, setAuthConfig] = useState<{
+    google: boolean;
+    emailOtp: boolean;
+    smsOtp: boolean;
+    apple: boolean;
+  }>({
+    google: true,
+    emailOtp: true,
+    smsOtp: false,
+    apple: false,
+  });
+
+  useEffect(() => {
+    configApi
+      .getAuthConfig()
+      .then((cfg) => {
+        if (cfg) setAuthConfig(cfg);
+      })
+      .catch(() => {});
+  }, []);
   const [smsInfo, setSmsInfo] = useState<{
     smsStatus?: string;
     isSimulated?: boolean;

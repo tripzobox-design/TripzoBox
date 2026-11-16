@@ -5,7 +5,13 @@ export interface IOTPVerification extends Document {
   id: string;
   userId?: string;
   identifier: string; // phone number (e.g. +919876543210) or email
-  type: 'phone_verification' | 'email_verification' | 'password_reset' | 'email_change' | 'document_verification';
+  type:
+    | 'phone_verification'
+    | 'email_verification'
+    | 'password_reset'
+    | 'email_change'
+    | 'document_verification'
+    | 'account_deletion';
   hashedOtp: string;
   expiresAt: Date;
   attempts: number;
@@ -25,7 +31,14 @@ const OTPVerificationSchema = new Schema<IOTPVerification>(
     identifier: { type: String, required: true, index: true, lowercase: true, trim: true },
     type: {
       type: String,
-      enum: ['phone_verification', 'email_verification', 'password_reset', 'email_change', 'document_verification'],
+      enum: [
+        'phone_verification',
+        'email_verification',
+        'password_reset',
+        'email_change',
+        'document_verification',
+        'account_deletion',
+      ],
       required: true,
       index: true,
     },

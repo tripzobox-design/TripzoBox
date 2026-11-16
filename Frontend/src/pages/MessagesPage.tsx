@@ -9,9 +9,12 @@ import { ReportModal } from '../components/safety/ReportModal';
 import { EmergencyAssistanceModal } from '../components/safety/EmergencyAssistanceModal';
 
 export const MessagesPage: React.FC = () => {
-  const { user } = useAuth();
-  const [threads, setThreads] = useState<ChatThread[]>(mockChatThreads);
-  const [activeThreadId, setActiveThreadId] = useState<string>(mockChatThreads[0].id);
+  const { user, isLoggedIn } = useAuth();
+  const isDemoUser = user?.id === 'user_mubarak';
+  const [threads, setThreads] = useState<ChatThread[]>(isDemoUser ? mockChatThreads : []);
+  const [activeThreadId, setActiveThreadId] = useState<string>(
+    isDemoUser && mockChatThreads[0] ? mockChatThreads[0].id : ''
+  );
   const [messageText, setMessageText] = useState('');
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [threadQuery, setThreadQuery] = useState('');
@@ -21,18 +24,35 @@ export const MessagesPage: React.FC = () => {
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    if (!isLoggedIn) {
+      setThreads([]);
+      setActiveThreadId('');
+      return;
+    }
+
+    if (!isDemoUser) {
+      setThreads([]);
+      setActiveThreadId('');
+    }
+
     messagesApi
       .getThreads()
       .then((serverThreads) => {
-        if (Array.isArray(serverThreads) && serverThreads.length > 0) {
+        if (!active || !Array.isArray(serverThreads)) return;
+        if (!isDemoUser || serverThreads.length > 0) {
           setThreads(serverThreads);
-          if (!serverThreads.some((t: any) => t.id === activeThreadId)) {
-            setActiveThreadId(serverThreads[0].id);
-          }
+          setActiveThreadId((prev) =>
+            serverThreads.some((t: any) => t.id === prev) ? prev : serverThreads[0]?.id || ''
+          );
         }
       })
       .catch(() => {});
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, user?.id, isDemoUser]);
 
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0];
 
@@ -84,6 +104,17 @@ export const MessagesPage: React.FC = () => {
         </p>
       </div>
 
+      {threads.length === 0 || !activeThread ? (
+        <div className="bg-white rounded-2xl border border-border shadow-card p-10 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center mx-auto">
+            <Compass className="w-6 h-6" />
+          </div>
+          <h3 className="font-heading font-bold text-base text-text">No trip conversations yet</h3>
+          <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto">
+            Once you create or join an adventure trip, your group chat threads will appear here.
+          </p>
+        </div>
+      ) : (
       <div className="flex-1 min-h-0 bg-white rounded-2xl border border-border shadow-card overflow-hidden grid grid-cols-1 md:grid-cols-3">
         {/* Left Pane: Threads List */}
         <div className={`${mobileChatOpen ? 'hidden md:flex' : 'flex'} min-h-0 border-r border-border flex-col h-full bg-white`}>
@@ -235,21 +266,26 @@ export const MessagesPage: React.FC = () => {
           </form>
         </div>
       </div>
+      )}
 
       {/* Trust & Safety Modals */}
-      <ReportModal
-        isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        targetType="message"
-        targetId={activeThread.id}
-        targetName={`Chat in ${activeThread.tripName}`}
-      />
-      <EmergencyAssistanceModal
-        isOpen={emergencyModalOpen}
-        onClose={() => setEmergencyModalOpen(false)}
-        tripId={activeThread.tripId}
-        tripTitle={activeThread.tripName}
-      />
+      {activeThread && (
+        <>
+          <ReportModal
+            isOpen={reportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            targetType="message"
+            targetId={activeThread.id}
+            targetName={`Chat in ${activeThread.tripName}`}
+          />
+          <EmergencyAssistanceModal
+            isOpen={emergencyModalOpen}
+            onClose={() => setEmergencyModalOpen(false)}
+            tripId={activeThread.tripId}
+            tripTitle={activeThread.tripName}
+          />
+        </>
+      )}
     </div>
   );
 };

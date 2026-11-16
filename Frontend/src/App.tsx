@@ -70,6 +70,7 @@ import { AdminMediaPage } from './pages/admin/AdminMediaPage';
 import { AdminPackagesPage } from './pages/admin/AdminPackagesPage';
 import { AdminNotificationsPage } from './pages/admin/AdminNotificationsPage';
 import { AdminServicesPage } from './pages/admin/AdminServicesPage';
+import { AdminAuthSettingsPage } from './pages/admin/AdminAuthSettingsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminStaffPage } from './pages/admin/AdminStaffPage';
 import { AdminRolesPage } from './pages/admin/AdminRolesPage';
@@ -129,6 +130,7 @@ export const AppRoutes: React.FC = () => (
       <Route path="packages" element={<AdminPackagesPage />} />
       <Route path="notifications" element={<AdminNotificationsPage />} />
       <Route path="system/services" element={<AdminServicesPage />} />
+      <Route path="settings/auth" element={<AdminAuthSettingsPage />} />
       <Route path="settings" element={<AdminSettingsPage />} />
       <Route path="administrators" element={<AdminStaffPage />} />
       <Route path="roles" element={<AdminRolesPage />} />

@@ -158,6 +158,7 @@ export const AdminLayout: React.FC = () => {
       title: 'System & Security',
       items: [
         { label: 'Service Monitoring', path: '/admin/system/services', icon: Activity, permission: 'system.health.view' },
+        { label: 'Auth & Login Providers', path: '/admin/settings/auth', icon: KeyRound, permission: 'system.settings.edit' },
         { label: 'Platform Settings', path: '/admin/settings', icon: Sliders, superadminOnly: true },
         { label: 'Administrators', path: '/admin/administrators', icon: ShieldCheck, superadminOnly: true },
         { label: 'Roles & RBAC', path: '/admin/roles', icon: KeyRound, permission: 'system.settings.edit' },
@@ -251,9 +252,19 @@ export const AdminLayout: React.FC = () => {
                     </p>
                   )}
                   {allowedItems.map((item) => {
+                    const allNavPaths = navigationGroups.flatMap((g) => g.items.map((i) => i.path));
+                    const isExactMatch = location.pathname === item.path;
+                    const hasMoreSpecificMatch = allNavPaths.some(
+                      (p) =>
+                        p !== item.path &&
+                        p.startsWith(item.path) &&
+                        (location.pathname === p || location.pathname.startsWith(p + '/'))
+                    );
                     const isActive =
-                      location.pathname === item.path ||
-                      (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+                      isExactMatch ||
+                      (!hasMoreSpecificMatch &&
+                        item.path !== '/admin/dashboard' &&
+                        location.pathname.startsWith(item.path + '/'));
                     const Icon = item.icon;
 
                     return (

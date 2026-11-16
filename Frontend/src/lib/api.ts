@@ -9,6 +9,9 @@ const BASE_URL =
   import.meta.env.VITE_API_URL ||
   'http://localhost:5000/api/v1';
 
+export const getBackendOrigin = (): string =>
+  BASE_URL.replace(/\/api(\/v1)?\/?$/, '');
+
 export class ApiError extends Error {
   statusCode: number;
   errors?: Array<{ field?: string; message: string }>;
@@ -30,6 +33,10 @@ async function request<T = any>(
 
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  if (!headers.has('X-Requested-With')) {
+    headers.set('X-Requested-With', 'XMLHttpRequest');
   }
 
   if (token && !headers.has('Authorization')) {
@@ -99,9 +106,10 @@ export const api = {
     });
   },
 
-  delete: <T = any>(endpoint: string) => {
+  delete: <T = any>(endpoint: string, data?: any) => {
     return request<T>(endpoint, {
       method: 'DELETE',
+      ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
     });
   },
 
@@ -219,6 +227,25 @@ export const authApi = {
     }
     return res.data;
   },
+
+  getGoogleAuthUrl: (redirectPath?: string): string => {
+    const origin = getBackendOrigin();
+    const params = new URLSearchParams();
+    if (redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+      params.set('redirect', redirectPath);
+    }
+    const qs = params.toString();
+    return `${origin}/api/auth/google${qs ? `?${qs}` : ''}`;
+  },
+
+  getGoogleReauthUrl: (redirectPath: string = '/app/account-security?action=delete-account'): string => {
+    const origin = getBackendOrigin();
+    const params = new URLSearchParams({ mode: 'reauth' });
+    if (redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+      params.set('redirect', redirectPath);
+    }
+    return `${origin}/api/auth/google?${params.toString()}`;
+  },
 };
 
 // ============================================================================
@@ -262,6 +289,11 @@ export const tripsApi = {
 
   deleteTrip: async (tripId: string) => {
     const res = await api.delete(`/trips/${tripId}`);
+    return res.data;
+  },
+
+  transferLeadership: async (tripId: string, newLeaderId: string) => {
+    const res = await api.post(`/trips/${tripId}/transfer-leadership`, { newLeaderId });
     return res.data;
   },
 
@@ -494,6 +526,27 @@ export const vaultApi = {
     return res.data;
   },
 
+  searchEligibleContacts: async (query: string = '') => {
+    const res = await api.get('/vault/contacts/search', query.trim() ? { q: query.trim() } : undefined);
+    return res.data;
+  },
+
+  getSharedWithMe: async () => {
+    const res = await api.get('/vault/shared-with-me');
+    return res.data;
+  },
+
+  uploadFile: async (file: File) => {
+    const res = await api.upload<{
+      url: string;
+      filename: string;
+      originalName: string;
+      mimetype: string;
+      size: number;
+    }>(file);
+    return res.data;
+  },
+
   getSettings: async () => {
     const res = await api.get('/vault/settings');
     return res.data;
@@ -716,6 +769,117 @@ export const reviewsApi = {
   reportReview: safetyApi.reportReview,
   getReviewableCompanions: safetyApi.getReviewableCompanions,
 };
+
+// ============================================================================
+// 12. ACCOUNT DELETION & LIFECYCLE APIS
+// ============================================================================
+export interface AccountDeletionPreflight {
+  canDelete: boolean;
+  blockingTrips: Array<{
+    id: string;
+    name: string;
+    destination: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+    eligibleNewLeaders: Array<{
+      id: string;
+      name: string;
+      avatarUrl?: string;
+      city?: string;
+    }>;
+  }>;
+  authMethods: {
+    hasPassword: boolean;
+    isGoogleConnected: boolean;
+    isAppleConnected: boolean;
+    requiresEmailOtp: boolean;
+    maskedEmail: string | null;
+    hasRecentReauth: boolean;
+  };
+  impactSummary: {
+    activeLedTrips: number;
+    joinedTrips: number;
+    pendingJoinRequests: number;
+    vaultDocuments: number;
+    diaryEntries: number;
+    publicStories: number;
+    privateOrDraftStories: number;
+    reviewsAuthored: number;
+    notifications: number;
+  };
+  retentionPolicy: {
+    deleted: string[];
+    anonymized: string[];
+    retainedForCompliance: string[];
+  };
+}
+
+export const accountDeletionApi = {
+  getPreflight: async (): Promise<AccountDeletionPreflight> => {
+    const res = await api.get<AccountDeletionPreflight>('/users/me/deletion-preflight');
+    return res.data;
+  },
+
+  verifyPasswordReauth: async (currentPassword: string) => {
+    const res = await api.post('/users/me/deletion-reauth', { currentPassword });
+    return res.data;
+  },
+
+  verifyOAuthFallbackReauth: async (
+    provider: 'apple' | 'passwordless',
+    confirmationPhrase: string
+  ) => {
+    const res = await api.post('/users/me/deletion-reauth', {
+      provider,
+      confirmationPhrase,
+    });
+    return res.data;
+  },
+
+  requestDeletionOtp: async (currentPassword?: string) => {
+    const res = await api.post('/users/me/deletion-otp', {
+      ...(currentPassword ? { currentPassword } : {}),
+    });
+    return res.data as {
+      otpRequired: boolean;
+      maskedEmail: string | null;
+      expiresInSeconds?: number;
+      resendCooldownSeconds?: number;
+    };
+  },
+
+  deleteCurrentAccount: async (payload: {
+    currentPassword?: string;
+    otp?: string;
+    confirmationText?: string;
+    confirmDeletion: boolean;
+    reason?: string;
+  }) => {
+    const res = await api.delete<{
+      deleted: boolean;
+      deletedAt: string;
+      confirmationEmailSent: boolean;
+    }>('/users/me', payload);
+    return res;
+  },
+};
+
+// ============================================================================
+// 14. DYNAMIC CONFIGURATION APIS
+// ============================================================================
+export const configApi = {
+  getAuthConfig: async () => {
+    const res = await api.get<{
+      google: boolean;
+      emailOtp: boolean;
+      smsOtp: boolean;
+      apple: boolean;
+    }>('/config/auth');
+    return res.data;
+  },
+};
+
 
 
 

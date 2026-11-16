@@ -8,6 +8,18 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
+const isTokenValidForUser = (decoded: TokenPayload, user: IUser): boolean => {
+  if (user.isDeleted) return false;
+  const currentVersion = user.tokenVersion ?? 0;
+  if (typeof decoded.tokenVersion === 'number' && decoded.tokenVersion !== currentVersion) {
+    return false;
+  }
+  if (currentVersion > 0 && decoded.tokenVersion === undefined) {
+    return false;
+  }
+  return true;
+};
+
 export const requireAuth = async (
   req: AuthRequest,
   res: Response,
@@ -39,6 +51,16 @@ export const requireAuth = async (
 
     if (!user) {
       sendError(res, 'User session invalid. Please log in again.', 401);
+      return;
+    }
+
+    if (user.isDeleted) {
+      sendError(res, 'This account has been permanently deleted.', 401);
+      return;
+    }
+
+    if (!isTokenValidForUser(decoded, user)) {
+      sendError(res, 'Session has been invalidated. Please log in again.', 401);
       return;
     }
 
@@ -129,7 +151,7 @@ export const optionalAuth = async (
           { _id: decoded.userId.match(/^[0-9a-fA-F]{24}$/) ? decoded.userId : null },
         ],
       });
-      if (user && !user.isSuspended) {
+      if (user && !user.isDeleted && !user.isSuspended && isTokenValidForUser(decoded, user)) {
         req.user = user;
         req.userId = user.id;
       }

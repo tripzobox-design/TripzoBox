@@ -15,30 +15,52 @@ interface DiaryContextType {
   getStoryBySlug: (slug: string) => Story | undefined;
 }
 
+const DEMO_USER_ID = 'user_mubarak';
+
+const scopedDiaryKey = (userId?: string): string =>
+  userId && userId !== DEMO_USER_ID
+    ? `tripzobox_diary_entries:${userId}`
+    : 'tripzobox_diary_entries';
+
+const loadDemoEntries = (): DiaryEntry[] => {
+  const saved = localStorage.getItem('tripzobox_diary_entries');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      const existingIds = new Set(parsed.map((e: DiaryEntry) => e.id));
+      const newEntries = mockDiaryEntries.filter((m) => !existingIds.has(m.id));
+      if (newEntries.length > 0) {
+        const merged = [...parsed, ...newEntries];
+        localStorage.setItem('tripzobox_diary_entries', JSON.stringify(merged));
+        return merged;
+      }
+      return parsed;
+    } catch {
+      return mockDiaryEntries;
+    }
+  }
+  return mockDiaryEntries;
+};
+
+const loadScopedEntries = (userId?: string): DiaryEntry[] => {
+  if (!userId) return [];
+  if (userId === DEMO_USER_ID) return loadDemoEntries();
+  try {
+    const saved = localStorage.getItem(scopedDiaryKey(userId));
+    return saved ? (JSON.parse(saved) as DiaryEntry[]) : [];
+  } catch {
+    return [];
+  }
+};
+
 const DiaryContext = createContext<DiaryContextType | undefined>(undefined);
 
 export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
 
-  const [entries, setEntries] = useState<DiaryEntry[]>(() => {
-    const saved = localStorage.getItem('tripzobox_diary_entries');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((e: DiaryEntry) => e.id));
-        const newEntries = mockDiaryEntries.filter((m) => !existingIds.has(m.id));
-        if (newEntries.length > 0) {
-          const merged = [...parsed, ...newEntries];
-          localStorage.setItem('tripzobox_diary_entries', JSON.stringify(merged));
-          return merged;
-        }
-        return parsed;
-      } catch (e) {
-        return mockDiaryEntries;
-      }
-    }
-    return mockDiaryEntries;
-  });
+  const [entries, setEntries] = useState<DiaryEntry[]>(() =>
+    isLoggedIn ? loadScopedEntries(user?.id) : []
+  );
 
   const [stories, setStories] = useState<Story[]>(() => {
     const saved = localStorage.getItem('tripzobox_stories');
@@ -53,37 +75,51 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return merged;
         }
         return parsed;
-      } catch (e) {
+      } catch {
         return mockStories;
       }
     }
     return mockStories;
   });
 
-  // Fetch from server on mount
+  // Sync private diary entries & public community stories when auth session changes
   useEffect(() => {
-    diaryApi
-      .getEntries()
-      .then((serverEntries) => {
-        if (Array.isArray(serverEntries) && serverEntries.length > 0) {
-          setEntries(serverEntries);
-        }
-      })
-      .catch(() => {});
+    let active = true;
+
+    if (!isLoggedIn || !user?.id) {
+      setEntries([]);
+    } else {
+      setEntries(loadScopedEntries(user.id));
+      diaryApi
+        .getEntries()
+        .then((serverEntries) => {
+          if (active && Array.isArray(serverEntries)) {
+            if (user.id !== DEMO_USER_ID || serverEntries.length > 0) {
+              setEntries(serverEntries);
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     storiesApi
       .getStories()
       .then((serverStories) => {
-        if (Array.isArray(serverStories) && serverStories.length > 0) {
+        if (active && Array.isArray(serverStories) && serverStories.length > 0) {
           setStories(serverStories);
         }
       })
       .catch(() => {});
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_diary_entries', JSON.stringify(entries));
-  }, [entries]);
+    if (!isLoggedIn || !user?.id) return;
+    localStorage.setItem(scopedDiaryKey(user.id), JSON.stringify(entries));
+  }, [entries, isLoggedIn, user?.id]);
 
   useEffect(() => {
     localStorage.setItem('tripzobox_stories', JSON.stringify(stories));
@@ -135,7 +171,6 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setStories((prev) => [newStory, ...prev]);
 
-    // Mark selected entries as published
     if (storyData.entries && storyData.entries.length > 0) {
       const entryIds = storyData.entries.map((e) => e.id);
       setEntries((prev) =>

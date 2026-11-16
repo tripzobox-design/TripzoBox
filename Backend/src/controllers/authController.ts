@@ -3,10 +3,31 @@ import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/User.js';
 import { OTPVerification } from '../models/OTPVerification.js';
 import { sendSuccess, sendError } from '../utils/response.js';
-import { signToken, verifyToken, setAuthCookie, clearAuthCookie } from '../utils/token.js';
+import {
+  signToken,
+  verifyToken,
+  setAuthCookie,
+  clearAuthCookie,
+  signReauthToken,
+  setReauthCookie,
+} from '../utils/token.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendVerificationEmail, sendPasswordResetEmail, latestEmailDispatches } from '../services/emailService.js';
 import { sendPhoneOtp } from '../services/smsService.js';
+import { getAuthSettings } from '../services/authSettingsService.js';
+import {
+  GOOGLE_OAUTH_STATE_COOKIE,
+  GoogleOAuthError,
+  getGoogleOAuthConfig,
+  createGoogleAuthUrl,
+  verifyOAuthStateCookie,
+  exchangeCodeForGoogleProfile,
+  authenticateGoogleUser,
+  reauthenticateGoogleUser,
+  buildFrontendErrorRedirect,
+  buildFrontendSuccessRedirect,
+  buildFrontendReauthSuccessRedirect,
+} from '../services/googleOAuthService.js';
 import { config } from '../config/env.js';
 
 // In-memory OTP storage for password reset flows
@@ -20,6 +41,12 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
     const isEmail = emailOrPhone.includes('@');
     const email = isEmail ? emailOrPhone.toLowerCase().trim() : undefined;
     const phone = !isEmail ? emailOrPhone.trim() : undefined;
+
+    const authSettings = await getAuthSettings();
+    if (phone && !authSettings.smsOtp?.enabled) {
+      sendError(res, 'SMS/Phone registration is currently disabled. Please sign up using your email address.', 403);
+      return;
+    }
 
     // Check if user already exists
     if (email) {
@@ -64,6 +91,7 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
       email: user.email,
       phone: user.phone,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     });
 
     setAuthCookie(res, token);
@@ -128,6 +156,20 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
+    if (user.isDeleted) {
+      sendError(res, 'This account has been permanently deleted.', 401);
+      return;
+    }
+
+    if (!user.password && user.isGoogleConnected) {
+      sendError(
+        res,
+        'This account signs in with Google. Please continue with Google or reset your password.',
+        401
+      );
+      return;
+    }
+
     // Verify password if user has password set
     if (user.password && password) {
       const isMatch = await user.comparePassword(password);
@@ -142,6 +184,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       email: user.email,
       phone: user.phone,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     });
 
     setAuthCookie(res, token);
@@ -306,6 +349,16 @@ export const requestReset = async (
 
     const isPhoneMethod = method === 'phone' || (!clean.includes('@') && digitsOnly.length >= 10);
 
+    const authSettings = await getAuthSettings();
+    if (isPhoneMethod && !authSettings.smsOtp?.enabled) {
+      sendError(res, 'SMS OTP verification is currently disabled. Please use your registered email address.', 403);
+      return;
+    }
+    if (!isPhoneMethod && !authSettings.emailOtp?.enabled) {
+      sendError(res, 'Email OTP password recovery is currently disabled by administrator.', 403);
+      return;
+    }
+
     let smsResult: any = null;
     if (isPhoneMethod) {
       const targetPhone = user.phone || clean;
@@ -418,7 +471,7 @@ export const syncSession = async (
       }
     }
 
-    if (!user) {
+    if (!user || user.isDeleted) {
       sendError(res, 'Unable to initialize session', 400);
       return;
     }
@@ -442,6 +495,7 @@ export const syncSession = async (
       email: user.email,
       phone: user.phone,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     });
 
     setAuthCookie(res, token);
@@ -472,7 +526,7 @@ export const resetPassword = async (
       $or: [{ email: clean }, { phone: clean }],
     });
 
-    if (!user) {
+    if (!user || user.isDeleted) {
       sendError(res, 'User not found', 404);
       return;
     }
@@ -521,6 +575,12 @@ export const resendVerificationEmail = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    const authSettings = await getAuthSettings();
+    if (!authSettings.emailOtp?.enabled) {
+      sendError(res, 'Email verification is currently disabled by administrator.', 403);
+      return;
+    }
+
     const { emailOrPhone } = req.body;
     const clean = (emailOrPhone || '').trim().toLowerCase();
     let user = await User.findOne({
@@ -547,12 +607,18 @@ export const resendVerificationEmail = async (
       return;
     }
 
+    if (user?.isDeleted) {
+      sendError(res, 'This account has been permanently deleted.', 401);
+      return;
+    }
+
     const targetEmail = clean.includes('@') ? clean : (user?.email || clean).toLowerCase().trim();
     const token = user
       ? signToken({
           userId: user.id,
           email: user.email,
           role: user.role,
+          tokenVersion: user.tokenVersion ?? 0,
         })
       : signToken({ userId: 'temp', email: targetEmail, role: 'user' });
 
@@ -623,7 +689,7 @@ export const checkVerificationStatus = async (
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || user.isDeleted) {
       sendError(res, 'User not found', 404);
       return;
     }
@@ -718,6 +784,11 @@ export const verifyEmail = async (
         await otpRecord.save();
       }
 
+      if (targetUser.isDeleted) {
+        sendError(res, 'This account has been permanently deleted.', 401);
+        return;
+      }
+
       targetUser.emailVerified = true;
       targetUser.emailVerifiedAt = new Date();
       await targetUser.save();
@@ -727,6 +798,7 @@ export const verifyEmail = async (
         email: targetUser.email,
         phone: targetUser.phone,
         role: targetUser.role,
+        tokenVersion: targetUser.tokenVersion ?? 0,
       });
       setAuthCookie(res, authToken);
 
@@ -766,7 +838,7 @@ export const verifyEmail = async (
     }
 
     const targetUser = await User.findOne({ id: decoded.userId });
-    if (!targetUser) {
+    if (!targetUser || targetUser.isDeleted) {
       sendError(res, 'User associated with verification token not found.', 404);
       return;
     }
@@ -787,6 +859,7 @@ export const verifyEmail = async (
         userId: targetUser.id,
         email: targetUser.email,
         role: targetUser.role,
+        tokenVersion: targetUser.tokenVersion ?? 0,
       });
       setAuthCookie(res, authToken);
       res.redirect(`${config.frontendUrl}/auth?step=verify-email&verified=true&email=${encodeURIComponent(targetUser.email || '')}`);
@@ -817,6 +890,16 @@ export const oauthLogin = async (
 
     const cleanEmail = email.trim().toLowerCase();
 
+    const authSettings = await getAuthSettings();
+    if (provider === 'Apple' && !authSettings.appleAuth?.enabled) {
+      sendError(res, 'Apple Sign-In is currently disabled.', 403);
+      return;
+    }
+    if (provider === 'Google' && !authSettings.googleAuth?.enabled) {
+      sendError(res, 'Google Sign-In is currently disabled.', 403);
+      return;
+    }
+
     // Verify Google ID token if production Google Client ID is configured
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     if (googleClientId && provider === 'Google' && idToken) {
@@ -835,7 +918,7 @@ export const oauthLogin = async (
       }
     }
 
-    let user = await User.findOne({ email: cleanEmail });
+    let user = await User.findOne({ email: cleanEmail, isDeleted: { $ne: true } });
 
     if (!user) {
       // Create new user automatically from OAuth profile
@@ -861,13 +944,21 @@ export const oauthLogin = async (
         emailVerifiedAt: new Date(),
         phoneVerified: false,
         isGoogleConnected: provider === 'Google',
+        isAppleConnected: provider === 'Apple',
       });
 
       await user.save();
     } else {
-      // Existing user: associate Google account safely
+      if (user.isDeleted) {
+        sendError(res, 'This account has been permanently deleted.', 401);
+        return;
+      }
+      // Existing user: associate OAuth provider safely
       if (provider === 'Google') {
         user.isGoogleConnected = true;
+      }
+      if (provider === 'Apple') {
+        user.isAppleConnected = true;
       }
       if (!user.emailVerified) {
         user.emailVerified = true;
@@ -880,6 +971,7 @@ export const oauthLogin = async (
       userId: user.id,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     });
 
     setAuthCookie(res, token);
@@ -897,5 +989,226 @@ export const oauthLogin = async (
   }
 };
 
+const wantsHtmlResponse = (req: Request): boolean => {
+  const accept = (req.headers.accept || '').toLowerCase();
+  return accept.includes('text/html');
+};
 
+const wantsJsonOnlyResponse = (req: Request): boolean => {
+  const accept = (req.headers.accept || '').toLowerCase();
+  return accept.includes('application/json') && !accept.includes('text/html');
+};
+
+export const googleOAuthInit = async (req: Request, res: Response): Promise<void> => {
+  const isProd = config.nodeEnv === 'production';
+  const mode = req.query.mode === 'reauth' ? 'reauth' : 'login';
+
+  try {
+    const authSettings = await getAuthSettings();
+    if (!authSettings.googleAuth?.enabled) {
+      const message = 'Google Sign-In is currently disabled by administrator.';
+      if (wantsHtmlResponse(req)) {
+        res.redirect(
+          buildFrontendErrorRedirect('google_disabled', message, {
+            mode,
+            redirectPath: typeof req.query.redirect === 'string' ? req.query.redirect : undefined,
+          })
+        );
+        return;
+      }
+      sendError(res, message, 403);
+      return;
+    }
+
+    let expectedUserId: string | undefined;
+    if (mode === 'reauth') {
+      const authHeader = req.headers.authorization;
+      const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+      const sessionToken = bearer || req.cookies?.tripzobox_token;
+      if (sessionToken) {
+        try {
+          const decoded = verifyToken(sessionToken);
+          if (decoded?.userId) expectedUserId = decoded.userId;
+        } catch {
+          // Callback still verifies session ownership
+        }
+      }
+    }
+
+    const { authUrl, stateCookieToken } = createGoogleAuthUrl(req.query.redirect, {
+      mode,
+      expectedUserId,
+    });
+
+    res.cookie(GOOGLE_OAUTH_STATE_COOKIE, stateCookieToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 10 * 60 * 1000,
+      path: '/',
+    });
+
+    res.redirect(authUrl);
+  } catch (error: any) {
+    const code = error instanceof GoogleOAuthError ? error.code : 'missing_credentials';
+    const statusCode = error instanceof GoogleOAuthError ? error.statusCode : 503;
+    const message =
+      error instanceof GoogleOAuthError
+        ? error.message
+        : 'Google OAuth initialization failed.';
+
+    if (wantsHtmlResponse(req)) {
+      res.redirect(
+        buildFrontendErrorRedirect(code, message, {
+          mode,
+          redirectPath: typeof req.query.redirect === 'string' ? req.query.redirect : undefined,
+        })
+      );
+      return;
+    }
+    sendError(res, message, statusCode);
+  }
+};
+
+export const googleOAuthCallback = async (req: Request, res: Response): Promise<void> => {
+  const isProd = config.nodeEnv === 'production';
+  const cookieToken = req.cookies?.[GOOGLE_OAUTH_STATE_COOKIE];
+
+  res.clearCookie(GOOGLE_OAUTH_STATE_COOKIE, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  const authSettings = await getAuthSettings();
+  if (!authSettings.googleAuth?.enabled) {
+    const message = 'Google Sign-In is currently disabled by administrator.';
+    if (wantsJsonOnlyResponse(req)) {
+      sendError(res, message, 403);
+      return;
+    }
+    res.redirect(
+      buildFrontendErrorRedirect('google_disabled', message, {
+        redirectPath: '/login',
+      })
+    );
+    return;
+  }
+
+  let callbackMode: 'login' | 'reauth' = 'login';
+  let callbackRedirect: string | undefined;
+
+  const respondCallbackError = (code: string, message: string, statusCode = 400): void => {
+    if (wantsJsonOnlyResponse(req)) {
+      sendError(res, message, statusCode);
+      return;
+    }
+    res.redirect(
+      buildFrontendErrorRedirect(code, message, {
+        mode: callbackMode,
+        redirectPath: callbackRedirect,
+      })
+    );
+  };
+
+  try {
+    const oauthConfig = getGoogleOAuthConfig();
+    if (!oauthConfig.isConfigured) {
+      respondCallbackError(
+        'missing_credentials',
+        'Google OAuth credentials are not configured on the server.',
+        503
+      );
+      return;
+    }
+
+    const { codeVerifier, redirectPath, mode, expectedUserId } = verifyOAuthStateCookie(
+      req.query.state,
+      cookieToken
+    );
+    callbackMode = mode;
+    callbackRedirect = redirectPath;
+
+    if (req.query.error) {
+      const errCode = String(req.query.error);
+      if (errCode === 'access_denied') {
+        respondCallbackError('cancelled', 'Google sign-in was cancelled.', 400);
+        return;
+      }
+      const errMessage =
+        typeof req.query.error_description === 'string' && req.query.error_description.trim()
+          ? req.query.error_description.trim()
+          : 'Google authentication failed. Please try again.';
+      respondCallbackError('google_error', errMessage, 400);
+      return;
+    }
+
+    const authCode = typeof req.query.code === 'string' ? req.query.code.trim() : '';
+    if (!authCode) {
+      respondCallbackError('missing_code', 'Authorization code missing from Google callback.', 400);
+      return;
+    }
+
+    const profile = await exchangeCodeForGoogleProfile(authCode, codeVerifier);
+
+    if (mode === 'reauth') {
+      const user = await reauthenticateGoogleUser(profile, expectedUserId);
+      const reauthToken = signReauthToken(user.id, 'google');
+      setReauthCookie(res, reauthToken);
+
+      if (wantsJsonOnlyResponse(req)) {
+        sendSuccess(
+          res,
+          {
+            reauthenticated: true,
+            provider: 'google',
+            redirect: redirectPath,
+          },
+          'Google identity re-verified for account deletion'
+        );
+        return;
+      }
+
+      res.redirect(buildFrontendReauthSuccessRedirect(redirectPath));
+      return;
+    }
+
+    const user = await authenticateGoogleUser(profile);
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
+    });
+
+    setAuthCookie(res, token);
+
+    if (wantsJsonOnlyResponse(req)) {
+      sendSuccess(
+        res,
+        {
+          user: user.toSafeUser(),
+          redirect: redirectPath,
+        },
+        'Successfully signed in with Google'
+      );
+      return;
+    }
+
+    res.redirect(buildFrontendSuccessRedirect(redirectPath));
+  } catch (error: any) {
+    if (error instanceof GoogleOAuthError) {
+      respondCallbackError(error.code, error.message, error.statusCode);
+      return;
+    }
+    respondCallbackError(
+      'auth_failed',
+      'Unable to complete Google authentication. Please try again.',
+      500
+    );
+  }
+};
 

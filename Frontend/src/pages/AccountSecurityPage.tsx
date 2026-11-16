@@ -51,6 +51,7 @@ import { StoryCard } from '../components/feature/StoryCard';
 import { DocumentRow } from '../components/feature/DocumentRow';
 import { VaultFileViewer } from '../components/feature/VaultFileViewer';
 import { TravellerRatingsCard } from '../components/feature/TravellerRatingsCard';
+import { DeleteAccountModal } from '../components/feature/DeleteAccountModal';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { VaultDocument } from '../types';
@@ -131,6 +132,40 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [modalType, setModalType] = useState<
     'email' | 'phone' | 'password' | 'recovery-question' | 'recovery-codes' | 'edit-profile' | 'change-avatar' | null
   >(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [googleReauthVerified, setGoogleReauthVerified] = useState(false);
+
+  React.useEffect(() => {
+    const action = searchParams.get('action');
+    const reauth = searchParams.get('reauth');
+    const oauthErr = searchParams.get('oauth_error');
+    const oauthMsg = searchParams.get('message');
+
+    if (action === 'delete-account' || reauth === 'google' || oauthErr) {
+      setActiveTab('security');
+      if (reauth === 'google') {
+        setGoogleReauthVerified(true);
+        setIsDeleteModalOpen(true);
+        success('Google identity re-verified for account deletion.', 'Identity Verified');
+      } else if (action === 'delete-account') {
+        setIsDeleteModalOpen(true);
+      }
+
+      if (oauthErr) {
+        toastError(oauthMsg || 'Google re-authentication could not be verified.', 'Re-authentication Failed');
+        if (action === 'delete-account') {
+          setIsDeleteModalOpen(true);
+        }
+      }
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('action');
+      nextParams.delete('reauth');
+      nextParams.delete('oauth_error');
+      nextParams.delete('message');
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, success, toastError]);
 
   // Avatar changing refs & state
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -194,7 +229,6 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [emailResendTimer, setEmailResendTimer] = useState(0);
-  const [emailDevOtp, setEmailDevOtp] = useState<string | null>(null);
 
   // Email resend timer countdown
   React.useEffect(() => {
@@ -215,7 +249,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   const [question, setQuestion] = useState(
     user.securityQuestion || "What is your mother's name?"
   );
-  const [answer, setAnswer] = useState(user.securityAnswer || 'Amina');
+  const [answer, setAnswer] = useState(user.securityAnswer || '');
 
   // Edit Profile modal state
   const [editName, setEditName] = useState(user.name);
@@ -232,21 +266,25 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
   // Search filter inside settings
   const [searchFilter, setSearchFilter] = useState('');
 
-  const recoveryCodes = user.recoveryCodes || [
-    '8P3K-2D9Q',
-    '4G7P-1KDM',
-    '2ZNV-988C',
-    '6TQ1-3L5D',
-    'H9W2-7K4F',
-    'D5JS-0P3R',
-  ];
+  const [loadedRecoveryCodes, setLoadedRecoveryCodes] = useState<string[]>(
+    user.recoveryCodes || []
+  );
+  const recoveryCodes = user.recoveryCodes?.length ? user.recoveryCodes : loadedRecoveryCodes;
 
-  // User's own trips
+  // User's own trips & stories
   const myTrips = useMemo(() => {
     return trips.filter(
       (t) => t.leader.id === user.id || t.members.some((m) => m.id === user.id)
     );
   }, [trips, user.id]);
+
+  const myStories = useMemo(() => {
+    return stories.filter(
+      (s) =>
+        (s.author?.id && user?.id && s.author.id === user.id) ||
+        (Boolean(user?.username) && s.author?.username === user.username)
+    );
+  }, [stories, user.id, user.username]);
 
   const savedTrips = useMemo(() => {
     return trips.filter((t) => savedTripIds.includes(t.id));
@@ -268,12 +306,9 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
     setEmailLoading(true);
     setEmailError('');
     try {
-      const res = await authApi.requestEmailChangeOtp(clean);
+      await authApi.requestEmailChangeOtp(clean);
       setEmailStep('otp');
       setEmailResendTimer(60);
-      if (res?.devOtp) {
-        setEmailDevOtp(res.devOtp);
-      }
       success(`Verification code sent to ${clean}`, 'Code Sent');
     } catch (err: any) {
       setEmailError(err.message || 'Failed to send verification code. Please try again.');
@@ -300,7 +335,6 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
       setModalType(null);
       setEmailStep('input');
       setEmailOtp('');
-      setEmailDevOtp(null);
     } catch (err: any) {
       setEmailError(err.message || 'Invalid or expired verification code.');
     } finally {
@@ -551,7 +585,6 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                       setEmailStep('input');
                       setEmailOtp('');
                       setEmailError('');
-                      setEmailDevOtp(null);
                       setModalType('email');
                     }}
                     className="self-start sm:self-center text-xs font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer"
@@ -640,7 +673,9 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     </span>
                     <div>
                       <span className="font-medium text-sm sm:text-base text-gray-900">
-                        {user.securityQuestion || "What is your mother's name?"}
+                        {user.securityQuestion || (
+                          <span className="text-gray-400 italic text-sm">Not configured yet</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -649,7 +684,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     onClick={() => setModalType('recovery-question')}
                     className="self-start sm:self-center text-xs font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer"
                   >
-                    Edit
+                    {user.securityQuestion ? 'Edit' : 'Set up'}
                   </button>
                 </div>
 
@@ -661,13 +696,23 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     </span>
                     <div>
                       <span className="font-medium text-sm sm:text-base text-gray-700">
-                        {recoveryCodes.length} codes available
+                        {recoveryCodes.length > 0
+                          ? `${recoveryCodes.length} codes available`
+                          : 'Click View to generate'}
                       </span>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setModalType('recovery-codes')}
+                    onClick={async () => {
+                      setModalType('recovery-codes');
+                      try {
+                        const codes = await authApi.getRecoveryCodes();
+                        if (Array.isArray(codes)) setLoadedRecoveryCodes(codes);
+                      } catch {
+                        // Keep empty if offline
+                      }
+                    }}
                     className="self-start sm:self-center text-xs font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer"
                   >
                     View
@@ -688,6 +733,26 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     256-bit encrypted credential storage, verified communications, and single-device session confirmation enabled.
                   </p>
                 </div>
+              </div>
+
+              {/* Account Deletion Section (Profile → Settings → Account Settings → Delete Account) */}
+              <div className="rounded-2xl border border-red-200 bg-red-50/50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-red-600 shrink-0" />
+                    <h4 className="font-bold text-sm text-red-950">Delete Account</h4>
+                  </div>
+                  <p className="text-xs text-red-900/80 leading-relaxed">
+                    Permanently delete your TripzoBox profile, personal details, private diary entries, and Travel Vault documents.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl border border-red-300 bg-white hover:bg-red-600 hover:text-white hover:border-red-600 text-red-700 text-xs font-bold transition-colors shrink-0 cursor-pointer"
+                >
+                  Delete Account
+                </button>
               </div>
             </div>
           )}
@@ -822,7 +887,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                 <div className="flex items-center gap-3 border-b border-gray-200 pb-3">
                   {[
                     { id: 'trips', label: `My Trips (${myTrips.length})` },
-                    { id: 'stories', label: `My Stories (${stories.length})` },
+                    { id: 'stories', label: `My Stories (${myStories.length})` },
                     { id: 'saved', label: `Saved (${savedTrips.length})` },
                     { id: 'reviews', label: 'Traveller Reviews' },
                   ].map((tab) => (
@@ -843,25 +908,37 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
 
                 {profileSubTab === 'trips' && (
                   <div className="flex flex-col gap-3.5">
-                    {myTrips.map((trip) => (
-                      <TripCard key={trip.id} trip={trip} variant="horizontal" />
-                    ))}
+                    {myTrips.length > 0 ? (
+                      myTrips.map((trip) => (
+                        <TripCard key={trip.id} trip={trip} variant="horizontal" />
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-4 text-center">No trips yet.</p>
+                    )}
                   </div>
                 )}
 
                 {profileSubTab === 'stories' && (
                   <div className="flex flex-col gap-3.5">
-                    {stories.map((story) => (
-                      <StoryCard key={story.id} story={story} variant="horizontal" />
-                    ))}
+                    {myStories.length > 0 ? (
+                      myStories.map((story) => (
+                        <StoryCard key={story.id} story={story} variant="horizontal" />
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-4 text-center">No published stories yet.</p>
+                    )}
                   </div>
                 )}
 
                 {profileSubTab === 'saved' && (
                   <div className="flex flex-col gap-3.5">
-                    {savedTrips.map((trip) => (
-                      <TripCard key={trip.id} trip={trip} variant="horizontal" />
-                    ))}
+                    {savedTrips.length > 0 ? (
+                      savedTrips.map((trip) => (
+                        <TripCard key={trip.id} trip={trip} variant="horizontal" />
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-4 text-center">No saved trips yet.</p>
+                    )}
                   </div>
                 )}
 
@@ -963,26 +1040,32 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                 </div>
 
                 <div className="space-y-2.5">
-                  {(showAllDocs ? documents : documents.slice(0, 4)).map((doc) => (
-                    <DocumentRow
-                      key={doc.id}
-                      document={doc}
-                      onView={(item) => {
-                        setSelectedDocForViewer(item);
-                        setIsViewerOpen(true);
-                      }}
-                      onShare={() => {
-                        navigate('/app/vault?view=share');
-                      }}
-                      onDelete={async (id) => {
-                        deleteDocument(id);
-                        success('Document removed from your vault.');
-                      }}
-                      onVerify={() => {
-                        navigate('/app/vault?view=documents');
-                      }}
-                    />
-                  ))}
+                  {documents.length > 0 ? (
+                    (showAllDocs ? documents : documents.slice(0, 4)).map((doc) => (
+                      <DocumentRow
+                        key={doc.id}
+                        document={doc}
+                        onView={(item) => {
+                          setSelectedDocForViewer(item);
+                          setIsViewerOpen(true);
+                        }}
+                        onShare={() => {
+                          navigate('/app/vault?view=share');
+                        }}
+                        onDelete={async (id) => {
+                          deleteDocument(id);
+                          success('Document removed from your vault.');
+                        }}
+                        onVerify={() => {
+                          navigate('/app/vault?view=documents');
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-500 py-6 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      No secured documents yet.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -999,35 +1082,41 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     Manage Contacts &rarr;
                   </Link>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {emergencyContacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="p-3.5 rounded-xl border border-gray-200 bg-white shadow-2xs flex items-center justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm text-gray-900">{contact.name}</span>
-                          {contact.isPrimary && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {contact.relation} • {contact.phone}
-                        </span>
-                      </div>
-                      <a
-                        href={`tel:${contact.phone}`}
-                        className="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                        title="Call Contact"
+                {emergencyContacts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {emergencyContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="p-3.5 rounded-xl border border-gray-200 bg-white shadow-2xs flex items-center justify-between"
                       >
-                        <PhoneCall className="w-4 h-4" />
-                      </a>
-                    </div>
-                  ))}
-                </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-gray-900">{contact.name}</span>
+                            {contact.isPrimary && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {contact.relation} • {contact.phone}
+                          </span>
+                        </div>
+                        <a
+                          href={`tel:${contact.phone}`}
+                          className="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          title="Call Contact"
+                        >
+                          <PhoneCall className="w-4 h-4" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 py-5 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    No emergency contacts added yet.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -1341,7 +1430,6 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                   setEmailStep('input');
                   setEmailOtp('');
                   setEmailError('');
-                  setEmailDevOtp(null);
                 }}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 cursor-pointer"
               >
@@ -1431,13 +1519,6 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                     </button>
                   </div>
                 </div>
-
-                {emailDevOtp && (
-                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-xs text-amber-800">
-                    <span className="font-medium">Dev Test Code:</span>
-                    <span className="font-mono font-bold tracking-widest text-amber-950">{emailDevOtp}</span>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -2120,6 +2201,15 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
           </div>
         </div>
       )}
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setGoogleReauthVerified(false);
+        }}
+        initialReauthSuccess={googleReauthVerified}
+      />
     </div>
   );
 };

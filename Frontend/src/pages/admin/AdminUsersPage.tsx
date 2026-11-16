@@ -121,7 +121,7 @@ export const AdminUsersPage: React.FC = () => {
       u.email || '',
       u.phone || '',
       u.role || 'user',
-      u.isSuspended ? 'Suspended' : 'Active',
+      u.isDeleted ? 'Deleted' : u.isSuspended ? 'Suspended' : 'Active',
       u.emailVerified ? 'Yes' : 'No',
       u.phoneVerified ? 'Yes' : 'No',
       u.createdAt || '',
@@ -201,6 +201,7 @@ export const AdminUsersPage: React.FC = () => {
               <option value="">All Statuses</option>
               <option value="active">Active Only</option>
               <option value="suspended">Suspended Only</option>
+              <option value="deleted">Deleted Only</option>
             </select>
 
             <select
@@ -305,7 +306,19 @@ export const AdminUsersPage: React.FC = () => {
 
                       {/* Status */}
                       <td className="py-3 px-4">
-                        {u.isSuspended ? (
+                        {u.isDeleted ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
+                              <Trash2 className="w-3 h-3 text-slate-500" />
+                              Deleted
+                            </span>
+                            {u.deletedAt && (
+                              <p className="text-[10px] text-slate-400">
+                                {new Date(u.deletedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : u.isSuspended ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                             <XCircle className="w-3 h-3 text-red-500" />
                             Suspended
@@ -361,67 +374,78 @@ export const AdminUsersPage: React.FC = () => {
                             <Eye className="w-4 h-4" />
                           </Link>
 
-                          {/* Suspend / Reactivate Button */}
-                          {u.isSuspended ? (
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setModalType('reactivate');
-                              }}
-                              className="p-1.5 rounded-xl text-emerald-600 hover:bg-emerald-50 transition"
-                              title="Reactivate Account"
+                          {/* Moderation & Security Actions (Disabled for Permanently Deleted Accounts) */}
+                          {u.isDeleted ? (
+                            <span
+                              className="text-[11px] font-medium text-slate-400 px-2 py-1"
+                              title="Deleted accounts cannot be recovered or modified"
                             >
-                              <UserCheck className="w-4 h-4" />
-                            </button>
+                              Non-recoverable
+                            </span>
                           ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setModalType('suspend');
-                              }}
-                              className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition"
-                              title="Suspend Account"
-                            >
-                              <UserX className="w-4 h-4" />
-                            </button>
-                          )}
+                            <>
+                              {u.isSuspended ? (
+                                <button
+                                  onClick={() => {
+                                    setSelectedUser(u);
+                                    setModalType('reactivate');
+                                  }}
+                                  className="p-1.5 rounded-xl text-emerald-600 hover:bg-emerald-50 transition"
+                                  title="Reactivate Account"
+                                >
+                                  <UserCheck className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSelectedUser(u);
+                                    setModalType('suspend');
+                                  }}
+                                  className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition"
+                                  title="Suspend Account"
+                                >
+                                  <UserX className="w-4 h-4" />
+                                </button>
+                              )}
 
-                          {/* Require Password Reset */}
-                          <button
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setModalType('resetPassword');
-                            }}
-                            className="p-1.5 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition"
-                            title="Enforce Password Reset"
-                          >
-                            <KeyRound className="w-4 h-4" />
-                          </button>
+                              {/* Require Password Reset */}
+                              <button
+                                onClick={() => {
+                                  setSelectedUser(u);
+                                  setModalType('resetPassword');
+                                }}
+                                className="p-1.5 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition"
+                                title="Enforce Password Reset"
+                              >
+                                <KeyRound className="w-4 h-4" />
+                              </button>
 
-                          {/* Revoke Sessions */}
-                          <button
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setModalType('revokeSessions');
-                            }}
-                            className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-                            title="Revoke Active Sessions"
-                          >
-                            <LogOut className="w-4 h-4" />
-                          </button>
+                              {/* Revoke Sessions */}
+                              <button
+                                onClick={() => {
+                                  setSelectedUser(u);
+                                  setModalType('revokeSessions');
+                                }}
+                                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
+                                title="Revoke Active Sessions"
+                              >
+                                <LogOut className="w-4 h-4" />
+                              </button>
 
-                          {/* Delete (Superadmin only) */}
-                          {role === 'superadmin' && (
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setModalType('delete');
-                              }}
-                              className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                              title="Delete Account"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              {/* Delete (Superadmin only) */}
+                              {role === 'superadmin' && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedUser(u);
+                                    setModalType('delete');
+                                  }}
+                                  className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                  title="Delete Account"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

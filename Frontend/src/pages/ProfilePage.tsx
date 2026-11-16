@@ -31,6 +31,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input, Textarea, Select } from '../components/ui/Input';
 import { TravellerRatingsCard } from '../components/feature/TravellerRatingsCard';
 import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
+import { DeleteAccountModal } from '../components/feature/DeleteAccountModal';
 
 export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly = false }) => {
   const { user, updateProfile } = useAuth();
@@ -159,7 +160,11 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
   );
   const showAllTrips = searchParams.get('view') === 'all-trips';
   const visibleTrips = showAllTrips ? myTrips : myTrips.slice(0, 3);
-  const myStories = stories.filter((s) => s.author.id === user.id || s.author.name === user.name);
+  const myStories = stories.filter(
+    (s) =>
+      (s.author?.id && user?.id && s.author.id === user.id) ||
+      (Boolean(user?.username) && s.author?.username === user.username)
+  );
 
   if (!settingsOnly && searchParams.get('tab') === 'settings') return <Navigate to="/app/profile/settings" replace />;
 
@@ -509,7 +514,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
                 <div>
                   <h5 className="text-xs sm:text-sm font-bold text-red-900">Delete Account</h5>
                   <p className="text-xs text-red-700 mt-0.5">
-                    Clear local mock profile data and reset demo session.
+                    Permanently delete your TripzoBox account and personal data.
                   </p>
                 </div>
                 <Button
@@ -588,33 +593,10 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
       </Modal>
 
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
-      <Modal
+      <DeleteAccountModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Confirm Account Deletion"
-        description="Are you sure you want to reset your local demo session? This will clear local changes."
-      >
-        <div className="space-y-4 pt-2">
-          <p className="text-xs sm:text-sm text-text-muted">
-            This action will clear localStorage and return all mock models to their fresh default state.
-          </p>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-              Keep Account
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Confirm Reset
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      />
 
       {/* CHANGE PROFILE PHOTO MODAL */}
       {isChangePhotoOpen && (

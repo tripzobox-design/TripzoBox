@@ -1,14 +1,14 @@
 import { confirmAction } from '../lib/confirmAction';
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Plus, BookOpen, Globe, Lock, Sparkles, Search } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, BookOpen, Lock } from 'lucide-react';
 import { useDiary } from '../context/DiaryContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/ui/Button';
-import { Tabs } from '../components/ui/Tabs';
 import { DiaryEntryCard } from '../components/feature/DiaryEntryCard';
 import { StoryCard } from '../components/feature/StoryCard';
+import { StoriesPage } from './StoriesPage';
 import { DiaryEntry } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { Input, Textarea, Select } from '../components/ui/Input';
@@ -31,10 +31,6 @@ export const TravelDiaryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'entries' | 'travel-stories' | 'published'>(initialTab);
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null);
 
-  // Search & category filter inside Travel Stories tab
-  const [storySearch, setStorySearch] = useState('');
-  const [storyCategory, setStoryCategory] = useState('All');
-
   // Sync tab with URL
   React.useEffect(() => {
     if (paramTab === 'travel-stories' || paramTab === 'travel_stories' || paramTab === 'stories') {
@@ -53,32 +49,14 @@ export const TravelDiaryPage: React.FC = () => {
 
   const myStories = stories.filter(
     (s) =>
-      s.author.name === user?.name ||
-      s.author.username === user?.username ||
-      s.author.name.toLowerCase() === (user?.name || '').toLowerCase()
+      (s.author?.id && user?.id && s.author.id === user.id) ||
+      (Boolean(user?.username) && s.author?.username === user.username)
   );
-
-  const filteredTravelStories = stories.filter((story) => {
-    const matchesSearch =
-      !storySearch.trim() ||
-      story.title.toLowerCase().includes(storySearch.toLowerCase()) ||
-      story.destination.toLowerCase().includes(storySearch.toLowerCase()) ||
-      story.author.name.toLowerCase().includes(storySearch.toLowerCase());
-    const matchesCategory =
-      storyCategory === 'All' ||
-      (story.tags && story.tags.some((t) => t.toLowerCase() === storyCategory.toLowerCase()));
-    return matchesSearch && matchesCategory;
-  });
 
   // Edit form state
   const [editPlace, setEditPlace] = useState('');
   const [editCategory, setEditCategory] = useState<DiaryEntry['category']>('Nature');
   const [editText, setEditText] = useState('');
-
-  const tabs = [
-    { id: 'entries', label: 'My Entries', badge: entries.length },
-    { id: 'stories', label: 'Published Stories', badge: stories.length },
-  ];
 
   const handleOpenEdit = async (entry: DiaryEntry) => {
     if (!await confirmAction('edit', 'this experience')) return;
@@ -178,95 +156,48 @@ export const TravelDiaryPage: React.FC = () => {
           </div>
 
           <div className="space-y-3.5">
-            {entries.map((entry) => (
-              <DiaryEntryCard
-                key={entry.id}
-                entry={entry}
-                onEdit={handleOpenEdit}
-                onDelete={async (id) => {
-                  if (!await confirmAction('delete', 'this diary entry')) return;
-                  deleteEntry(id);
-                  success('Entry deleted.');
-                }}
-                onAddToStory={() => {
-                  navigate('/app/diary/create-story');
-                }}
-              />
-            ))}
+            {entries.length > 0 ? (
+              entries.map((entry) => (
+                <DiaryEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  onEdit={handleOpenEdit}
+                  onDelete={async (id) => {
+                    if (!await confirmAction('delete', 'this diary entry')) return;
+                    deleteEntry(id);
+                    success('Entry deleted.');
+                  }}
+                  onAddToStory={() => {
+                    navigate('/app/diary/create-story');
+                  }}
+                />
+              ))
+            ) : (
+              <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-border space-y-2.5">
+                <BookOpen className="w-8 h-8 text-text-subtle mx-auto" />
+                <p className="font-heading font-semibold text-sm text-text">No diary entries yet</p>
+                <p className="text-xs text-text-muted max-w-sm mx-auto">
+                  Record your private travel notes, photos, and memories from your journeys.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/app/diary/add')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Experience</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {activeTab === 'travel-stories' && (
-        <div className="space-y-4">
-          {/* Header banner */}
-          <div className="bg-light-bg rounded-2xl p-4 sm:p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-text-muted">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-emerald-700" />
-              </div>
-              <div>
-                <span className="font-bold text-sm text-gray-900 block">
-                  Community Travel Stories
-                </span>
-                <span className="text-xs text-gray-500">
-                  Real itineraries, photo memories & recommendations from verified travellers.
-                </span>
-              </div>
-            </div>
-            <Link
-              to="/stories"
-              className="inline-flex items-center gap-1 font-semibold text-primary hover:underline text-xs shrink-0 self-start sm:self-auto"
-            >
-              <span>Explore stories directory</span>
-              <Globe className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {/* Search bar & Category filters */}
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search stories, destinations, authors..."
-                value={storySearch}
-                onChange={(e) => setStorySearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-border text-xs sm:text-sm text-text focus:outline-none focus:border-primary shadow-2xs transition-colors"
-              />
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {['All', 'Nature', 'Beach', 'Culture', 'Adventure', 'Food'].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setStoryCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                    storyCategory === cat
-                      ? 'bg-primary text-white shadow-2xs'
-                      : 'bg-white text-text-muted hover:text-text border border-border hover:bg-gray-50'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Stories List */}
-          <div className="space-y-3 sm:space-y-3.5">
-            {filteredTravelStories.length > 0 ? (
-              filteredTravelStories.map((story) => (
-                <StoryCard key={story.id} story={story} variant="horizontal" />
-              ))
-            ) : (
-              <div className="p-8 text-center bg-light-bg rounded-2xl border border-border text-xs sm:text-sm text-text-muted">
-                <p className="font-semibold text-gray-700">No travel stories match your search</p>
-                <p className="text-xs text-gray-400 mt-1">Try searching another destination or category</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <StoriesPage
+          embedded
+          onSelectDiaryEntries={() => handleTabChange('entries')}
+        />
       )}
 
       {activeTab === 'published' && (
@@ -305,15 +236,17 @@ export const TravelDiaryPage: React.FC = () => {
       )}
 
       {/* Floating Compose Story FAB — mobile only, above bottom nav */}
-      <button
-        type="button"
-        onClick={() => navigate('/app/diary/create-story')}
-        className="fixed bottom-20 right-4 lg:hidden z-40 flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-semibold text-sm px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95"
-        aria-label="Compose Story"
-      >
-        <Plus className="w-5 h-5" />
-        <span>Compose Story</span>
-      </button>
+      {activeTab !== 'travel-stories' && (
+        <button
+          type="button"
+          onClick={() => navigate('/app/diary/create-story')}
+          className="fixed bottom-20 right-4 lg:hidden z-40 flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-semibold text-sm px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95"
+          aria-label="Compose Story"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Compose Story</span>
+        </button>
+      )}
 
       {/* EDIT MODAL */}
       {editingEntry && (

@@ -439,10 +439,64 @@ export const deleteTrip = async (
       return;
     }
 
+    const otherMembers = (trip.members || []).filter((m) => m.id !== trip.leader.id);
+    if (otherMembers.length > 0) {
+      await Promise.all(
+        otherMembers.map((member) =>
+          Notification.create({
+            id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            userId: member.id,
+            type: 'trip_invite',
+            title: 'Trip Cancelled by Leader',
+            message: `The trip "${trip.name}" was cancelled by the trip leader.`,
+            timestamp: 'Just now',
+            read: false,
+            link: '/app/trips',
+          })
+        )
+      );
+    }
+
     await Trip.deleteOne({ id });
     await JoinRequest.deleteMany({ tripId: id });
 
     sendSuccess(res, null, 'Trip cancelled and removed');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const transferTripLeadershipHandler = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Unauthenticated', 401);
+      return;
+    }
+
+    const { id } = req.params;
+    const { newLeaderId } = req.body || {};
+    const { transferTripLeadership, AccountDeletionError } = await import(
+      '../services/accountDeletionService.js'
+    );
+
+    try {
+      const updatedTrip = await transferTripLeadership(req.user, id, newLeaderId);
+      sendSuccess(
+        res,
+        { trip: updatedTrip },
+        `Trip leadership transferred to ${updatedTrip.leader.name}`
+      );
+    } catch (err: any) {
+      if (err instanceof AccountDeletionError) {
+        sendError(res, err.message, err.statusCode);
+        return;
+      }
+      throw err;
+    }
   } catch (error) {
     next(error);
   }

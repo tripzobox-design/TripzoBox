@@ -23,6 +23,11 @@ import { generateToken } from '../utils/token.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { config } from '../config/env.js';
+import {
+  getAdminAuthSettingsView,
+  updateAuthSettings,
+  testSmsConnectivity,
+} from '../services/authSettingsService.js';
 
 // Helper to log administrative actions
 export const logAdminAction = async (
@@ -134,6 +139,7 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
       userId: user.id,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     });
 
     // Record login in audit log
@@ -288,6 +294,7 @@ export const getDashboardStats = async (
       totalUsers,
       activeUsers,
       suspendedUsers,
+      deletedUsers,
       verifiedEmailUsers,
       verifiedPhoneUsers,
       verifiedIdentityUsers,
@@ -315,8 +322,9 @@ export const getDashboardStats = async (
       participantsAggregate,
     ] = await Promise.all([
       User.countDocuments(),
-      User.countDocuments({ isSuspended: false }),
-      User.countDocuments({ isSuspended: true }),
+      User.countDocuments({ isSuspended: false, isDeleted: { $ne: true } }),
+      User.countDocuments({ isSuspended: true, isDeleted: { $ne: true } }),
+      User.countDocuments({ isDeleted: true }),
       User.countDocuments({ emailVerified: true }),
       User.countDocuments({ phoneVerified: true }),
       User.countDocuments({ identityVerificationStatus: 'VERIFIED' }),
@@ -435,6 +443,7 @@ export const getDashboardStats = async (
         totalUsers,
         activeUsers,
         suspendedUsers,
+        deletedUsers,
         verifiedUsers: verifiedEmailUsers,
         verifiedEmailUsers,
         verifiedPhoneUsers,
@@ -467,6 +476,7 @@ export const getDashboardStats = async (
         userActivity: [
           { status: 'Active Accounts', count: activeUsers },
           { status: 'Suspended Accounts', count: suspendedUsers },
+          { status: 'Deleted Accounts', count: deletedUsers },
           { status: 'New In Range', count: newUsersInRange },
         ],
       },
@@ -511,10 +521,14 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
       filter.role = role;
     }
 
-    if (status === 'suspended') {
+    if (status === 'deleted') {
+      filter.isDeleted = true;
+    } else if (status === 'suspended') {
       filter.isSuspended = true;
+      filter.isDeleted = { $ne: true };
     } else if (status === 'active') {
       filter.isSuspended = false;
+      filter.isDeleted = { $ne: true };
     }
 
     if (verification === 'email_verified') {
@@ -634,6 +648,15 @@ export const requireUserPasswordReset = async (
       return;
     }
 
+    if (user.isDeleted) {
+      sendError(
+        res,
+        'Forbidden: Permanently deleted accounts cannot be recovered, reactivated, or modified.',
+        403
+      );
+      return;
+    }
+
     user.mustResetPassword = true;
     await user.save();
 
@@ -741,6 +764,15 @@ export const updateUser = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
+    if (user.isDeleted) {
+      sendError(
+        res,
+        'Forbidden: Permanently deleted accounts cannot be recovered, reactivated, or modified.',
+        403
+      );
+      return;
+    }
+
     // Only superadmin can change someone's role to admin or superadmin
     if (role && role !== user.role) {
       if ((req.user?.role as any) !== 'superadmin') {
@@ -786,6 +818,15 @@ export const toggleUserSuspension = async (
 
     if (!user) {
       sendError(res, 'User not found', 404);
+      return;
+    }
+
+    if (user.isDeleted) {
+      sendError(
+        res,
+        'Forbidden: Permanently deleted accounts cannot be recovered, reactivated, or modified.',
+        403
+      );
       return;
     }
 
@@ -3395,4 +3436,58 @@ export const getPublicPageContent = async (
     next(error);
   }
 };
+
+// ============================================================================
+// AUTHENTICATION PROVIDER SETTINGS (SMS OTP & Apple Sign-In Management)
+// ============================================================================
+
+export const getAuthSettingsAdmin = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const settings = await getAdminAuthSettingsView();
+    sendSuccess(res, settings, 'Auth provider settings retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAuthSettingsAdmin = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Admin authentication required', 401);
+      return;
+    }
+    const updated = await updateAuthSettings(req.body, {
+      id: req.user.id,
+      email: req.user.email || 'admin@tripzobox.com',
+      name: req.user.name,
+      ipAddress: req.ip || req.socket.remoteAddress,
+    });
+    sendSuccess(res, updated, 'Authentication provider settings updated successfully');
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to update auth settings', 400);
+  }
+};
+
+export const testSmsConnectivityAdmin = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { testPhone } = req.body || {};
+    const result = await testSmsConnectivity(testPhone);
+    sendSuccess(res, result, result.message);
+  } catch (error: any) {
+    sendError(res, error.message || 'SMS connectivity test failed', 500);
+  }
+};
+
 

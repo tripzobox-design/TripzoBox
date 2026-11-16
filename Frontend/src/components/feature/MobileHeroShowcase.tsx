@@ -42,11 +42,11 @@ export const MobileHeroShowcase: React.FC<{ liked: boolean; onToggleLike: () => 
         setActive(nearest);
       }} className="relative flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory px-[16%] py-3 no-scrollbar" aria-label="Trending destination carousel">
         {places.map((place, index) => <article key={place.slug} className={`relative w-full min-w-full shrink-0 snap-center h-[220px] sm:h-[290px] rounded-3xl overflow-hidden border border-white/70 shadow-xl transition-transform duration-300 ${active === index ? 'scale-100' : 'scale-[.9]'}`}>
-          <Link to={`/explore/${place.slug}`} className="absolute inset-0">
+          <Link to="/explore" className="absolute inset-0">
             <img src={`https://images.unsplash.com/${place.photo}?auto=format&fit=crop&w=800&q=85`} alt={place.name} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-black/5 to-transparent" />
             {place.slug === 'bali' && <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-emerald-800/85 px-3 py-1.5 text-xs font-semibold"><Flame className="w-4 h-4 text-amber-400 fill-amber-400" />Trending</span>}
-            <div className="absolute inset-x-3 bottom-4 flex items-end justify-between gap-2"><div><h3 className="font-heading font-extrabold text-base sm:text-2xl flex items-center gap-1"><MapPin className="w-4 h-4 shrink-0" />{place.name}</h3><p className="text-xs sm:text-sm text-white/85 mt-1">{place.note}</p></div><span className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-full bg-emerald-50 text-primary flex items-center justify-center"><ChevronRight className="w-5 h-5" /></span></div>
+            <div className="absolute inset-x-3 bottom-4 flex items-end justify-between gap-2"><div><h3 className="font-heading font-extrabold text-base sm:text-2xl flex items-center gap-1"><MapPin className="w-4 h-4 shrink-0" />{place.name}</h3><p className="text-xs sm:text-sm text-white/85 mt-1">{place.note}</p></div><span aria-hidden="true" className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-full bg-emerald-50 text-primary flex items-center justify-center"><ChevronRight className="w-5 h-5" /></span></div>
           </Link>
           {place.slug === 'bali' && <button type="button" aria-label={liked ? 'Remove Bali from wishlist' : 'Save Bali to wishlist'} aria-pressed={liked} onClick={onToggleLike} className="absolute top-2 right-2 p-2 rounded-full bg-black/15"><Heart className={`w-6 h-6 ${liked ? 'fill-rose-500 text-rose-500' : 'text-white fill-white/20'}`} /></button>}
         </article>)}

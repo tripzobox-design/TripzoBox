@@ -79,11 +79,16 @@ export interface ISharedAccessRecord extends Document {
   documentId: string;
   documentName: string;
   documentType: string;
+  ownerName?: string;
+  ownerAvatarUrl?: string;
+  sharedWithUserId?: string;
+  sharedWithUsername?: string;
   sharedWithName: string;
   sharedWithRole?: string;
   sharedWithAvatar?: string;
   permission: 'View' | 'View • Download';
   expires: string;
+  expiresAt?: Date;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -93,14 +98,19 @@ const SharedAccessRecordSchema = new Schema<ISharedAccessRecord>(
   {
     id: { type: String, unique: true, index: true },
     userId: { type: String, required: true, index: true },
-    documentId: { type: String, required: true },
+    documentId: { type: String, required: true, index: true },
     documentName: { type: String, required: true },
     documentType: { type: String, required: true },
+    ownerName: { type: String },
+    ownerAvatarUrl: { type: String },
+    sharedWithUserId: { type: String, index: true },
+    sharedWithUsername: { type: String },
     sharedWithName: { type: String, required: true },
     sharedWithRole: { type: String },
     sharedWithAvatar: { type: String },
     permission: { type: String, enum: ['View', 'View • Download'], default: 'View' },
     expires: { type: String, default: 'Until trip end' },
+    expiresAt: { type: Date },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }

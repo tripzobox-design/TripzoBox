@@ -14,6 +14,8 @@ import {
   getSharedAccessRecords,
   createSharedAccess,
   revokeSharedAccess,
+  getSharedWithMeDocuments,
+  searchEligibleContacts,
   getVaultSettings,
   updateEmergencyConfig,
   updateSecuritySettings,
@@ -41,10 +43,14 @@ router.delete('/emergency-contacts/:id', deleteEmergencyContact);
 router.get('/trusted-contacts', getTrustedContacts);
 router.put('/trusted-contacts/:id/toggle', toggleTrustedContactAccess);
 
+// Eligible Contacts Lookup
+router.get('/contacts/search', searchEligibleContacts);
+
 // Shared Access
 router.get('/shared-access', getSharedAccessRecords);
 router.post('/shared-access', createSharedAccess);
 router.delete('/shared-access/:id', revokeSharedAccess);
+router.get('/shared-with-me', getSharedWithMeDocuments);
 
 // Vault Security & Emergency Configuration
 router.get('/settings', getVaultSettings);

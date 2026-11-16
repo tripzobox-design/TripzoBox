@@ -5,6 +5,8 @@ import { connectDB, disconnectDB } from '../src/config/db.js';
 import { User } from '../src/models/User.js';
 import { Trip } from '../src/models/Trip.js';
 import { OTPVerification } from '../src/models/OTPVerification.js';
+import { AuthSettings } from '../src/models/AuthSettings.js';
+import { invalidateAuthSettingsCache } from '../src/services/authSettingsService.js';
 import bcrypt from 'bcryptjs';
 
 describe('TripzoBox Trust & Safety System - Security & Workflow Tests', () => {
@@ -169,6 +171,24 @@ describe('TripzoBox Trust & Safety System - Security & Workflow Tests', () => {
   // =========================================================================
   describe('Cases 5, 6, 7: Phone OTP Verification & Brute-Force Safeguards', () => {
     const testPhone = '+919999888877';
+
+    beforeAll(async () => {
+      await AuthSettings.findOneAndUpdate(
+        { key: 'default_auth_settings' },
+        { $set: { 'smsOtp.enabled': true } },
+        { upsert: true }
+      );
+      invalidateAuthSettingsCache();
+    });
+
+    afterAll(async () => {
+      await AuthSettings.findOneAndUpdate(
+        { key: 'default_auth_settings' },
+        { $set: { 'smsOtp.enabled': false } },
+        { upsert: true }
+      );
+      invalidateAuthSettingsCache();
+    });
 
     it('generates secure hashed OTP and responds with simulation status', async () => {
       const res = await request(app)

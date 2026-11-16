@@ -23,14 +23,20 @@ export const AccountNav: React.FC = () => {
       <NotificationBell />
       <details ref={menu} className="relative">
         <summary aria-label="Open account menu" className="list-none flex items-center gap-2 rounded-full border border-border p-1.5 cursor-pointer hover:border-primary/40 [&::-webkit-details-marker]:hidden">
-          <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-xs flex items-center justify-center select-none">
+              {(user.name || 'U').trim().charAt(0).toUpperCase()}
+            </span>
+          )}
           <span className="hidden xl:block text-sm font-semibold text-text max-w-24 truncate">{user.name.split(' ')[0]}</span>
           <ChevronDown className="w-3.5 h-3.5 text-text-muted mr-1" />
         </summary>
         <div className="absolute right-0 top-full mt-3 w-60 rounded-2xl border border-border bg-white p-2 shadow-float z-50 text-left">
           <div className="px-3 py-3 border-b border-border mb-1"><p className="font-semibold text-sm text-text truncate">{user.name}</p><p className="text-xs text-text-muted truncate">{user.username}</p></div>
           {[
-            ['Home', '/'], ['My trips', '/app/trips/my'], ['Travel Vault', '/app/vault'], ['Travel Diary', '/app/diary'], ['My profile', '/app/profile'], ['Account Security', '/app/account-security'],
+            ['Home', '/'], ['My trips', '/app/trips/my'], ['Travel Vault', '/app/vault'], ['Travel Diary', '/app/diary'], ['My profile', '/app/profile'], ['Account Settings', '/app/profile/settings'], ['Account Security', '/app/account-security'],
           ].map(([label, to]) => <Link key={label} to={to} className="block rounded-lg px-3 py-2 text-sm text-text hover:bg-emerald-50 hover:text-primary">{label}</Link>)}
           <button type="button" onClick={() => { logout(); navigate('/'); menu.current?.removeAttribute('open'); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-border mt-1"><LogOut className="w-4 h-4" />Log out</button>
         </div>

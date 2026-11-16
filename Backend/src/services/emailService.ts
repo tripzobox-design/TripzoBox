@@ -400,3 +400,159 @@ export const sendDocumentVerificationEmail = async (
     otp,
   };
 };
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+export const sendAccountDeletionOtpEmail = async (
+  email: string,
+  name: string,
+  otp: string
+): Promise<EmailResult> => {
+  const safeName = escapeHtml(name || 'Traveller');
+  const subject = 'Confirm permanent deletion of your TripzoBox account';
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #fecaca; border-radius: 20px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <h1 style="color: #064e3b; font-size: 24px; font-weight: 800; margin: 0 0 6px 0;">Tripzobox</h1>
+        <p style="color: #dc2626; font-size: 13px; font-weight: 700; margin: 0;">Account Deletion Security Confirmation</p>
+      </div>
+      <h2 style="color: #111827; font-size: 20px; margin-bottom: 12px;">Permanent Account Deletion Code</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
+        Hi <strong>${safeName}</strong>, we received a request to permanently delete your TripzoBox account.
+      </p>
+      <p style="color: #991b1b; font-size: 13px; line-height: 1.5; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px;">
+        Deleting your account permanently removes your profile, personal data, private travel diary entries, and Travel Vault documents. This action cannot be reversed.
+      </p>
+      <div style="margin: 24px 0; background-color: #fff1f2; border: 1.5px solid #fda4af; padding: 18px 24px; border-radius: 14px; text-align: center;">
+        <span style="font-family: monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #9f1239;">${escapeHtml(otp)}</span>
+        <p style="color: #881337; font-size: 12px; margin: 8px 0 0 0; font-weight: 600;">Valid for 10 minutes • Single-use verification code</p>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; line-height: 1.5;">
+        If you did not request this deletion, ignore this email and change your TripzoBox password immediately or contact safety@tripzobox.com.
+      </p>
+    </div>
+  `;
+
+  const realTransporter = getRealTransporter();
+  if (realTransporter) {
+    try {
+      await realTransporter.sendMail({
+        from: config.smtpFrom || `"TripzoBox Security" <${config.smtpUser}>`,
+        to: email,
+        subject,
+        html,
+      });
+      console.log('[Email Service] Account deletion OTP dispatched via SMTP.');
+      return { sent: true, isSimulated: false };
+    } catch (err: any) {
+      console.error('[Email Service] Failed to send deletion OTP via SMTP:', err.message);
+    }
+  }
+
+  let previewUrl: string | undefined;
+  try {
+    const ethereal = await getEtherealTransporter();
+    if (ethereal) {
+      const info = await ethereal.sendMail({
+        from: '"TripzoBox Security" <security@tripzobox.com>',
+        to: email,
+        subject,
+        html,
+      });
+      const generated = nodemailer.getTestMessageUrl(info);
+      if (generated) previewUrl = generated;
+    }
+  } catch {
+    // Non-fatal in offline/test environments
+  }
+
+  console.log('[Email Service] Account deletion OTP email prepared (code redacted from logs).');
+  return {
+    sent: true,
+    isSimulated: true,
+    previewUrl,
+  };
+};
+
+export const sendAccountDeletionConfirmationEmail = async (
+  email: string,
+  name: string,
+  details: {
+    deletedAt: Date;
+    retainedSummary: string;
+    supportEmail?: string;
+  }
+): Promise<EmailResult> => {
+  const safeName = escapeHtml(name || 'Traveller');
+  const supportEmail = escapeHtml(details.supportEmail || 'support@tripzobox.com');
+  const deletedAtIso = escapeHtml(details.deletedAt.toUTCString());
+  const retainedSummary = escapeHtml(details.retainedSummary);
+  const subject = 'Your TripzoBox account has been permanently deleted';
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e5e7eb; border-radius: 20px; background-color: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <h1 style="color: #064e3b; font-size: 24px; font-weight: 800; margin: 0 0 6px 0;">Tripzobox</h1>
+        <p style="color: #059669; font-size: 13px; font-weight: 600; margin: 0;">Account Deletion Confirmation</p>
+      </div>
+      <h2 style="color: #111827; font-size: 20px; margin-bottom: 12px;">Your TripzoBox account deletion request has been completed</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 16px;">
+        Hi <strong>${safeName}</strong>, this email confirms that your TripzoBox account and associated personal information have been permanently deleted on <strong>${deletedAtIso}</strong>.
+      </p>
+      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
+        <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111827;">What was removed &amp; minimal retention summary</p>
+        <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.55;">
+          ${retainedSummary}
+        </p>
+      </div>
+      <p style="color: #4b5563; font-size: 13px; line-height: 1.5;">
+        If you have privacy questions or need assistance regarding this notice, please contact <a href="mailto:${supportEmail}" style="color: #059669; font-weight: 600;">${supportEmail}</a>.
+      </p>
+    </div>
+  `;
+
+  const realTransporter = getRealTransporter();
+  if (realTransporter) {
+    try {
+      await realTransporter.sendMail({
+        from: config.smtpFrom || `"TripzoBox Privacy" <${config.smtpUser}>`,
+        to: email,
+        subject,
+        html,
+      });
+      console.log('[Email Service] Account deletion confirmation email dispatched via SMTP.');
+      return { sent: true, isSimulated: false };
+    } catch (err: any) {
+      console.error('[Email Service] Failed to send deletion confirmation email via SMTP:', err.message);
+    }
+  }
+
+  let previewUrl: string | undefined;
+  try {
+    const ethereal = await getEtherealTransporter();
+    if (ethereal) {
+      const info = await ethereal.sendMail({
+        from: '"TripzoBox Privacy" <privacy@tripzobox.com>',
+        to: email,
+        subject,
+        html,
+      });
+      const generated = nodemailer.getTestMessageUrl(info);
+      if (generated) previewUrl = generated;
+    }
+  } catch {
+    // Non-fatal in offline/test environments
+  }
+
+  console.log('[Email Service] Account deletion confirmation email prepared.');
+  return {
+    sent: true,
+    isSimulated: true,
+    previewUrl,
+  };
+};

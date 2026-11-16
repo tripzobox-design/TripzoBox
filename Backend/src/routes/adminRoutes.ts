@@ -102,6 +102,9 @@ router.put('/packages/:id', requireContentManager, adminController.updatePackage
 router.delete('/packages/:id', requireContentManager, adminController.deletePackage);
 
 // Platform Settings & System Status
+router.get('/settings/auth', adminController.getAuthSettingsAdmin);
+router.put('/settings/auth', requireAdminOnly, adminController.updateAuthSettingsAdmin);
+router.post('/settings/auth/test-sms', requireAdminOnly, adminController.testSmsConnectivityAdmin);
 router.get('/settings', adminController.getPlatformSettings);
 router.put('/settings', requireSuperAdmin, adminController.updatePlatformSettings);
 router.get('/system/services', adminController.getSmsEmailStatus);

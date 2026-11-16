@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Trip, User } from '../types';
+import { Trip } from '../types';
 import { mockTrips } from '../data/mockTrips';
-import { mockUsers } from '../data/mockUsers';
 import { useAuth } from './AuthContext';
 import { tripsApi } from '../lib/api';
 
@@ -23,8 +22,22 @@ interface TripsContextType {
 
 const TripsContext = createContext<TripsContextType | undefined>(undefined);
 
+const DEMO_USER_ID = 'user_mubarak';
+
+const scopedTripsKey = (base: string, userId?: string): string =>
+  userId && userId !== DEMO_USER_ID ? `${base}:${userId}` : base;
+
+const readStored = <T,>(key: string, fallback: T): T => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
 
   const [trips, setTrips] = useState<Trip[]>(() => {
     const saved = localStorage.getItem('tripzobox_trips');
@@ -47,27 +60,16 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('tripzobox_saved_trips');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return ['trip_munnar_1'];
-      }
-    }
-    return ['trip_munnar_1'];
+    if (!isLoggedIn) return [];
+    return readStored<string[]>(scopedTripsKey('tripzobox_saved_trips', user?.id), []);
   });
 
   const [joinRequests, setJoinRequests] = useState<Record<string, 'pending' | 'accepted'>>(() => {
-    const saved = localStorage.getItem('tripzobox_join_requests');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return { trip_munnar_1: 'accepted' };
-      }
-    }
-    return { trip_munnar_1: 'accepted' };
+    if (!isLoggedIn) return {};
+    return readStored<Record<string, 'pending' | 'accepted'>>(
+      scopedTripsKey('tripzobox_join_requests', user?.id),
+      {}
+    );
   });
 
   const refreshTrips = async () => {
@@ -81,31 +83,60 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Synchronize with backend API on mount
+  // Synchronize with backend API whenever session or active user changes
   useEffect(() => {
+    let active = true;
     refreshTrips();
+
+    if (!isLoggedIn || !user?.id) {
+      setSavedTripIds([]);
+      setJoinRequests({});
+      return () => {
+        active = false;
+      };
+    }
+
+    setSavedTripIds(readStored<string[]>(scopedTripsKey('tripzobox_saved_trips', user.id), []));
+    setJoinRequests(
+      readStored<Record<string, 'pending' | 'accepted'>>(
+        scopedTripsKey('tripzobox_join_requests', user.id),
+        {}
+      )
+    );
 
     tripsApi
       .getSavedTrips()
       .then((data) => {
-        if (data?.savedTripIds) {
+        if (active && Array.isArray(data?.savedTripIds)) {
           setSavedTripIds(data.savedTripIds);
         }
       })
       .catch(() => {});
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, user?.id]);
 
   useEffect(() => {
     localStorage.setItem('tripzobox_trips', JSON.stringify(trips));
   }, [trips]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_saved_trips', JSON.stringify(savedTripIds));
-  }, [savedTripIds]);
+    if (!isLoggedIn || !user?.id) return;
+    localStorage.setItem(
+      scopedTripsKey('tripzobox_saved_trips', user.id),
+      JSON.stringify(savedTripIds)
+    );
+  }, [savedTripIds, isLoggedIn, user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_join_requests', JSON.stringify(joinRequests));
-  }, [joinRequests]);
+    if (!isLoggedIn || !user?.id) return;
+    localStorage.setItem(
+      scopedTripsKey('tripzobox_join_requests', user.id),
+      JSON.stringify(joinRequests)
+    );
+  }, [joinRequests, isLoggedIn, user?.id]);
 
   const toggleSaveTrip = (tripId: string) => {
     setSavedTripIds((prev) =>
@@ -152,48 +183,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       roomType: isPublic ? 'public' : 'private',
       roomCode,
       compatibilityScore: 98,
-      pendingJoinRequests: isPublic
-        ? [
-            {
-              id: `req_${Date.now()}_1`,
-              user: mockUsers[3] || {
-                id: 'u_ananya',
-                name: 'Ananya Sen',
-                username: '@ananya_walks',
-                avatarUrl:
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-                city: 'Bengaluru',
-                languages: ['English', 'Kannada'],
-                bio: 'Weekend backpacker and nature lover.',
-                travelInterests: ['Hiking', 'Nature', 'Photography'],
-                budgetStyle: 'mid-range',
-                stats: { trips: 4, stories: 2, followers: 89, following: 40 },
-              },
-              message:
-                'Hey Trip Leader! Love your planned itinerary. Can I join your squad from Bengaluru?',
-              requestedAt: '5 mins ago',
-            },
-            {
-              id: `req_${Date.now()}_2`,
-              user: mockUsers[5] || {
-                id: 'u_rohan',
-                name: 'Rohan Verma',
-                username: '@rohan_wander',
-                avatarUrl:
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-                city: 'Kochi',
-                languages: ['English', 'Malayalam'],
-                bio: 'Passionate roadtripper and coffee explorer.',
-                travelInterests: ['Food', 'Road Trips', 'Culture'],
-                budgetStyle: 'budget',
-                stats: { trips: 7, stories: 5, followers: 120, following: 65 },
-              },
-              message:
-                'Namaste! Keen to join your group. I have good photography gear to share with the team!',
-              requestedAt: '25 mins ago',
-            },
-          ]
-        : [],
+      pendingJoinRequests: [],
       itinerary: tripData.itinerary || [
         {
           day: 1,

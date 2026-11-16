@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { mockNotifications } from '../data/mockMessages';
 import { NotificationItem } from '../types';
 import { useAuth } from './AuthContext';
 import { useTrips } from './TripsContext';
@@ -29,17 +28,26 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   useEffect(() => {
-    if (isLoggedIn) {
-      notificationsApi
-        .getNotifications()
-        .then((data) => {
-          if (data?.notifications && Array.isArray(data.notifications)) {
-            setServerNotifications(data.notifications);
-          }
-        })
-        .catch(() => {});
+    let active = true;
+    if (!isLoggedIn) {
+      setServerNotifications([]);
+      return;
     }
-  }, [isLoggedIn]);
+
+    setServerNotifications([]);
+    notificationsApi
+      .getNotifications()
+      .then((data) => {
+        if (active && data?.notifications && Array.isArray(data.notifications)) {
+          setServerNotifications(data.notifications);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, user.id]);
 
   useEffect(() => {
     try {
@@ -82,9 +90,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       : [];
   });
 
-  const baseNotifs = serverNotifications.length > 0 ? serverNotifications : mockNotifications;
   const notifications = isLoggedIn
-    ? [...requests, ...joins, ...baseNotifs].map((item) => ({
+    ? [...requests, ...joins, ...serverNotifications].map((item) => ({
         ...item,
         read: item.read || readIds.has(item.id),
       }))
@@ -101,7 +108,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const markAllRead = () => {
     setReadByUser((previous) => ({
       ...previous,
-      [user.id]: [...new Set([...(Array.isArray(previous[user.id]) ? previous[user.id] : []), ...notifications.map((item) => item.id)])],
+      [user.id]: [
+        ...new Set([
+          ...(Array.isArray(previous[user.id]) ? previous[user.id] : []),
+          ...notifications.map((item) => item.id),
+        ]),
+      ],
     }));
     notificationsApi.markAllRead().catch(() => {});
   };

@@ -65,12 +65,23 @@ export const DashboardPage: React.FC = () => {
         </div>
         {/* Avatar — mobile only for quick profile access */}
         <div className="sm:hidden shrink-0">
-          <img
-            src={user.avatarUrl}
-            alt={user.name}
-            onClick={() => navigate('/app/profile')}
-            className="w-10 h-10 rounded-full object-cover border-2 border-primary/30 shadow-subtle cursor-pointer"
-          />
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              onClick={() => navigate('/app/profile')}
+              className="w-10 h-10 rounded-full object-cover border-2 border-primary/30 shadow-subtle cursor-pointer"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/app/profile')}
+              aria-label="Open profile"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0D5A46] to-emerald-600 text-white font-bold text-sm flex items-center justify-center border-2 border-primary/30 shadow-subtle cursor-pointer"
+            >
+              {(user.name || 'U').trim().charAt(0).toUpperCase()}
+            </button>
+          )}
         </div>
       </div>
 

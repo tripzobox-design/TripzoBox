@@ -17,6 +17,7 @@ export interface IVaultDocument extends Document {
   issuingCountry?: string;
   thumbnailUrl?: string;
   category?: string;
+  details?: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,7 @@ const VaultDocumentSchema = new Schema<IVaultDocument>(
     issuingCountry: { type: String, default: 'India' },
     thumbnailUrl: { type: String },
     category: { type: String },
+    details: { type: Schema.Types.Mixed, default: {} },
   },
   {
     timestamps: true,

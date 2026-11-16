@@ -9,6 +9,8 @@ import {
   MediaFileItem,
   RoleDefinitionItem,
   AdminRole,
+  AdminAuthSettingsData,
+  UpdateAdminAuthSettingsInput,
 } from '../types/admin';
 import { User, Trip, UserReportItem } from '../types';
 
@@ -632,6 +634,39 @@ export const adminApi = {
     delete: async (id: string) => {
       const res = await adminRequest(`/admin/admins/${id}`, { method: 'DELETE' });
       return res;
+    },
+  },
+
+  // Authentication & Login Settings (Dynamic Provider Configuration)
+  authSettings: {
+    get: async () => {
+      const res = await adminRequest<AdminAuthSettingsData>('/admin/settings/auth');
+      return res.data;
+    },
+    update: async (data: UpdateAdminAuthSettingsInput) => {
+      const res = await adminRequest<AdminAuthSettingsData>('/admin/settings/auth', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      return res.data;
+    },
+    testSms: async (testPhone?: string) => {
+      const res = await adminRequest<{
+        success: boolean;
+        status: string;
+        message: string;
+        diagnostics: {
+          provider: string;
+          isConfigured: boolean;
+          latencyMs?: number;
+          walletBalance?: number;
+          error?: string;
+        };
+      }>('/admin/settings/auth/test-sms', {
+        method: 'POST',
+        body: JSON.stringify({ testPhone }),
+      });
+      return res.data;
     },
   },
 };

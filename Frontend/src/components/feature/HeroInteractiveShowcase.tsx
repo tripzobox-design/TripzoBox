@@ -32,24 +32,25 @@ export const HeroInteractiveShowcase: React.FC = () => {
         <article className="relative col-span-12 sm:col-span-7 h-[380px] sm:h-[400px] xl:h-[425px] rounded-[28px] border-2 border-white/75 overflow-hidden shadow-2xl sm:-rotate-[4deg] motion-safe:transition-transform motion-safe:duration-500 motion-safe:hover:rotate-0 group bg-emerald-950">
           <img src={featured[0].image} alt="Turquoise sea and green cliffs in Bali" className="absolute inset-0 w-full h-full object-cover motion-safe:group-hover:scale-105 motion-safe:transition-transform motion-safe:duration-700" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
-          <div className="absolute top-5 inset-x-5 flex items-center justify-between">
+          <Link to="/explore" aria-label="Explore Bali, Indonesia on Explore page" className="absolute inset-0 z-10" />
+          <div className="relative z-20 pt-5 px-5 flex items-center justify-between pointer-events-none">
             <span className="inline-flex items-center gap-1.5 bg-emerald-800/80 backdrop-blur-md rounded-full px-3 py-2 text-xs font-bold"><Flame className="w-4 h-4 text-amber-300 fill-amber-300" />Trending Destination</span>
-            <button type="button" onClick={toggleLike} aria-label={liked ? 'Remove Bali from wishlist' : 'Save Bali to wishlist'} aria-pressed={liked} className="p-2 rounded-full bg-black/15 hover:bg-black/35 transition-colors"><Heart className={`w-6 h-6 ${liked ? 'fill-rose-500 text-rose-500' : 'fill-white/25 text-white'}`} /></button>
+            <button type="button" onClick={toggleLike} aria-label={liked ? 'Remove Bali from wishlist' : 'Save Bali to wishlist'} aria-pressed={liked} className="pointer-events-auto p-2 rounded-full bg-black/15 hover:bg-black/35 transition-colors cursor-pointer"><Heart className={`w-6 h-6 ${liked ? 'fill-rose-500 text-rose-500' : 'fill-white/25 text-white'}`} /></button>
           </div>
-          <div className="absolute bottom-4 sm:bottom-5 inset-x-4 sm:inset-x-5">
+          <div className="absolute z-20 bottom-4 sm:bottom-5 inset-x-4 sm:inset-x-5">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div><h2 className="flex items-center gap-1.5 font-heading font-extrabold text-2xl"><MapPin className="w-5 h-5 shrink-0" />Bali, Indonesia</h2><p className="text-sm text-white/85 mt-1">Beach & Adventure</p><p className="text-xs text-emerald-200 font-semibold mt-2">Your next island escape</p></div>
-              <Link to="/explore/bali" aria-label="Explore Bali" className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 text-primary shrink-0 hover:bg-white"><ChevronRight className="w-6 h-6" /></Link>
+              <Link to="/explore" aria-label="Go to Explore page" className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 text-primary shrink-0 hover:bg-white transition-colors"><ChevronRight className="w-6 h-6" /></Link>
             </div>
-            <Link to="/explore/bali" className="flex items-center justify-center gap-2 rounded-2xl bg-primary hover:bg-primary-hover py-3.5 text-sm font-bold transition-colors shadow-lg">Explore Destination <ArrowRight className="w-4 h-4" /></Link>
+            <Link to="/explore" className="flex items-center justify-center gap-2 rounded-2xl bg-primary hover:bg-primary-hover py-3.5 text-sm font-bold transition-colors shadow-lg">Explore Destination <ArrowRight className="w-4 h-4" /></Link>
           </div>
         </article>
         <div className="col-span-12 sm:col-span-5 grid grid-cols-2 sm:grid-cols-1 gap-4 sm:gap-6 sm:pb-5">
           {featured.slice(1).map((destination, index) => (
-            <Link key={destination.slug} to={`/explore/${destination.slug}`} className={`group relative block h-[155px] sm:h-[178px] xl:h-[185px] overflow-hidden rounded-3xl border-2 border-white/65 shadow-xl motion-safe:transition-transform motion-safe:duration-500 motion-safe:hover:rotate-0 ${index === 0 ? 'sm:-rotate-[5deg] sm:-translate-x-1' : 'sm:rotate-[4deg] sm:translate-x-5'}`}>
+            <Link key={destination.slug} to="/explore" className={`group relative block h-[155px] sm:h-[178px] xl:h-[185px] overflow-hidden rounded-3xl border-2 border-white/65 shadow-xl motion-safe:transition-transform motion-safe:duration-500 motion-safe:hover:rotate-0 ${index === 0 ? 'sm:-rotate-[5deg] sm:-translate-x-1' : 'sm:rotate-[4deg] sm:translate-x-5'}`}>
               <img src={destination.image} alt={destination.name} className="absolute inset-0 w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-700 motion-safe:group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-              <div className="absolute inset-x-3 bottom-4 flex items-end justify-between gap-2"><div><h3 className="font-heading font-bold text-sm sm:text-base flex items-center gap-1"><MapPin className="w-4 h-4 shrink-0" />{destination.name}</h3><p className="text-[11px] sm:text-xs text-white/85 mt-1">{destination.category}</p></div><span className="rounded-full bg-emerald-50 text-primary w-8 h-8 flex items-center justify-center shrink-0"><ChevronRight className="w-5 h-5" /></span></div>
+              <div className="absolute inset-x-3 bottom-4 flex items-end justify-between gap-2"><div><h3 className="font-heading font-bold text-sm sm:text-base flex items-center gap-1"><MapPin className="w-4 h-4 shrink-0" />{destination.name}</h3><p className="text-[11px] sm:text-xs text-white/85 mt-1">{destination.category}</p></div><span aria-hidden="true" className="rounded-full bg-emerald-50 text-primary w-8 h-8 flex items-center justify-center shrink-0"><ChevronRight className="w-5 h-5" /></span></div>
             </Link>
           ))}
         </div>

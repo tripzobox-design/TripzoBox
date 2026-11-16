@@ -12,6 +12,7 @@ import { ModerationAction } from '../models/ModerationAction.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { sendPhoneOtp, getSmsProviderStatus } from '../services/smsService.js';
+import { getAuthSettings } from '../services/authSettingsService.js';
 import { identityVerificationService } from '../services/identityVerificationService.js';
 import { sendVerificationEmail } from '../services/emailService.js';
 import { signToken, setAuthCookie } from '../utils/token.js';
@@ -28,6 +29,12 @@ export const requestPhoneOtp = async (
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401);
+      return;
+    }
+
+    const authSettings = await getAuthSettings();
+    if (!authSettings.smsOtp?.enabled) {
+      sendError(res, 'SMS OTP authentication is currently disabled.', 403);
       return;
     }
 
@@ -131,6 +138,12 @@ export const verifyPhoneOtp = async (
       return;
     }
 
+    const authSettings = await getAuthSettings();
+    if (!authSettings.smsOtp?.enabled) {
+      sendError(res, 'SMS OTP authentication is currently disabled.', 403);
+      return;
+    }
+
     const { phone, otp } = req.body;
     const targetPhone = (phone || req.user.phone || '').trim();
     const candidateOtp = (otp || '').trim();
@@ -224,6 +237,12 @@ export const requestEmailChangeOtp = async (
   try {
     if (!req.user) {
       sendError(res, 'Authentication required', 401);
+      return;
+    }
+
+    const authSettings = await getAuthSettings();
+    if (!authSettings.emailOtp?.enabled) {
+      sendError(res, 'Email OTP verification is currently disabled.', 403);
       return;
     }
 

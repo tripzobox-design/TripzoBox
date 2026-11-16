@@ -16,6 +16,7 @@ import diaryRoutes from './routes/diaryRoutes.js';
 import storyRoutes from './routes/storyRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import vaultRoutes from './routes/vaultRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import safetyRoutes from './routes/safetyRoutes.js';
@@ -23,6 +24,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import googleAuthRoutes from './routes/googleAuthRoutes.js';
+import configRoutes from './routes/configRoutes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -134,10 +137,16 @@ export const createApp = (): Express => {
   apiV1.use('/admin', adminRoutes);
   apiV1.use('/content', contentRoutes);
   apiV1.use('/settings', settingsRoutes);
+  apiV1.use('/config', configRoutes);
   apiV1.use('/reviews', reviewRoutes);
+  apiV1.use('/users', userRoutes);
 
   app.use('/api/v1', apiV1);
+  app.use('/api/auth', googleAuthRoutes);
+  app.use('/api/config', configRoutes);
+  app.use('/api/admin', adminRoutes);
   app.use('/api/reviews', reviewRoutes);
+  app.use('/api/users', userRoutes);
 
   // 404 Route Not Found
   app.use('*', (req: Request, res: Response) => {

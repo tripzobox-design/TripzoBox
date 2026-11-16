@@ -22,6 +22,13 @@ export const config = {
   smtpPass: process.env.SMTP_PASS || '',
   smtpFrom: process.env.SMTP_FROM || '"TripzoBox" <no-reply@tripzobox.com>',
   fast2SmsApiKey: process.env.FAST2SMS_API_KEY || '',
+  smsOtpEnabled: process.env.SMS_OTP_ENABLED === 'true',
+  appleAuthEnabled: process.env.APPLE_AUTH_ENABLED === 'true',
+  googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+  googleClientSecret: (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+  googleCallbackUrl: (
+    process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
+  ).trim(),
 };
 
 export const validateEnv = (): void => {

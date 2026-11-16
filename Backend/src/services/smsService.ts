@@ -1,8 +1,10 @@
 /**
  * SMS Dispatch Service Abstraction
  * Supports configurable SMS providers (Fast2SMS, Twilio, AWS SNS)
- * with graceful fallback and explicit status reporting when unconfigured.
+ * with graceful fallback, dynamic database configuration, and admin enable/disable toggling.
  */
+
+import { getAuthSettings, decryptSecret } from './authSettingsService.js';
 
 export interface ISmsProvider {
   name: string;
@@ -14,10 +16,16 @@ export interface ISmsProvider {
   ): Promise<{ success: boolean; messageId?: string; error?: string; statusCode?: number }>;
 }
 
-class Fast2SmsProvider implements ISmsProvider {
+export class Fast2SmsProvider implements ISmsProvider {
   name = 'Fast2SMS';
+  private customApiKey?: string;
+
+  constructor(apiKey?: string) {
+    if (apiKey) this.customApiKey = apiKey;
+  }
 
   get apiKey(): string {
+    if (this.customApiKey) return this.customApiKey.trim();
     return (process.env.FAST2SMS_API_KEY || '').trim();
   }
 
@@ -29,7 +37,7 @@ class Fast2SmsProvider implements ISmsProvider {
     if (!this.isConfigured) {
       return {
         success: false,
-        error: 'Fast2SMS credentials not configured in environment (FAST2SMS_API_KEY).',
+        error: 'Fast2SMS credentials not configured in database or environment (FAST2SMS_API_KEY).',
       };
     }
 
@@ -139,7 +147,7 @@ class Fast2SmsProvider implements ISmsProvider {
 }
 
 // Development / Local simulated provider
-class LocalDevSmsProvider implements ISmsProvider {
+export class LocalDevSmsProvider implements ISmsProvider {
   name = 'LocalDevConsole';
   isConfigured = true;
 
@@ -150,15 +158,15 @@ class LocalDevSmsProvider implements ISmsProvider {
     );
     console.log(`To: ${to}`);
     console.log(`Message: ${message}`);
-    console.log('Note: To enable live SMS delivery, set FAST2SMS_API_KEY in Backend/.env');
+    console.log('Note: SMS OTP is enabled in testing/simulation mode.');
     console.log('======================================================\n');
     return { success: true, messageId: `sim_${Date.now()}` };
   }
 }
 
-export const getActiveSmsProvider = (): ISmsProvider => {
-  const apiKey = (process.env.FAST2SMS_API_KEY || '').trim();
-  return apiKey.length > 10 ? new Fast2SmsProvider() : new LocalDevSmsProvider();
+export const getActiveSmsProvider = (explicitApiKey?: string): ISmsProvider => {
+  const apiKey = explicitApiKey || (process.env.FAST2SMS_API_KEY || '').trim();
+  return apiKey.length > 10 ? new Fast2SmsProvider(apiKey) : new LocalDevSmsProvider();
 };
 
 export const sendPhoneOtp = async (
@@ -171,8 +179,24 @@ export const sendPhoneOtp = async (
   error?: string;
   provider?: string;
 }> => {
+  // Check dynamic admin configuration from database
+  const settings = await getAuthSettings();
+
+  // If SMS OTP is disabled by administrator, abort immediately with zero network requests
+  if (!settings.smsOtp?.enabled) {
+    console.log(`[SMS Service] Rejected SMS dispatch to ${phone}: SMS OTP is currently disabled.`);
+    return {
+      success: false,
+      isSimulated: false,
+      status: 'DISABLED',
+      provider: 'Fast2SMS',
+      error: 'SMS OTP authentication is currently disabled by administrator.',
+    };
+  }
+
   const isProd = process.env.NODE_ENV === 'production';
-  const provider = getActiveSmsProvider();
+  const configuredApiKey = decryptSecret(settings.smsOtp.apiKey || '') || (process.env.FAST2SMS_API_KEY || '').trim();
+  const provider = getActiveSmsProvider(configuredApiKey);
   const hasRealProvider = provider.isConfigured && provider.name !== 'LocalDevConsole';
 
   if (isProd && !hasRealProvider) {
@@ -186,7 +210,9 @@ export const sendPhoneOtp = async (
     };
   }
 
-  const message = `Your TripzoBox verification code is: ${otp}. Valid for 5 minutes. Never share this OTP with anyone.`;
+  const expiryMinutes = settings.smsOtp.otpExpiryMinutes || 5;
+  const sender = settings.smsOtp.senderId || 'TRIPZO';
+  const message = `Your TripzoBox verification code is: ${otp}. Valid for ${expiryMinutes} minutes. Never share this OTP with anyone. [${sender}]`;
   const result = await provider.sendSms(phone, message, otp);
 
   // If Fast2SMS delivered successfully
@@ -219,10 +245,13 @@ export const sendPhoneOtp = async (
   };
 };
 
-export const getSmsProviderStatus = () => {
-  const provider = getActiveSmsProvider();
+export const getSmsProviderStatus = async () => {
+  const settings = await getAuthSettings();
+  const configuredApiKey = decryptSecret(settings.smsOtp?.apiKey || '') || (process.env.FAST2SMS_API_KEY || '').trim();
+  const provider = getActiveSmsProvider(configuredApiKey);
   return {
     provider: provider.name,
+    enabled: Boolean(settings.smsOtp?.enabled),
     isConfigured: provider.isConfigured && provider.name !== 'LocalDevConsole',
   };
 };

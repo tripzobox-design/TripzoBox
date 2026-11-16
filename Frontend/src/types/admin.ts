@@ -10,6 +10,7 @@ export interface AdminDashboardCounts {
   totalUsers: number;
   activeUsers: number;
   suspendedUsers: number;
+  deletedUsers?: number;
   verifiedUsers: number;
   verifiedEmailUsers: number;
   verifiedPhoneUsers: number;
@@ -253,4 +254,102 @@ export interface RoleDefinitionItem {
   permissions: string[];
   badgeColor: string;
 }
+
+export interface PublicAuthConfig {
+  google: boolean;
+  emailOtp: boolean;
+  smsOtp: boolean;
+  apple: boolean;
+}
+
+export interface AdminSmsOtpSettings {
+  enabled: boolean;
+  providerName: string;
+  hasApiKey: boolean;
+  maskedApiKey: string;
+  senderId: string;
+  otpExpiryMinutes: number;
+  resendCooldownSeconds: number;
+  maxAttempts: number;
+}
+
+export interface AdminAppleAuthSettings {
+  enabled: boolean;
+  clientId: string;
+  teamId: string;
+  keyId: string;
+  hasPrivateKey: boolean;
+  maskedPrivateKey: string;
+  callbackUrl: string;
+  isFullyConfigured: boolean;
+}
+
+export interface AdminGoogleAuthSettings {
+  enabled: boolean;
+  clientId: string;
+  hasClientSecret: boolean;
+  maskedClientSecret: string;
+  callbackUrl: string;
+  isConfigured: boolean;
+}
+
+export interface AdminEmailOtpSettings {
+  enabled: boolean;
+  otpExpiryMinutes: number;
+  resendCooldownSeconds: number;
+  maxAttempts: number;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  hasSmtpConfigured: boolean;
+  isSimulated: boolean;
+}
+
+export interface AdminAuthSettingsData {
+  key: string;
+  smsOtp: AdminSmsOtpSettings;
+  appleAuth: AdminAppleAuthSettings;
+  googleAuth: AdminGoogleAuthSettings;
+  emailOtp: AdminEmailOtpSettings;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface UpdateAdminAuthSettingsInput {
+  smsOtp?: {
+    enabled?: boolean;
+    providerName?: string;
+    apiKey?: string;
+    senderId?: string;
+    otpExpiryMinutes?: number;
+    resendCooldownSeconds?: number;
+    maxAttempts?: number;
+  };
+  appleAuth?: {
+    enabled?: boolean;
+    clientId?: string;
+    teamId?: string;
+    keyId?: string;
+    privateKey?: string;
+    callbackUrl?: string;
+  };
+  googleAuth?: {
+    enabled?: boolean;
+    clientId?: string;
+    clientSecret?: string;
+    callbackUrl?: string;
+  };
+  emailOtp?: {
+    enabled?: boolean;
+    otpExpiryMinutes?: number;
+    resendCooldownSeconds?: number;
+    maxAttempts?: number;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpUser?: string;
+    smtpPass?: string;
+  };
+}
+
+
 

@@ -36,6 +36,8 @@ import {
   MessageSquare,
   Settings as SettingsIcon,
   HelpCircle,
+  Globe,
+  Loader2,
 } from 'lucide-react';
 import { useVault } from '../context/VaultContext';
 import { useAuth } from '../context/AuthContext';
@@ -45,8 +47,15 @@ import { VaultFileViewer } from '../components/feature/VaultFileViewer';
 import { DocumentOtpModal } from '../components/feature/DocumentOtpModal';
 import { Modal } from '../components/ui/Modal';
 import { Logo } from '../components/ui/Logo';
-import { VaultDocument, SharedAccessRecord } from '../types';
+import {
+  VaultDocument,
+  SharedAccessRecord,
+  TripzoBoxVaultContact,
+  SharedWithMeItem,
+} from '../types';
 import { confirmAction } from '../lib/confirmAction';
+import { vaultApi } from '../lib/api';
+import { validateVaultFile } from '../lib/vaultFiles';
 
 type VaultView =
   | 'dashboard' // Screen 1
@@ -118,6 +127,145 @@ const COUNTRIES = [
   'Japan',
 ];
 
+interface DocumentFieldSchema {
+  defaultName: string;
+  defaultNumber: string;
+  defaultExpiry: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  countryLabel: string;
+  numberLabel: string;
+  numberPlaceholder: string;
+  numberRequired: boolean;
+  expiryLabel: string;
+  expiryPlaceholder: string;
+  allowLifetime: boolean;
+  extraLabel: string;
+  extraPlaceholder: string;
+  subTypes?: Array<{ label: string; docType: VaultDocument['type'] }>;
+}
+
+const DOCUMENT_FIELD_SCHEMAS: Record<string, DocumentFieldSchema> = {
+  Passport: {
+    defaultName: 'Indian Passport',
+    defaultNumber: '',
+    defaultExpiry: '',
+    nameLabel: 'Passport Name / Label *',
+    namePlaceholder: 'e.g. Indian Passport',
+    countryLabel: 'Nationality / Issuing Country *',
+    numberLabel: 'Passport Number *',
+    numberPlaceholder: 'e.g. R21234567',
+    numberRequired: true,
+    expiryLabel: 'Passport Expiry Date *',
+    expiryPlaceholder: 'e.g. 17 May 2030',
+    allowLifetime: false,
+    extraLabel: 'Place of Issue (Optional)',
+    extraPlaceholder: 'e.g. RPO Bengaluru',
+  },
+  'ID Card': {
+    defaultName: 'Aadhaar Card',
+    defaultNumber: '',
+    defaultExpiry: 'Lifetime',
+    nameLabel: 'ID Card Type / Name *',
+    namePlaceholder: 'e.g. Aadhaar Card, Driving License, College ID',
+    countryLabel: 'Issuing Country *',
+    numberLabel: 'ID / Card Number *',
+    numberPlaceholder: 'e.g. XXXX-XXXX-9214 or ID No.',
+    numberRequired: true,
+    expiryLabel: 'Validity / Expiry Date',
+    expiryPlaceholder: 'e.g. Lifetime or 31 Dec 2032',
+    allowLifetime: true,
+    extraLabel: 'Issuing Authority / Organization (Optional)',
+    extraPlaceholder: 'e.g. UIDAI / Transport Authority / University',
+    subTypes: [
+      { label: 'Aadhaar Card', docType: 'Aadhaar' },
+      { label: 'Driving License', docType: 'DrivingLicense' },
+      { label: 'Voter ID', docType: 'Aadhaar' },
+      { label: 'PAN Card', docType: 'Aadhaar' },
+      { label: 'College / Work ID', docType: 'Other' },
+      { label: 'National ID', docType: 'Aadhaar' },
+    ],
+  },
+  'Tickets & Bookings': {
+    defaultName: 'Flight Ticket (Bengaluru → Delhi)',
+    defaultNumber: '',
+    defaultExpiry: '',
+    nameLabel: 'Ticket / Booking Name *',
+    namePlaceholder: 'e.g. IndiGo 6E-217 Bengaluru → Delhi',
+    countryLabel: 'Destination Country *',
+    numberLabel: 'PNR / Booking Reference Number *',
+    numberPlaceholder: 'e.g. PNR XK92LM or BKG-8841',
+    numberRequired: true,
+    expiryLabel: 'Travel / Check-out Date *',
+    expiryPlaceholder: 'e.g. 15 Oct 2026',
+    allowLifetime: false,
+    extraLabel: 'Airline / Hotel / Route (Optional)',
+    extraPlaceholder: 'e.g. IndiGo 6E-217 • BLR → DEL',
+    subTypes: [
+      { label: 'Flight Ticket', docType: 'FlightTicket' },
+      { label: 'Hotel Booking', docType: 'HotelBooking' },
+      { label: 'Train / Bus Ticket', docType: 'FlightTicket' },
+    ],
+  },
+  Insurance: {
+    defaultName: 'Travel Insurance Policy',
+    defaultNumber: '',
+    defaultExpiry: '',
+    nameLabel: 'Insurance Plan Name *',
+    namePlaceholder: 'e.g. Comprehensive Travel Insurance',
+    countryLabel: 'Coverage Country / Region *',
+    numberLabel: 'Policy Number *',
+    numberPlaceholder: 'e.g. POL-2026-4567',
+    numberRequired: true,
+    expiryLabel: 'Policy Expiry Date *',
+    expiryPlaceholder: 'e.g. 25 Dec 2026',
+    allowLifetime: false,
+    extraLabel: 'Insurance Provider (Optional)',
+    extraPlaceholder: 'e.g. HDFC Ergo / ICICI Lombard',
+  },
+  'Emergency Contacts': {
+    defaultName: 'Emergency Contact & Medical Card',
+    defaultNumber: '',
+    defaultExpiry: 'Ongoing',
+    nameLabel: 'Emergency Document Title *',
+    namePlaceholder: 'e.g. ICE Family Contact & Blood Group Card',
+    countryLabel: 'Country / Region *',
+    numberLabel: 'Emergency Phone / Contact Reference *',
+    numberPlaceholder: 'e.g. +91 98765 43210 • Blood Group O+',
+    numberRequired: true,
+    expiryLabel: 'Valid Until',
+    expiryPlaceholder: 'e.g. Ongoing / Lifetime',
+    allowLifetime: true,
+    extraLabel: 'Relationship / Medical Notes (Optional)',
+    extraPlaceholder: 'e.g. Mother • No known allergies',
+  },
+  Other: {
+    defaultName: 'Travel Document',
+    defaultNumber: '',
+    defaultExpiry: 'No Expiry',
+    nameLabel: 'Document Title *',
+    namePlaceholder: 'e.g. Trekking Permit, Visa, Vaccination Certificate',
+    countryLabel: 'Issuing Country *',
+    numberLabel: 'Reference / Certificate Number',
+    numberPlaceholder: 'e.g. CERT-2026-101',
+    numberRequired: false,
+    expiryLabel: 'Valid Till / Expiry',
+    expiryPlaceholder: 'e.g. No Expiry or 31 Dec 2026',
+    allowLifetime: true,
+    extraLabel: 'Issuing Authority / Purpose (Optional)',
+    extraPlaceholder: 'e.g. Forest Dept / Embassy',
+  },
+};
+
+const inferCategoryFromDoc = (doc: VaultDocument): string => {
+  if (doc.category && DOCUMENT_FIELD_SCHEMAS[doc.category]) return doc.category;
+  if (doc.type === 'Passport') return 'Passport';
+  if (doc.type === 'Aadhaar' || doc.type === 'DrivingLicense') return 'ID Card';
+  if (doc.type === 'FlightTicket' || doc.type === 'HotelBooking') return 'Tickets & Bookings';
+  if (doc.type === 'Insurance') return 'Insurance';
+  return 'Other';
+};
+
 export const TravelVaultPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -125,13 +273,17 @@ export const TravelVaultPage: React.FC = () => {
     emergencyContacts,
     trustedContacts,
     sharedAccessRecords,
+    sharedWithMe,
     emergencyAccessConfig,
     securitySettings,
     addDocument,
+    addDocumentWithFile,
+    attachDocumentFile,
     updateDocument,
     deleteDocument,
     addSharedAccess,
     revokeSharedAccess,
+    refreshSharedWithMe,
     updateEmergencyAccessConfig,
     updateSecuritySettings,
   } = useVault();
@@ -152,46 +304,48 @@ export const TravelVaultPage: React.FC = () => {
 
   // Modals & Viewers
   const [selectedDocForViewer, setSelectedDocForViewer] = useState<VaultDocument | null>(null);
+  const [viewerSharedItem, setViewerSharedItem] = useState<SharedWithMeItem | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [devicesModalOpen, setDevicesModalOpen] = useState(false);
 
   // Screen 2 & 3: Add Document State
   const [selectedCategory, setSelectedCategory] = useState<string>('Passport');
+  const [selectedDocTypeOverride, setSelectedDocTypeOverride] = useState<
+    VaultDocument['type'] | null
+  >(null);
   const [docName, setDocName] = useState('Indian Passport');
   const [issuingCountry, setIssuingCountry] = useState('India');
-  const [docNumber, setDocNumber] = useState('R21234567');
-  const [expiryDate, setExpiryDate] = useState('17 May 2030');
+  const [docNumber, setDocNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [docExtraDetail, setDocExtraDetail] = useState('');
+  const [docVisibility, setDocVisibility] = useState<VaultDocument['visibility']>('private');
+  const [inlineShareContacts, setInlineShareContacts] = useState<TripzoBoxVaultContact[]>([]);
+  const [inlineContactSearch, setInlineContactSearch] = useState('');
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string>(
     'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
   );
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [uploadedFileMime, setUploadedFileMime] = useState<string>('');
+  const [savingDocBusy, setSavingDocBusy] = useState(false);
 
   // Screen 4: Documents filter & search state
   const [docSearch, setDocSearch] = useState('');
   const [selectedDocFilter, setSelectedDocFilter] = useState('All');
 
-  // Screen 5: Share Document State
-  const [shareDoc, setShareDoc] = useState<VaultDocument>(
-    documents[2] || documents[0] || {
-      id: 'doc_flight_ticket_delhi',
-      type: 'FlightTicket',
-      name: 'Flight Ticket (Bengaluru → Delhi)',
-      validTill: '15 Oct 2025',
-      referenceNumber: '6E 217 • 15 Oct 2025',
-      visibility: 'offline-available',
-      uploadedAt: '08 Oct 2025',
-    }
-  );
-  const [selectedPeople, setSelectedPeople] = useState<string[]>(['Rohit Sharma']);
+  // Screen 5: Share Document State (Real registered TripzoBox accounts)
+  const [shareDoc, setShareDoc] = useState<VaultDocument | null>(documents[0] || null);
+  const [selectedRecipients, setSelectedRecipients] = useState<TripzoBoxVaultContact[]>([]);
+  const [eligibleContacts, setEligibleContacts] = useState<TripzoBoxVaultContact[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
   const [accessDuration, setAccessDuration] = useState('Until trip end');
   const [permissionView, setPermissionView] = useState(true);
   const [permissionDownload, setPermissionDownload] = useState(false);
   const [peopleSearch, setPeopleSearch] = useState('');
-  const [customPeople, setCustomPeople] = useState<
-    Array<{ name: string; role: string; avatarUrl: string }>
-  >([]);
 
   // Screen 6: Shared Access Tab
-  const [sharedTab, setSharedTab] = useState<'active' | 'history'>('active');
+  const [sharedTab, setSharedTab] = useState<'active' | 'received'>('active');
 
   // Screen 8: Emergency Access Edit State
   const [emergencyDocs, setEmergencyDocs] = useState<string[]>([
@@ -201,11 +355,16 @@ export const TravelVaultPage: React.FC = () => {
     'Travel Insurance',
   ]);
   const [emergencyPrimary, setEmergencyPrimary] = useState(
-    emergencyAccessConfig.primaryContact || '+91 98765 43210'
+    emergencyAccessConfig.primaryContact || ''
   );
   const [emergencySecondary, setEmergencySecondary] = useState(
-    emergencyAccessConfig.secondaryContact || '+91 90101 43211'
+    emergencyAccessConfig.secondaryContact || ''
   );
+
+  React.useEffect(() => {
+    setEmergencyPrimary(emergencyAccessConfig.primaryContact || '');
+    setEmergencySecondary(emergencyAccessConfig.secondaryContact || '');
+  }, [emergencyAccessConfig.primaryContact, emergencyAccessConfig.secondaryContact]);
 
   // Screen 9: Security Settings State
   const [twoFactor, setTwoFactor] = useState(securitySettings.twoFactorEnabled);
@@ -214,47 +373,91 @@ export const TravelVaultPage: React.FC = () => {
   // Document Editing
   const [editingDoc, setEditingDoc] = useState<VaultDocument | null>(null);
 
+  // Active schema matching the selected document category
+  const activeSchema = DOCUMENT_FIELD_SCHEMAS[selectedCategory] || DOCUMENT_FIELD_SCHEMAS.Other;
+
+  // Load real TripzoBox account contacts for Share / Online Visibility selection
+  React.useEffect(() => {
+    if (currentView !== 'share' && currentView !== 'add-details') return;
+    const query = currentView === 'share' ? peopleSearch : inlineContactSearch;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setLoadingContacts(true);
+      vaultApi
+        .searchEligibleContacts(query)
+        .then((list) => {
+          if (!cancelled && Array.isArray(list)) {
+            setEligibleContacts(list);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setLoadingContacts(false);
+        });
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [currentView, peopleSearch, inlineContactSearch]);
+
+  React.useEffect(() => {
+    if (currentView === 'shared') {
+      void refreshSharedWithMe();
+    }
+  }, [currentView]);
+
   // Handlers for Add Document
   const handleSelectCategory = (catName: string) => {
+    const schema = DOCUMENT_FIELD_SCHEMAS[catName] || DOCUMENT_FIELD_SCHEMAS.Other;
+    const catMeta = CATEGORIES.find((c) => c.name === catName);
     setSelectedCategory(catName);
+    setSelectedDocTypeOverride(catMeta ? catMeta.type : null);
+    setDocName(schema.defaultName);
+    setDocNumber(schema.defaultNumber);
+    setExpiryDate(schema.defaultExpiry);
+    setDocExtraDetail('');
+    setSelectedUploadFile(null);
+    setUploadedFileName('');
+    setUploadedFileMime('');
     if (catName === 'Passport') {
-      setDocName('Indian Passport');
-      setDocNumber('R21234567');
-      setExpiryDate('17 May 2030');
       setUploadedPreviewUrl(
         'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
       );
     } else if (catName === 'ID Card') {
-      setDocName('Aadhaar Card');
-      setDocNumber('•••• •••• 9214');
-      setExpiryDate('Lifetime');
       setUploadedPreviewUrl(
         'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'
       );
     } else if (catName === 'Tickets & Bookings') {
-      setDocName('Flight Ticket (Bengaluru → Delhi)');
-      setDocNumber('6E 217 • 15 Oct 2025');
-      setExpiryDate('15 Oct 2025');
       setUploadedPreviewUrl(
         'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=600&q=80'
       );
     } else if (catName === 'Insurance') {
-      setDocName('Travel Insurance');
-      setDocNumber('Policy No. T-4567');
-      setExpiryDate('25 Dec 2025');
       setUploadedPreviewUrl(
         'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80'
       );
     } else {
-      setDocName(`${catName} Document`);
-      setDocNumber('DOC-' + Math.floor(1000 + Math.random() * 9000));
-      setExpiryDate('2030-12-31');
+      setUploadedPreviewUrl('');
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+    try {
+      validateVaultFile(file);
+    } catch (err: any) {
+      toastError(err?.message || 'Unsupported document file');
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedUploadFile(file);
+    setUploadedFileName(file.name);
+    setUploadedFileMime(file.type);
+
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
@@ -262,6 +465,8 @@ export const TravelVaultPage: React.FC = () => {
         }
       };
       reader.readAsDataURL(file);
+    } else {
+      setUploadedPreviewUrl('');
     }
   };
 
@@ -270,10 +475,12 @@ export const TravelVaultPage: React.FC = () => {
   const [pendingDocData, setPendingDocData] = useState<{
     name: string;
     type: VaultDocument['type'];
+    category: string;
     referenceNumber?: string;
     validTill?: string;
     issuingCountry?: string;
     thumbnailUrl?: string;
+    details?: Record<string, string>;
     visibility: VaultDocument['visibility'];
     existingDocId?: string;
   } | null>(null);
@@ -281,21 +488,34 @@ export const TravelVaultPage: React.FC = () => {
   const handleSaveDocument = (e: React.FormEvent) => {
     e.preventDefault();
     if (!docName.trim()) {
-      toastError('Please enter document name');
+      toastError('Please enter a document name');
+      return;
+    }
+    if (docVisibility === 'trusted-contacts' && inlineShareContacts.length === 0 && !editingDoc) {
+      toastError('Select at least one TripzoBox contact or switch visibility to Only Me');
       return;
     }
 
     const catObj = CATEGORIES.find((c) => c.name === selectedCategory);
-    const type = catObj ? catObj.type : 'Other';
+    const resolvedType = selectedDocTypeOverride || (catObj ? catObj.type : 'Other');
+    const detailsPayload: Record<string, string> = {};
+    if (docExtraDetail.trim()) {
+      detailsPayload.issuingAuthority = docExtraDetail.trim();
+    }
+    if (selectedCategory === 'ID Card' && docName.trim()) {
+      detailsPayload.idSubType = docName.trim();
+    }
 
     setPendingDocData({
       name: docName.trim(),
-      type,
+      type: resolvedType,
+      category: selectedCategory,
       referenceNumber: docNumber.trim() || undefined,
-      validTill: expiryDate || undefined,
+      validTill: expiryDate.trim() || undefined,
       issuingCountry,
-      thumbnailUrl: uploadedPreviewUrl,
-      visibility: 'trusted-contacts',
+      thumbnailUrl: uploadedPreviewUrl || undefined,
+      details: detailsPayload,
+      visibility: inlineShareContacts.length > 0 ? 'trusted-contacts' : docVisibility,
       existingDocId: editingDoc?.id,
     });
 
@@ -303,83 +523,137 @@ export const TravelVaultPage: React.FC = () => {
     setIsOtpModalOpen(true);
   };
 
-  const handleOtpVerified = () => {
+  const commitPendingDocument = async (verified: boolean) => {
     if (!pendingDocData) return;
+    setSavingDocBusy(true);
+    try {
+      let savedDoc: VaultDocument;
+      if (pendingDocData.existingDocId) {
+        await updateDocument(pendingDocData.existingDocId, {
+          name: pendingDocData.name,
+          type: pendingDocData.type,
+          category: pendingDocData.category,
+          referenceNumber: pendingDocData.referenceNumber,
+          validTill: pendingDocData.validTill,
+          issuingCountry: pendingDocData.issuingCountry,
+          thumbnailUrl: pendingDocData.thumbnailUrl,
+          details: pendingDocData.details,
+          visibility: pendingDocData.visibility,
+          isVerified: verified,
+        });
+        if (selectedUploadFile) {
+          await attachDocumentFile(pendingDocData.existingDocId, selectedUploadFile);
+        }
+        savedDoc =
+          documents.find((d) => d.id === pendingDocData.existingDocId) ||
+          ({
+            ...pendingDocData,
+            id: pendingDocData.existingDocId,
+            uploadedAt: 'Just now',
+          } as VaultDocument);
+      } else if (selectedUploadFile) {
+        savedDoc = await addDocumentWithFile(
+          {
+            name: pendingDocData.name,
+            type: pendingDocData.type,
+            category: pendingDocData.category,
+            referenceNumber: pendingDocData.referenceNumber,
+            validTill: pendingDocData.validTill,
+            issuingCountry: pendingDocData.issuingCountry,
+            thumbnailUrl: pendingDocData.thumbnailUrl,
+            details: pendingDocData.details,
+            isVerified: verified,
+            visibility: pendingDocData.visibility,
+          },
+          selectedUploadFile
+        );
+      } else {
+        savedDoc = await addDocument({
+          name: pendingDocData.name,
+          type: pendingDocData.type,
+          category: pendingDocData.category,
+          referenceNumber: pendingDocData.referenceNumber,
+          validTill: pendingDocData.validTill,
+          issuingCountry: pendingDocData.issuingCountry,
+          thumbnailUrl: pendingDocData.thumbnailUrl,
+          details: pendingDocData.details,
+          isVerified: verified,
+          visibility: pendingDocData.visibility,
+        });
+      }
 
-    if (pendingDocData.existingDocId) {
-      updateDocument(pendingDocData.existingDocId, {
-        name: pendingDocData.name,
-        type: pendingDocData.type,
-        referenceNumber: pendingDocData.referenceNumber,
-        validTill: pendingDocData.validTill,
-        issuingCountry: pendingDocData.issuingCountry,
-        thumbnailUrl: pendingDocData.thumbnailUrl,
-        isVerified: true,
-      });
-      success(`${pendingDocData.name} verified and updated!`, 'Document Secured 🎉');
-    } else {
-      addDocument({
-        name: pendingDocData.name,
-        type: pendingDocData.type,
-        referenceNumber: pendingDocData.referenceNumber,
-        validTill: pendingDocData.validTill,
-        issuingCountry: pendingDocData.issuingCountry,
-        thumbnailUrl: pendingDocData.thumbnailUrl,
-        isVerified: true,
-        visibility: pendingDocData.visibility,
-      });
-      success(`${pendingDocData.name} has been verified with OTP and encrypted in your Travel Vault!`, 'Document Secured 🎉');
+      if (inlineShareContacts.length > 0 && savedDoc?.id) {
+        await Promise.all(
+          inlineShareContacts.map((recipient) =>
+            addSharedAccess({
+              documentId: savedDoc.id,
+              documentName: savedDoc.name,
+              documentType: savedDoc.type,
+              sharedWithUserId: recipient.id,
+              sharedWithUsername: recipient.username,
+              sharedWithName: recipient.name,
+              sharedWithAvatar: recipient.avatarUrl,
+              sharedWithRole: recipient.role,
+              permission: 'View',
+              expires: 'Until trip end',
+            }).catch(() => null)
+          )
+        );
+      }
+
+      if (verified) {
+        success(
+          inlineShareContacts.length > 0
+            ? `${pendingDocData.name} verified, synced online, and shared with ${inlineShareContacts.map((c) => c.name).join(', ')}!`
+            : `${pendingDocData.name} verified and synced online to your Travel Vault!`,
+          'Document Secured'
+        );
+      } else {
+        success(
+          `${pendingDocData.name} saved to your online vault. You can verify it anytime via OTP.`,
+          'Document Stored'
+        );
+      }
+
+      setPendingDocData(null);
+      setIsOtpModalOpen(false);
+      setEditingDoc(null);
+      setSelectedUploadFile(null);
+      setUploadedFileName('');
+      setUploadedFileMime('');
+      setInlineShareContacts([]);
+      setDocVisibility('private');
+      setView('documents');
+    } catch (err: any) {
+      toastError(err?.message || 'Could not save document. Please try again.');
+    } finally {
+      setSavingDocBusy(false);
     }
+  };
 
-    setPendingDocData(null);
-    setIsOtpModalOpen(false);
-    setEditingDoc(null);
-    setView('documents');
+  const handleOtpVerified = () => {
+    void commitPendingDocument(true);
   };
 
   const handleSaveWithoutVerification = () => {
-    if (!pendingDocData) return;
-
-    if (pendingDocData.existingDocId) {
-      updateDocument(pendingDocData.existingDocId, {
-        name: pendingDocData.name,
-        type: pendingDocData.type,
-        referenceNumber: pendingDocData.referenceNumber,
-        validTill: pendingDocData.validTill,
-        issuingCountry: pendingDocData.issuingCountry,
-        thumbnailUrl: pendingDocData.thumbnailUrl,
-        isVerified: false,
-      });
-    } else {
-      addDocument({
-        name: pendingDocData.name,
-        type: pendingDocData.type,
-        referenceNumber: pendingDocData.referenceNumber,
-        validTill: pendingDocData.validTill,
-        issuingCountry: pendingDocData.issuingCountry,
-        thumbnailUrl: pendingDocData.thumbnailUrl,
-        isVerified: false,
-        visibility: pendingDocData.visibility,
-      });
-    }
-
-    success(`${pendingDocData.name} saved to your vault as unverified. You can verify it anytime via OTP.`, 'Document Stored');
-    setPendingDocData(null);
-    setIsOtpModalOpen(false);
-    setEditingDoc(null);
-    setView('documents');
+    void commitPendingDocument(false);
   };
 
   // Handlers for Sharing
   const handleOpenShare = (doc: VaultDocument) => {
     setShareDoc(doc);
-    setSelectedPeople(['Rohit Sharma']);
+    setSelectedRecipients([]);
+    setPeopleSearch('');
     setView('share');
   };
 
-  const handleConfirmShare = () => {
-    if (selectedPeople.length === 0) {
-      toastError('Please select at least one person to share with');
+  const handleConfirmShare = async () => {
+    if (!shareDoc) {
+      toastError('Please select a document to share');
+      return;
+    }
+    if (selectedRecipients.length === 0) {
+      toastError('Please select at least one TripzoBox contact to share with');
       return;
     }
 
@@ -387,36 +661,35 @@ export const TravelVaultPage: React.FC = () => {
       ? 'View • Download'
       : 'View';
 
-    selectedPeople.forEach((personName) => {
-      addSharedAccess({
-        documentId: shareDoc.id,
-        documentName: shareDoc.name,
-        documentType: shareDoc.type,
-        sharedWithName: personName,
-        sharedWithRole: 'Trip member',
-        permission: permissionString,
-        expires: accessDuration,
-      });
-    });
+    setShareBusy(true);
+    try {
+      await Promise.all(
+        selectedRecipients.map((person) =>
+          addSharedAccess({
+            documentId: shareDoc.id,
+            documentName: shareDoc.name,
+            documentType: shareDoc.type,
+            sharedWithUserId: person.id,
+            sharedWithUsername: person.username,
+            sharedWithName: person.name,
+            sharedWithAvatar: person.avatarUrl,
+            sharedWithRole: person.role,
+            permission: permissionString,
+            expires: accessDuration,
+          })
+        )
+      );
 
-    success(
-      `Shared ${shareDoc.name} with ${selectedPeople.join(', ')} (${permissionString})`,
-      'Access Granted'
-    );
-    setView('shared');
-  };
-
-  const handleAddNewPerson = () => {
-    const name = window.prompt('Enter name of traveller to add:');
-    if (name && name.trim()) {
-      const newPerson = {
-        name: name.trim(),
-        role: 'Trip member',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-      };
-      setCustomPeople((prev) => [...prev, newPerson]);
-      setSelectedPeople((prev) => [...prev, newPerson.name]);
+      success(
+        `Shared ${shareDoc.name} online with ${selectedRecipients.map((p) => p.name).join(', ')} (${permissionString})`,
+        'Access Granted'
+      );
+      setSharedTab('active');
+      setView('shared');
+    } catch (err: any) {
+      toastError(err?.message || 'Unable to share document with selected contact(s).');
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -457,36 +730,6 @@ export const TravelVaultPage: React.FC = () => {
       return true;
     });
   }, [documents, docSearch, selectedDocFilter]);
-
-  // Combined people list for Screen 5
-  const allPeople = useMemo(() => {
-    const list = [
-      {
-        name: 'Ayesha Khan',
-        role: 'Trip member',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-      },
-      {
-        name: 'Rohit Sharma',
-        role: 'Trip member',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-      },
-      {
-        name: 'Priya S.',
-        role: 'Trip member',
-        avatarUrl:
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-      },
-      ...customPeople,
-    ];
-    if (peopleSearch.trim()) {
-      const q = peopleSearch.toLowerCase();
-      return list.filter((p) => p.name.toLowerCase().includes(q) || p.role.toLowerCase().includes(q));
-    }
-    return list;
-  }, [customPeople, peopleSearch]);
 
   // If in Screen 10 (Emergency Access - View When Needed), render dedicated full portal overlay
   if (currentView === 'emergency-view') {
@@ -559,13 +802,24 @@ export const TravelVaultPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-                  <a
-                    href={`tel:${emergencyPrimary}`}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 hover:bg-emerald-50 text-xs font-semibold text-gray-800 transition-colors"
-                  >
-                    <span className="truncate">Primary: {emergencyPrimary}</span>
-                    <PhoneCall className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-1.5" />
-                  </a>
+                  {emergencyPrimary ? (
+                    <a
+                      href={`tel:${emergencyPrimary}`}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 hover:bg-emerald-50 text-xs font-semibold text-gray-800 transition-colors"
+                    >
+                      <span className="truncate">Primary: {emergencyPrimary}</span>
+                      <PhoneCall className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-1.5" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setView('emergency-edit')}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 hover:bg-emerald-50 text-xs font-semibold text-gray-500 transition-colors cursor-pointer text-left"
+                    >
+                      <span className="truncate">Primary contact not set</span>
+                      <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-1.5" />
+                    </button>
+                  )}
                   <a
                     href="tel:112"
                     className="flex items-center justify-between px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 transition-colors"
@@ -734,7 +988,7 @@ export const TravelVaultPage: React.FC = () => {
                     <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                   <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-100/70 text-emerald-800">
-                    {sharedAccessRecords.length} Active
+                    {sharedAccessRecords.length} Shared{sharedWithMe.length > 0 ? ` · ${sharedWithMe.length} Received` : ''}
                   </span>
                 </div>
                 <div>
@@ -793,28 +1047,48 @@ export const TravelVaultPage: React.FC = () => {
               </div>
 
               <div className="space-y-2.5">
-                {documents.slice(0, 4).map((doc) => (
-                  <DocumentRow
-                    key={doc.id}
-                    document={doc}
-                    onView={(item) => {
-                      setSelectedDocForViewer(item);
-                      setIsViewerOpen(true);
-                    }}
-                    onShare={(item) => handleOpenShare(item)}
-                    onDelete={async (id) => {
-                      if (
-                        !(await confirmAction(
-                          'delete',
-                          'this document from your secure vault'
-                        ))
-                      )
-                        return;
-                      deleteDocument(id);
-                      success('Document removed from your vault.');
-                    }}
-                  />
-                ))}
+                {documents.length > 0 ? (
+                  documents.slice(0, 4).map((doc) => (
+                    <DocumentRow
+                      key={doc.id}
+                      document={doc}
+                      onView={(item) => {
+                        setSelectedDocForViewer(item);
+                        setIsViewerOpen(true);
+                      }}
+                      onShare={(item) => handleOpenShare(item)}
+                      onDelete={async (id) => {
+                        if (
+                          !(await confirmAction(
+                            'delete',
+                            'this document from your secure vault'
+                          ))
+                        )
+                          return;
+                        deleteDocument(id);
+                        success('Document removed from your vault.');
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="p-8 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200 space-y-2.5">
+                    <FileText className="w-8 h-8 text-gray-400 mx-auto" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">No documents in your vault yet</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Add your passport, ID card, tickets, or travel insurance to keep them safe offline.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setView('add-category')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add First Document</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -929,13 +1203,19 @@ export const TravelVaultPage: React.FC = () => {
             className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200"
           >
                 {/* Header */}
-                <div>
-                  <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
-                    {selectedCategory}
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Upload your {selectedCategory.toLowerCase()} document and add details.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
+                      {editingDoc ? `Edit ${selectedCategory}` : selectedCategory}
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Upload your {selectedCategory.toLowerCase()} document and complete the details below.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                    <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Available Online & Offline</span>
+                  </span>
                 </div>
 
                 {/* 2-Column Upload & Form Layout */}
@@ -948,12 +1228,14 @@ export const TravelVaultPage: React.FC = () => {
                         <Shield className="w-6 h-6 stroke-[2]" />
                       </div>
                       <h4 className="font-heading font-bold text-sm text-gray-900">
-                        Upload Document
+                        Upload {selectedCategory} File
                       </h4>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        JPG, PNG or PDF (Max 10MB)
+                        JPG, PNG, WebP or PDF (Max 10MB)
                       </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">or browse from device</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Synced online to your TripzoBox Vault and cached offline
+                      </p>
                       <input
                         type="file"
                         accept="image/*,application/pdf"
@@ -961,46 +1243,98 @@ export const TravelVaultPage: React.FC = () => {
                         className="hidden"
                       />
                       <span className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-2xs">
-                        Choose File
+                        {selectedUploadFile || uploadedFileName ? 'Change File' : 'Choose File'}
                       </span>
                     </label>
 
-                    {/* Document Preview Box (Matching Screen 3 Indian Passport) */}
-                    <div className="rounded-2xl border border-gray-200/90 overflow-hidden bg-gray-100 p-2 text-center">
-                      <div className="relative aspect-[3/4] max-h-56 mx-auto rounded-xl overflow-hidden shadow-xs border border-gray-300">
-                        <img
-                          src={uploadedPreviewUrl}
-                          alt="Document Preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-semibold backdrop-blur-xs">
-                          Preview
+                    {/* Document Preview Box (Image or PDF) */}
+                    {uploadedFileMime === 'application/pdf' ? (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-emerald-700" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className="text-xs font-bold text-gray-900 truncate">
+                              {uploadedFileName || 'PDF Document Ready'}
+                            </p>
+                            <p className="text-[11px] text-emerald-700">
+                              PDF attached · Will be viewable online & offline
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shrink-0">
+                          PDF
+                        </span>
+                      </div>
+                    ) : uploadedPreviewUrl ? (
+                      <div className="rounded-2xl border border-gray-200/90 overflow-hidden bg-gray-100 p-2 text-center">
+                        <div className="relative aspect-[3/4] max-h-56 mx-auto rounded-xl overflow-hidden shadow-xs border border-gray-300">
+                          <img
+                            src={uploadedPreviewUrl}
+                            alt="Document Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-semibold backdrop-blur-xs">
+                            Preview
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : null}
                   </div>
 
-                  {/* Right: Form Fields */}
+                  {/* Right: Document-Specific Dynamic Form Fields */}
                   <div className="space-y-4">
-                    {/* Field 1: Document Name */}
+                    {/* Optional Document Sub-type Chips (e.g. Aadhaar / Driving License / College ID) */}
+                    {activeSchema.subTypes && (
+                      <div>
+                        <span className="block text-xs font-medium text-gray-700 mb-1.5">
+                          Select {selectedCategory} Type
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeSchema.subTypes.map((sub) => {
+                            const active = docName.trim().toLowerCase() === sub.label.toLowerCase();
+                            return (
+                              <button
+                                key={sub.label}
+                                type="button"
+                                onClick={() => {
+                                  setDocName(sub.label);
+                                  setSelectedDocTypeOverride(sub.docType);
+                                }}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                                  active
+                                    ? 'bg-primary text-white shadow-2xs'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-emerald-50 hover:text-emerald-800'
+                                }`}
+                              >
+                                {sub.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Field 1: Document Name (Category-specific label) */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Document Name *
+                        {activeSchema.nameLabel}
                       </label>
                       <input
                         type="text"
                         required
                         value={docName}
                         onChange={(e) => setDocName(e.target.value)}
-                        placeholder="e.g. Indian Passport"
+                        placeholder={activeSchema.namePlaceholder}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                       />
                     </div>
 
-                    {/* Field 2: Issuing Country */}
+                    {/* Field 2: Issuing Country / Coverage */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Issuing Country *
+                        {activeSchema.countryLabel}
                       </label>
                       <select
                         value={issuingCountry}
@@ -1015,37 +1349,195 @@ export const TravelVaultPage: React.FC = () => {
                       </select>
                     </div>
 
-                    {/* Field 3: Passport / Document Number */}
+                    {/* Field 3: Document-Specific Number / Identifier (NOT hardcoded Passport Number!) */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Passport Number *
+                        {activeSchema.numberLabel}
                       </label>
                       <input
                         type="text"
-                        required
+                        required={activeSchema.numberRequired}
                         value={docNumber}
                         onChange={(e) => setDocNumber(e.target.value)}
-                        placeholder="e.g. R21234567"
+                        placeholder={activeSchema.numberPlaceholder}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                       />
                     </div>
 
-                    {/* Field 4: Expiry Date */}
+                    {/* Field 4: Validity / Expiry Date with Lifetime support */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Expiry Date *
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-medium text-gray-700">
+                          {activeSchema.expiryLabel}
+                        </label>
+                        {activeSchema.allowLifetime && (
+                          <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={expiryDate === 'Lifetime' || expiryDate === 'No Expiry'}
+                              onChange={(e) =>
+                                setExpiryDate(e.target.checked ? 'Lifetime' : '')
+                              }
+                              className="rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span>Lifetime / No Expiry</span>
+                          </label>
+                        )}
+                      </div>
                       <div className="relative">
                         <input
                           type="text"
-                          required
+                          required={!activeSchema.allowLifetime}
                           value={expiryDate}
                           onChange={(e) => setExpiryDate(e.target.value)}
-                          placeholder="e.g. 17 May 2030"
+                          placeholder={activeSchema.expiryPlaceholder}
                           className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                         />
                         <Calendar className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
+                    </div>
+
+                    {/* Field 5: Document-Specific Issuing Authority / Carrier / Provider */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        {activeSchema.extraLabel}
+                      </label>
+                      <input
+                        type="text"
+                        value={docExtraDetail}
+                        onChange={(e) => setDocExtraDetail(e.target.value)}
+                        placeholder={activeSchema.extraPlaceholder}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      />
+                    </div>
+
+                    {/* Field 6: Online Visibility & Eligible TripzoBox Contact Access */}
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3.5 space-y-2.5">
+                      <label className="block text-xs font-bold text-gray-800">
+                        Online Visibility & Eligible Contacts
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDocVisibility('private');
+                            setInlineShareContacts([]);
+                          }}
+                          className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                            docVisibility === 'private'
+                              ? 'bg-white border-emerald-600 text-emerald-950 font-semibold shadow-2xs'
+                              : 'bg-white/70 border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Only Me</span>
+                          </div>
+                          <span className="block text-[10px] text-gray-500 mt-0.5">
+                            Visible only in your online/offline vault
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDocVisibility('trusted-contacts')}
+                          className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                            docVisibility === 'trusted-contacts'
+                              ? 'bg-white border-emerald-600 text-emerald-950 font-semibold shadow-2xs'
+                              : 'bg-white/70 border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Eligible TripzoBox Contacts</span>
+                          </div>
+                          <span className="block text-[10px] text-gray-500 mt-0.5">
+                            Select registered TripzoBox users who can view
+                          </span>
+                        </button>
+                      </div>
+
+                      {docVisibility === 'trusted-contacts' && (
+                        <div className="pt-2 space-y-2">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={inlineContactSearch}
+                              onChange={(e) => setInlineContactSearch(e.target.value)}
+                              placeholder="Search TripzoBox account holders by name or @username..."
+                              className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="max-h-36 overflow-y-auto space-y-1 bg-white rounded-xl border border-gray-200 p-1.5">
+                            {loadingContacts ? (
+                              <div className="py-3 text-center text-[11px] text-gray-500 flex items-center justify-center gap-1.5">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Finding TripzoBox accounts...</span>
+                              </div>
+                            ) : eligibleContacts.length > 0 ? (
+                              eligibleContacts.map((person) => {
+                                const picked = inlineShareContacts.some((p) => p.id === person.id);
+                                return (
+                                  <button
+                                    key={person.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setInlineShareContacts((prev) =>
+                                        picked
+                                          ? prev.filter((p) => p.id !== person.id)
+                                          : [...prev, person]
+                                      )
+                                    }
+                                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                                      picked ? 'bg-emerald-50 text-emerald-950' : 'hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {person.avatarUrl ? (
+                                        <img
+                                          src={person.avatarUrl}
+                                          alt={person.name}
+                                          className="w-6 h-6 rounded-full object-cover shrink-0"
+                                        />
+                                      ) : (
+                                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                          {person.name.charAt(0).toUpperCase()}
+                                        </span>
+                                      )}
+                                      <div className="min-w-0">
+                                        <p className="font-semibold truncate">{person.name}</p>
+                                        <p className="text-[10px] text-gray-400 truncate">
+                                          @{person.username} • {person.role}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <span
+                                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                        picked
+                                          ? 'bg-primary border-primary text-white'
+                                          : 'border-gray-300 bg-white'
+                                      }`}
+                                    >
+                                      {picked && <Check className="w-3 h-3 stroke-[3]" />}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <p className="py-3 text-center text-[11px] text-gray-400">
+                                No matching TripzoBox account holders found.
+                              </p>
+                            )}
+                          </div>
+                          {inlineShareContacts.length > 0 && (
+                            <p className="text-[11px] text-emerald-800 font-medium">
+                              Selected ({inlineShareContacts.length}):{' '}
+                              {inlineShareContacts.map((c) => c.name).join(', ')}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1054,7 +1546,11 @@ export const TravelVaultPage: React.FC = () => {
                 <div className="flex items-center justify-between pt-6 border-t border-gray-100">
                   <button
                     type="button"
-                    onClick={() => setView('add-category')}
+                    disabled={savingDocBusy}
+                    onClick={() => {
+                      setEditingDoc(null);
+                      setView('add-category');
+                    }}
                     className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4" />
@@ -1062,9 +1558,10 @@ export const TravelVaultPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    disabled={savingDocBusy}
+                    className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    <span>Save & Continue</span>
+                    <span>{savingDocBusy ? 'Saving...' : 'Save & Continue'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1097,14 +1594,29 @@ export const TravelVaultPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setView('add-category')}
-                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover flex items-center gap-1.5 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Document</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                    {sharedWithMe.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSharedTab('received');
+                          setView('shared');
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Users className="w-4 h-4" />
+                        <span>Shared With Me ({sharedWithMe.length})</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setView('add-category')}
+                      className="px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Document</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Search Bar */}
@@ -1170,9 +1682,18 @@ export const TravelVaultPage: React.FC = () => {
                         }}
                         onEdit={(item) => {
                           setEditingDoc(item);
+                          setSelectedCategory(inferCategoryFromDoc(item));
+                          setSelectedDocTypeOverride(item.type);
                           setDocName(item.name);
                           setDocNumber(item.referenceNumber || '');
                           setExpiryDate(item.validTill || '');
+                          setIssuingCountry(item.issuingCountry || 'India');
+                          setDocExtraDetail(item.details?.issuingAuthority || '');
+                          setDocVisibility(item.visibility || 'private');
+                          setUploadedPreviewUrl(item.thumbnailUrl || item.fileUrl || '');
+                          setUploadedFileName(item.fileName || '');
+                          setUploadedFileMime(item.fileMime || '');
+                          setSelectedUploadFile(null);
                           setView('add-details');
                         }}
                         onDelete={async (id) => {
@@ -1191,10 +1712,12 @@ export const TravelVaultPage: React.FC = () => {
                           setPendingDocData({
                             name: item.name,
                             type: item.type,
+                            category: inferCategoryFromDoc(item),
                             referenceNumber: item.referenceNumber,
                             validTill: item.validTill,
                             issuingCountry: item.issuingCountry,
                             thumbnailUrl: item.thumbnailUrl,
+                            details: item.details,
                             visibility: item.visibility,
                             existingDocId: item.id,
                           });
@@ -1224,15 +1747,15 @@ export const TravelVaultPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* SCREEN 5: SHARE DOCUMENT – SELECT PEOPLE */}
         {/* ===================================================================== */}
-        {currentView === 'share' && (
+        {currentView === 'share' && shareDoc && (
           <div className="bg-white rounded-3xl border border-gray-200/90 p-5 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
                 {/* Header */}
                 <div>
                   <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900">
-                    Share Document
+                    Share Document Online
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Choose who can access this document and for how long.
+                    Select eligible TripzoBox account holders who can view this document online.
                   </p>
                 </div>
 
@@ -1260,80 +1783,99 @@ export const TravelVaultPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2-Column Select People & Set Access Layout */}
+                {/* 2-Column Select Eligible TripzoBox Contacts & Set Access Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
-                  {/* Left Column: Select People */}
+                  {/* Left Column: Select Registered TripzoBox Contacts */}
                   <div className="space-y-3">
                     <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Select people
+                      Select TripzoBox account holders
                     </label>
 
-                    {/* Search Friends Input */}
+                    {/* Search TripzoBox Users Input */}
                     <div className="relative">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
-                        placeholder="Search friends or trip members..."
+                        placeholder="Search registered TripzoBox users by name, @username, or email..."
                         value={peopleSearch}
                         onChange={(e) => setPeopleSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-primary"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-primary"
                       />
                     </div>
 
-                    {/* People List */}
-                    <div className="space-y-2 border border-gray-200 rounded-2xl p-2 bg-white">
-                      {allPeople.map((person) => {
-                        const isChecked = selectedPeople.includes(person.name);
-                        return (
-                          <div
-                            key={person.name}
-                            onClick={() => {
-                              setSelectedPeople((prev) =>
-                                prev.includes(person.name)
-                                  ? prev.filter((n) => n !== person.name)
-                                  : [...prev, person.name]
-                              );
-                            }}
-                            className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                              isChecked ? 'bg-emerald-50/70 border border-emerald-200' : 'hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={person.avatarUrl}
-                                alt={person.name}
-                                className="w-9 h-9 rounded-full object-cover border border-white"
-                              />
-                              <div>
-                                <h5 className="font-semibold text-xs sm:text-sm text-gray-900">
-                                  {person.name}
-                                </h5>
-                                <p className="text-[11px] text-gray-400">{person.role}</p>
-                              </div>
-                            </div>
-
+                    {/* Eligible TripzoBox Account List */}
+                    <div className="space-y-2 border border-gray-200 rounded-2xl p-2 bg-white max-h-72 overflow-y-auto">
+                      {loadingContacts ? (
+                        <div className="py-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                          <span>Loading eligible TripzoBox accounts...</span>
+                        </div>
+                      ) : eligibleContacts.length > 0 ? (
+                        eligibleContacts.map((person) => {
+                          const isChecked = selectedRecipients.some((r) => r.id === person.id);
+                          return (
                             <div
-                              className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+                              key={person.id}
+                              onClick={() => {
+                                setSelectedRecipients((prev) =>
+                                  prev.some((r) => r.id === person.id)
+                                    ? prev.filter((r) => r.id !== person.id)
+                                    : [...prev, person]
+                                );
+                              }}
+                              className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
                                 isChecked
-                                  ? 'bg-primary border-primary text-white'
-                                  : 'border-gray-300 bg-white'
+                                  ? 'bg-emerald-50/70 border border-emerald-200'
+                                  : 'hover:bg-gray-50 border border-transparent'
                               }`}
                             >
-                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </div>
-                          </div>
-                        );
-                      })}
+                              <div className="flex items-center gap-3 min-w-0">
+                                {person.avatarUrl ? (
+                                  <img
+                                    src={person.avatarUrl}
+                                    alt={person.name}
+                                    className="w-9 h-9 rounded-full object-cover border border-white shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                                    {person.name.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h5 className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
+                                      {person.name}
+                                    </h5>
+                                    {person.isCoTraveler && (
+                                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                        Trip companion
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 truncate">
+                                    @{person.username}
+                                    {person.city ? ` • ${person.city}` : ''}
+                                  </p>
+                                </div>
+                              </div>
 
-                      {/* Add New Person Button */}
-                      <button
-                        type="button"
-                        onClick={handleAddNewPerson}
-                        className="w-full py-2.5 px-3 rounded-xl border border-dashed border-gray-300 text-xs font-semibold text-primary hover:bg-emerald-50/50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add new person</span>
-                      </button>
+                              <div
+                                className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                  isChecked
+                                    ? 'bg-primary border-primary text-white'
+                                    : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="py-8 px-4 text-center text-xs text-gray-500">
+                          No active TripzoBox account holders match your search.
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1354,7 +1896,6 @@ export const TravelVaultPage: React.FC = () => {
                         <option value="Until trip end">Until trip end</option>
                         <option value="24 hours">24 hours</option>
                         <option value="7 days">7 days</option>
-                        <option value="Custom date">Custom date</option>
                         <option value="Forever">Forever</option>
                       </select>
                     </div>
@@ -1370,7 +1911,7 @@ export const TravelVaultPage: React.FC = () => {
                             onChange={(e) => setPermissionView(e.target.checked)}
                             className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300"
                           />
-                          <span className="font-medium">View</span>
+                          <span className="font-medium">View Online</span>
                         </label>
 
                         <label className="flex items-center gap-2.5 text-xs text-gray-700 cursor-pointer select-none">
@@ -1380,7 +1921,7 @@ export const TravelVaultPage: React.FC = () => {
                             onChange={(e) => setPermissionDownload(e.target.checked)}
                             className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300"
                           />
-                          <span className="font-medium">Download</span>
+                          <span className="font-medium">Download Original</span>
                         </label>
                       </div>
                     </div>
@@ -1391,6 +1932,7 @@ export const TravelVaultPage: React.FC = () => {
                 <div className="flex items-center justify-between pt-6 border-t border-gray-100">
                   <button
                     type="button"
+                    disabled={shareBusy}
                     onClick={() => setView('documents')}
                     className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
@@ -1398,10 +1940,11 @@ export const TravelVaultPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    disabled={shareBusy}
                     onClick={handleConfirmShare}
-                    className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-all shadow-xs cursor-pointer"
+                    className="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-all shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    Share Document
+                    {shareBusy ? 'Sharing...' : 'Share Document'}
                   </button>
                 </div>
               </div>
@@ -1449,7 +1992,7 @@ export const TravelVaultPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Tabs: Active Shares & Share History */}
+                {/* Tabs: Shared By Me & Shared With Me */}
                 <div className="flex items-center gap-6 border-b border-gray-200 text-xs font-semibold">
                   <button
                     type="button"
@@ -1458,7 +2001,7 @@ export const TravelVaultPage: React.FC = () => {
                       sharedTab === 'active' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    Active Shares ({sharedAccessRecords.length})
+                    Shared By Me ({sharedAccessRecords.length})
                     {sharedTab === 'active' && (
                       <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
                     )}
@@ -1466,71 +2009,161 @@ export const TravelVaultPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setSharedTab('history')}
+                    onClick={() => {
+                      setSharedTab('received');
+                      void refreshSharedWithMe();
+                    }}
                     className={`pb-2.5 transition-colors relative cursor-pointer ${
-                      sharedTab === 'history' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
+                      sharedTab === 'received' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    Share History
-                    {sharedTab === 'history' && (
+                    Shared With Me ({sharedWithMe.length})
+                    {sharedTab === 'received' && (
                       <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
                     )}
                   </button>
                 </div>
 
-                {/* Table of Shared Records (Matching Screen 6) */}
-                <div className="border border-gray-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-gray-50/80 text-gray-500 font-semibold border-b border-gray-200">
-                        <tr>
-                          <th className="px-5 py-3">Document</th>
-                          <th className="px-5 py-3">With</th>
-                          <th className="px-5 py-3">Permission</th>
-                          <th className="px-5 py-3">Expires</th>
-                          <th className="px-5 py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {sharedAccessRecords.map((record) => (
-                          <tr key={record.id} className="hover:bg-gray-50/60 transition-colors">
-                            <td className="px-5 py-3.5 font-medium text-gray-900 flex items-center gap-2.5">
-                              <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
-                              <span>{record.documentName}</span>
-                            </td>
-                            <td className="px-5 py-3.5 text-gray-700">{record.sharedWithName}</td>
-                            <td className="px-5 py-3.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                                <Eye className="w-3 h-3 text-emerald-600" />
-                                <span>{record.permission}</span>
-                              </span>
-                            </td>
-                            <td className="px-5 py-3.5 text-gray-500">{record.expires}</td>
-                            <td className="px-5 py-3.5 text-right">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (
-                                    !(await confirmAction(
-                                      'delete',
-                                      `access for ${record.sharedWithName}`
-                                    ))
-                                  )
-                                    return;
-                                  revokeSharedAccess(record.id);
-                                  success(`Revoked access for ${record.sharedWithName}.`);
-                                }}
-                                className="text-red-500 hover:text-red-700 font-semibold text-xs cursor-pointer"
-                              >
-                                Revoke
-                              </button>
-                            </td>
+                {/* Shared By Me vs Shared With Me Online Table */}
+                {sharedTab === 'active' ? (
+                  <div className="border border-gray-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-gray-50/80 text-gray-500 font-semibold border-b border-gray-200">
+                          <tr>
+                            <th className="px-5 py-3">Document</th>
+                            <th className="px-5 py-3">Shared With</th>
+                            <th className="px-5 py-3">Permission</th>
+                            <th className="px-5 py-3">Expires</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {sharedAccessRecords.length > 0 ? (
+                            sharedAccessRecords.map((record) => (
+                              <tr key={record.id} className="hover:bg-gray-50/60 transition-colors">
+                                <td className="px-5 py-3.5 font-medium text-gray-900 flex items-center gap-2.5">
+                                  <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
+                                  <span>{record.documentName}</span>
+                                </td>
+                                <td className="px-5 py-3.5 text-gray-700">
+                                  {record.sharedWithName}
+                                  {record.sharedWithUsername && (
+                                    <span className="text-[11px] text-gray-400 ml-1">
+                                      @{record.sharedWithUsername}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                    <Eye className="w-3 h-3 text-emerald-600" />
+                                    <span>{record.permission}</span>
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5 text-gray-500">{record.expires}</td>
+                                <td className="px-5 py-3.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (
+                                        !(await confirmAction(
+                                          'delete',
+                                          `access for ${record.sharedWithName}`
+                                        ))
+                                      )
+                                        return;
+                                      revokeSharedAccess(record.id);
+                                      success(`Revoked access for ${record.sharedWithName}.`);
+                                    }}
+                                    className="text-red-500 hover:text-red-700 font-semibold text-xs cursor-pointer"
+                                  >
+                                    Revoke
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-5 py-8 text-center text-xs text-gray-500">
+                                No documents shared yet. Share a vault document with an eligible TripzoBox contact.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="border border-gray-200/90 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-gray-50/80 text-gray-500 font-semibold border-b border-gray-200">
+                          <tr>
+                            <th className="px-5 py-3">Document</th>
+                            <th className="px-5 py-3">Shared By</th>
+                            <th className="px-5 py-3">Permission</th>
+                            <th className="px-5 py-3">Expires</th>
+                            <th className="px-5 py-3 text-right">View Online</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {sharedWithMe.length > 0 ? (
+                            sharedWithMe.map((item) => (
+                              <tr key={item.shareId} className="hover:bg-gray-50/60 transition-colors">
+                                <td className="px-5 py-3.5 font-medium text-gray-900">
+                                  <div className="flex items-center gap-2.5">
+                                    <FileText className="w-4 h-4 text-emerald-700 shrink-0" />
+                                    <div>
+                                      <span className="block">{item.document.name}</span>
+                                      <span className="text-[11px] text-gray-400 font-normal">
+                                        {item.document.referenceNumber || item.document.type}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5 text-gray-700">
+                                  {item.owner.name}
+                                  {item.owner.username && (
+                                    <span className="text-[11px] text-gray-400 ml-1">
+                                      @{item.owner.username}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                    <Globe className="w-3 h-3 text-emerald-600" />
+                                    <span>{item.permission}</span>
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5 text-gray-500">{item.expires}</td>
+                                <td className="px-5 py-3.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setViewerSharedItem(item);
+                                      setSelectedDocForViewer(item.document);
+                                      setIsViewerOpen(true);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>View Online</span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-5 py-8 text-center text-xs text-gray-500">
+                                No documents have been shared with your TripzoBox account yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1911,20 +2544,33 @@ export const TravelVaultPage: React.FC = () => {
       </main>
 
       {/* ========================================================================= */}
-      {/* MODAL: VIEW ORIGINAL DOCUMENT */}
+      {/* MODAL: VIEW ORIGINAL DOCUMENT (ONLINE + OFFLINE) */}
       {/* ========================================================================= */}
       {selectedDocForViewer && (
         <Modal
           isOpen={isViewerOpen}
-          onClose={() => setIsViewerOpen(false)}
+          onClose={() => {
+            setIsViewerOpen(false);
+            setViewerSharedItem(null);
+          }}
           maxWidth="2xl"
           title={selectedDocForViewer.name}
-          description={`Type: ${selectedDocForViewer.type} · Uploaded: ${selectedDocForViewer.uploadedAt}`}
+          description={
+            viewerSharedItem
+              ? `Shared by ${viewerSharedItem.owner.name} · Type: ${selectedDocForViewer.type} · Access: ${viewerSharedItem.permission}`
+              : `Type: ${selectedDocForViewer.type} · Uploaded: ${selectedDocForViewer.uploadedAt}`
+          }
         >
           <div className="space-y-4">
             <VaultFileViewer
               document={
-                documents.find((d) => d.id === selectedDocForViewer.id) || selectedDocForViewer
+                viewerSharedItem
+                  ? viewerSharedItem.document
+                  : documents.find((d) => d.id === selectedDocForViewer.id) || selectedDocForViewer
+              }
+              readOnly={Boolean(viewerSharedItem)}
+              allowDownload={
+                viewerSharedItem ? viewerSharedItem.permission === 'View • Download' : true
               }
             />
           </div>

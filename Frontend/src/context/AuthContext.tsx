@@ -9,7 +9,9 @@ interface AuthContextType {
   login: (email?: string, password?: string) => Promise<boolean>;
   signup: (name: string, email: string, password?: string) => Promise<boolean>;
   oauthLogin: (provider: 'Google' | 'Apple', email: string, name?: string, avatarUrl?: string) => Promise<boolean>;
+  completeOAuthSession: () => Promise<User>;
   logout: () => void;
+  clearDeletedAccountSession: (deletedUserId?: string) => void;
   updateProfile: (updatedData: Partial<User>) => Promise<void> | void;
   refreshUser: () => Promise<void>;
 }
@@ -47,36 +49,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return status !== null ? status === 'true' : false;
   });
 
-  // Verify session with server on initial mount & ensure valid backend token
+  // Verify session with server on initial mount (supports both Bearer token and HttpOnly cookie)
   useEffect(() => {
-    const token = localStorage.getItem('tripzobox_token');
-    if (token) {
-      authApi
-        .getMe()
-        .then((fetchedUser) => {
-          if (fetchedUser) {
-            setUser(sanitizeUser(fetchedUser));
-            setIsLoggedIn(true);
-          }
-        })
-        .catch(() => {
-          // Token expired or invalid, re-sync session with server
-          authApi
-            .syncSession({ email: user.email, phone: user.phone, name: user.name })
-            .catch(() => {});
-        });
-    } else {
-      // No token in localStorage: sync session to acquire valid JWT token
-      authApi
-        .syncSession({ email: user.email, phone: user.phone, name: user.name })
-        .then((data) => {
-          if (data?.user) {
-            setUser((prev) => sanitizeUser({ ...prev, ...data.user }));
-            setIsLoggedIn(true);
-          }
-        })
-        .catch(() => {});
-    }
+    let active = true;
+    const initSession = async () => {
+      const token = localStorage.getItem('tripzobox_token');
+      const hadAuthStatus = localStorage.getItem('tripzobox_auth_status') === 'true';
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const isOAuthCallback = search.includes('oauth=') || search.includes('oauth_error=');
+
+      try {
+        const fetchedUser = await authApi.getMe();
+        if (active && fetchedUser) {
+          setUser(sanitizeUser(fetchedUser));
+          setIsLoggedIn(true);
+          return;
+        }
+      } catch {
+        // Session invalid or not yet established
+      }
+
+      if (token) {
+        localStorage.removeItem('tripzobox_token');
+      }
+
+      if (active && hadAuthStatus && !isOAuthCallback) {
+        authApi
+          .syncSession({ email: user.email, phone: user.phone, name: user.name })
+          .then((data) => {
+            if (active && data?.user) {
+              setUser((prev) => sanitizeUser({ ...prev, ...data.user }));
+              setIsLoggedIn(true);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+
+    initSession();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -146,11 +159,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser((prev) =>
         sanitizeUser({
           ...prev,
-          name: name.trim() || prev.name,
-          email: isEmail ? trimmed : prev.email || 'user@example.com',
+          id: `user_${Date.now()}`,
+          name: name.trim() || 'Traveler',
+          username: (name.trim() || 'traveler').toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          email: isEmail ? trimmed : '',
           phone: isPhone ? trimmed : '',
           phoneVerified: isPhone,
+          emailVerified: false,
           avatarUrl: '',
+          stats: { trips: 0, stories: 0, followers: 0, following: 0 },
         })
       );
       setIsLoggedIn(true);
@@ -159,8 +176,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    authApi.logout().catch(() => {});
+    localStorage.removeItem('tripzobox_token');
+    localStorage.setItem('tripzobox_auth_status', 'false');
     setIsLoggedIn(false);
+    setUser(sanitizeUser(defaultUser));
+    authApi.logout().catch(() => {});
+  };
+
+  const clearDeletedAccountSession = (deletedUserId?: string) => {
+    const targetId = deletedUserId || user?.id;
+    try {
+      localStorage.removeItem('tripzobox_token');
+      localStorage.removeItem('tripzobox_user');
+      localStorage.setItem('tripzobox_auth_status', 'false');
+      if (targetId) {
+        const suffix = `:${targetId}`;
+        for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+          const key = localStorage.key(i);
+          if (key && key.endsWith(suffix)) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    } catch {
+      // Ignore storage failures
+    }
+    setIsLoggedIn(false);
+    setUser(sanitizeUser(defaultUser));
+  };
+
+  const completeOAuthSession = async (): Promise<User> => {
+    localStorage.removeItem('tripzobox_token');
+    const serverUser = await authApi.getMe();
+    if (!serverUser) {
+      throw new Error('Unable to load authenticated Google account.');
+    }
+    const sanitized = sanitizeUser(serverUser);
+    setUser(sanitized);
+    setIsLoggedIn(true);
+    localStorage.setItem('tripzobox_user', JSON.stringify(sanitized));
+    localStorage.setItem('tripzobox_auth_status', 'true');
+    return sanitized;
   };
 
   const oauthLogin = async (
@@ -232,7 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, login, signup, oauthLogin, logout, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, login, signup, oauthLogin, completeOAuthSession, logout, clearDeletedAccountSession, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

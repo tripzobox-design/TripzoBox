@@ -157,7 +157,11 @@ export const AdminUserDetailsPage: React.FC = () => {
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                   {user.role || 'user'}
                 </span>
-                {user.isSuspended ? (
+                {user.isDeleted ? (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                    Deleted {user.deletedAt ? `(${new Date(user.deletedAt).toLocaleDateString()})` : ''}
+                  </span>
+                ) : user.isSuspended ? (
                   <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">
                     Suspended
                   </span>
@@ -190,35 +194,43 @@ export const AdminUserDetailsPage: React.FC = () => {
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {user.isSuspended ? (
-              <button
-                onClick={() => setModalType('reactivate')}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm"
-              >
-                <UserCheck className="w-3.5 h-3.5" /> Reactivate User
-              </button>
+            {user.isDeleted ? (
+              <div className="px-3.5 py-2 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 rounded-xl">
+                Account permanently deleted{user.deletedAt ? ` on ${new Date(user.deletedAt).toLocaleString()}` : ''} • Non-recoverable
+              </div>
             ) : (
-              <button
-                onClick={() => setModalType('suspend')}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-sm"
-              >
-                <UserX className="w-3.5 h-3.5" /> Suspend User
-              </button>
+              <>
+                {user.isSuspended ? (
+                  <button
+                    onClick={() => setModalType('reactivate')}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Reactivate User
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setModalType('suspend')}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-sm"
+                  >
+                    <UserX className="w-3.5 h-3.5" /> Suspend User
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setModalType('resetPassword')}
+                  className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-slate-500" /> Require Reset
+                </button>
+
+                <button
+                  onClick={() => setModalType('revokeSessions')}
+                  className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-slate-500" /> Revoke Sessions
+                </button>
+              </>
             )}
-
-            <button
-              onClick={() => setModalType('resetPassword')}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-slate-500" /> Require Reset
-            </button>
-
-            <button
-              onClick={() => setModalType('revokeSessions')}
-              className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-            >
-              <LogOut className="w-3.5 h-3.5 text-slate-500" /> Revoke Sessions
-            </button>
           </div>
         </div>
 

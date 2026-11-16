@@ -24,6 +24,10 @@ export interface User {
   identityVerifiedAt?: string;
   identityRejectionReason?: string;
   isGoogleConnected?: boolean;
+  isAppleConnected?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletionReason?: string;
   emergencyContact?: {
     name?: string;
     phone?: string;
@@ -203,6 +207,7 @@ export interface VaultDocument {
   issuingCountry?: string;
   thumbnailUrl?: string;
   category?: string;
+  details?: Record<string, string>;
 }
 
 export interface SharedAccessRecord {
@@ -210,13 +215,46 @@ export interface SharedAccessRecord {
   documentId: string;
   documentName: string;
   documentType: VaultDocument['type'];
+  ownerName?: string;
+  ownerAvatarUrl?: string;
+  sharedWithUserId?: string;
+  sharedWithUsername?: string;
   sharedWithName: string;
   sharedWithRole?: string;
   sharedWithAvatar?: string;
   permission: 'View' | 'View • Download';
   expires: string;
+  expiresAt?: string;
   createdAt?: string;
   active: boolean;
+}
+
+export interface TripzoBoxVaultContact {
+  id: string;
+  name: string;
+  username: string;
+  avatarUrl: string;
+  city: string;
+  emailVerified: boolean;
+  identityVerified: boolean;
+  isCoTraveler: boolean;
+  role: string;
+  maskedEmail?: string;
+}
+
+export interface SharedWithMeItem {
+  shareId: string;
+  permission: 'View' | 'View • Download';
+  expires: string;
+  expiresAt?: string | null;
+  sharedAt?: string;
+  owner: {
+    id: string;
+    name: string;
+    username?: string;
+    avatarUrl?: string;
+  };
+  document: VaultDocument;
 }
 
 export interface EmergencyContact {

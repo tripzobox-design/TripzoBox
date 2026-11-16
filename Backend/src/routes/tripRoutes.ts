@@ -8,6 +8,7 @@ import {
   createTrip,
   updateTrip,
   deleteTrip,
+  transferTripLeadershipHandler,
   updateRoomType,
   requestJoinTrip,
   getTripJoinRequests,
@@ -31,6 +32,7 @@ router.get('/:id', optionalAuth, getTripById);
 router.post('/', requireAuth, validateRequest({ body: createTripSchema }), createTrip);
 router.put('/:id', requireAuth, updateTrip);
 router.delete('/:id', requireAuth, deleteTrip);
+router.post('/:id/transfer-leadership', requireAuth, transferTripLeadershipHandler);
 router.put('/:id/room-type', requireAuth, updateRoomType);
 
 // Join Requests

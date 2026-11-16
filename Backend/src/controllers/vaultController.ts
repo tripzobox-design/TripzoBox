@@ -3,8 +3,11 @@ import bcrypt from 'bcryptjs';
 import { VaultDocument } from '../models/VaultDocument.js';
 import { OTPVerification } from '../models/OTPVerification.js';
 import { User } from '../models/User.js';
+import { Trip } from '../models/Trip.js';
+import { Notification } from '../models/Notification.js';
 import { sendDocumentVerificationEmail } from '../services/emailService.js';
 import { sendPhoneOtp } from '../services/smsService.js';
+import { getAuthSettings } from '../services/authSettingsService.js';
 import {
   EmergencyContact,
   TrustedContact,
@@ -43,11 +46,16 @@ export const createDocument = async (
       return;
     }
 
+    const requestedId =
+      typeof req.body?.id === 'string' && req.body.id.trim().length > 0
+        ? req.body.id.trim()
+        : `doc_${Date.now()}`;
+
     const newDoc = new VaultDocument({
       ...req.body,
-      id: `doc_${Date.now()}`,
+      id: requestedId,
       userId: req.user.id,
-      uploadedAt: new Date().toLocaleDateString('en-GB'),
+      uploadedAt: req.body?.uploadedAt || new Date().toLocaleDateString('en-GB'),
     });
 
     await newDoc.save();
@@ -104,6 +112,8 @@ export const deleteDocument = async (
       return;
     }
 
+    await SharedAccessRecord.deleteMany({ documentId: id, userId: req.user.id });
+
     sendSuccess(res, null, 'Document removed from Vault');
   } catch (error) {
     next(error);
@@ -142,7 +152,10 @@ export const createEmergencyContact = async (
 
     const contact = new EmergencyContact({
       ...req.body,
-      id: `em_${Date.now()}`,
+      id:
+        typeof req.body?.id === 'string' && req.body.id.trim().length > 0
+          ? req.body.id.trim()
+          : `em_${Date.now()}`,
       userId: req.user.id,
     });
 
@@ -219,6 +232,91 @@ export const toggleTrustedContactAccess = async (
   }
 };
 
+const maskRecipientEmail = (email?: string): string | undefined => {
+  if (!email || !email.includes('@')) return undefined;
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
+  return `${local.slice(0, 2)}***@${domain}`;
+};
+
+const computeShareExpiryDate = (expiresLabel?: string): Date | undefined => {
+  const now = Date.now();
+  if (expiresLabel === '24 hours') return new Date(now + 24 * 60 * 60 * 1000);
+  if (expiresLabel === '7 days') return new Date(now + 7 * 24 * 60 * 60 * 1000);
+  return undefined;
+};
+
+// Eligible TripzoBox Contact Search (Registered, non-deleted, non-suspended TripzoBox users)
+export const searchEligibleContacts = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Unauthenticated', 401);
+      return;
+    }
+
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+
+    // Identify co-travelers from user's shared trips first so trip companions appear prioritized
+    const userTrips = await Trip.find({
+      $or: [{ 'leader.id': req.user.id }, { 'members.id': req.user.id }],
+    }).select('leader.id members.id');
+
+    const coTravelerIds = new Set<string>();
+    for (const trip of userTrips) {
+      if (trip.leader?.id && trip.leader.id !== req.user.id) {
+        coTravelerIds.add(trip.leader.id);
+      }
+      for (const m of trip.members || []) {
+        if (m.id && m.id !== req.user.id) {
+          coTravelerIds.add(m.id);
+        }
+      }
+    }
+
+    const filter: Record<string, any> = {
+      id: { $ne: req.user.id },
+      isDeleted: { $ne: true },
+      isSuspended: { $ne: true },
+    };
+
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+      filter.$or = [{ name: regex }, { username: regex }, { email: q.toLowerCase() }];
+    } else if (coTravelerIds.size > 0) {
+      // Without search query, prioritize co-travelers, supplemented by verified TripzoBox users
+      filter.$or = [{ id: { $in: Array.from(coTravelerIds) } }, { emailVerified: true }];
+    }
+
+    const users = await User.find(filter)
+      .select('id name username avatarUrl city email emailVerified identityVerificationStatus')
+      .limit(20);
+
+    const formatted = users
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        avatarUrl: u.avatarUrl || '',
+        city: u.city || 'TripzoBox Traveller',
+        emailVerified: Boolean(u.emailVerified),
+        identityVerified: u.identityVerificationStatus === 'VERIFIED',
+        isCoTraveler: coTravelerIds.has(u.id),
+        role: coTravelerIds.has(u.id) ? 'Trip companion' : 'TripzoBox Member',
+        maskedEmail: maskRecipientEmail(u.email),
+      }))
+      .sort((a, b) => Number(b.isCoTraveler) - Number(a.isCoTraveler));
+
+    sendSuccess(res, formatted);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Shared Access Records
 export const getSharedAccessRecords = async (
   req: AuthRequest,
@@ -251,15 +349,204 @@ export const createSharedAccess = async (
       return;
     }
 
+    const {
+      id: requestedShareId,
+      documentId,
+      documentName,
+      documentType,
+      sharedWithUserId,
+      sharedWithName,
+      sharedWithRole,
+      sharedWithAvatar,
+      permission,
+      expires,
+    } = req.body || {};
+
+    if (!documentId) {
+      sendError(res, 'Document ID is required to share access.', 400);
+      return;
+    }
+
+    const doc = await VaultDocument.findOne({ id: documentId, userId: req.user.id });
+    if (!doc) {
+      sendError(res, 'Document not found or you do not have permission to share it.', 404);
+      return;
+    }
+
+    let resolvedRecipient: any = null;
+    if (sharedWithUserId) {
+      if (sharedWithUserId === req.user.id) {
+        sendError(res, 'You already own this document.', 400);
+        return;
+      }
+
+      resolvedRecipient = await User.findOne({
+        id: sharedWithUserId,
+        isDeleted: { $ne: true },
+        isSuspended: { $ne: true },
+      }).select('id name username avatarUrl');
+
+      if (!resolvedRecipient) {
+        sendError(
+          res,
+          'Selected contact does not have an active TripzoBox account.',
+          404
+        );
+        return;
+      }
+    }
+
+    const expiresAt = computeShareExpiryDate(expires);
+    const normalizedPermission: 'View' | 'View • Download' =
+      permission === 'View • Download' ? 'View • Download' : 'View';
+
+    // Update existing active share cleanly if owner shares same doc with same TripzoBox account
+    if (resolvedRecipient) {
+      const existingShare = await SharedAccessRecord.findOne({
+        userId: req.user.id,
+        documentId: doc.id,
+        sharedWithUserId: resolvedRecipient.id,
+        active: true,
+      });
+
+      if (existingShare) {
+        existingShare.permission = normalizedPermission;
+        existingShare.expires = expires || 'Until trip end';
+        existingShare.expiresAt = expiresAt;
+        existingShare.documentName = doc.name;
+        existingShare.documentType = doc.type;
+        existingShare.ownerName = req.user.name;
+        existingShare.ownerAvatarUrl = req.user.avatarUrl || '';
+        await existingShare.save();
+
+        sendSuccess(res, existingShare, 'Document access permissions updated', 200);
+        return;
+      }
+    }
+
     const record = new SharedAccessRecord({
-      ...req.body,
-      id: `share_${Date.now()}`,
+      id:
+        typeof requestedShareId === 'string' && requestedShareId.trim().length > 0
+          ? requestedShareId.trim()
+          : `share_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId: req.user.id,
+      documentId: doc.id,
+      documentName: doc.name || documentName,
+      documentType: doc.type || documentType,
+      ownerName: req.user.name,
+      ownerAvatarUrl: req.user.avatarUrl || '',
+      sharedWithUserId: resolvedRecipient?.id,
+      sharedWithUsername: resolvedRecipient?.username,
+      sharedWithName: resolvedRecipient?.name || sharedWithName,
+      sharedWithRole: sharedWithRole || (resolvedRecipient ? 'TripzoBox Member' : 'Trip member'),
+      sharedWithAvatar: resolvedRecipient?.avatarUrl || sharedWithAvatar || '',
+      permission: normalizedPermission,
+      expires: expires || 'Until trip end',
+      expiresAt,
       active: true,
     });
 
     await record.save();
+
+    if (doc.visibility === 'private') {
+      doc.visibility = 'trusted-contacts';
+      await doc.save();
+    }
+
+    if (resolvedRecipient?.id) {
+      await Notification.create({
+        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        userId: resolvedRecipient.id,
+        type: 'system',
+        title: 'Travel Document Shared With You',
+        message: `${req.user.name} shared "${doc.name}" with you (${normalizedPermission}).`,
+        timestamp: 'Just now',
+        read: false,
+        link: '/app/vault?view=shared',
+      }).catch(() => {});
+    }
+
     sendSuccess(res, record, 'Document shared successfully', 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSharedWithMeDocuments = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Unauthenticated', 401);
+      return;
+    }
+
+    const now = new Date();
+    const shares = await SharedAccessRecord.find({
+      sharedWithUserId: req.user.id,
+      active: true,
+    }).sort({ createdAt: -1 });
+
+    const validShares = shares.filter((s) => !s.expiresAt || s.expiresAt > now);
+    if (validShares.length === 0) {
+      sendSuccess(res, []);
+      return;
+    }
+
+    const docIds = Array.from(new Set(validShares.map((s) => s.documentId)));
+    const ownerIds = Array.from(new Set(validShares.map((s) => s.userId)));
+
+    const [docs, owners] = await Promise.all([
+      VaultDocument.find({ id: { $in: docIds } }),
+      User.find({ id: { $in: ownerIds }, isDeleted: { $ne: true } }).select(
+        'id name username avatarUrl'
+      ),
+    ]);
+
+    const docMap = new Map(docs.map((d) => [d.id, d]));
+    const ownerMap = new Map(owners.map((o) => [o.id, o]));
+
+    const items = validShares
+      .map((share) => {
+        const doc = docMap.get(share.documentId);
+        const owner = ownerMap.get(share.userId);
+        if (!doc || !owner) return null;
+
+        return {
+          shareId: share.id,
+          permission: share.permission,
+          expires: share.expires,
+          expiresAt: share.expiresAt || null,
+          sharedAt: share.createdAt,
+          owner: {
+            id: owner.id,
+            name: owner.name || share.ownerName || 'TripzoBox Member',
+            username: owner.username,
+            avatarUrl: owner.avatarUrl || share.ownerAvatarUrl || '',
+          },
+          document: {
+            id: doc.id,
+            type: doc.type,
+            name: doc.name,
+            referenceNumber: doc.referenceNumber,
+            validTill: doc.validTill,
+            issuingCountry: doc.issuingCountry,
+            details: doc.details || {},
+            fileUrl: doc.fileUrl,
+            fileName: doc.fileName,
+            fileMime: doc.fileMime,
+            thumbnailUrl: doc.thumbnailUrl,
+            isVerified: doc.isVerified,
+            uploadedAt: doc.uploadedAt,
+            visibility: doc.visibility,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    sendSuccess(res, items);
   } catch (error) {
     next(error);
   }
@@ -303,8 +590,8 @@ export const getVaultSettings = async (
         userId: req.user.id,
         emergencyConfig: {
           includedDocTypes: ['Passport', 'Insurance'],
-          primaryContact: '+91 98765 43210',
-          secondaryContact: '+91 98765 43211',
+          primaryContact: '',
+          secondaryContact: '',
         },
         securitySettings: {
           twoFactorEnabled: true,
@@ -397,6 +684,11 @@ export const requestDocumentOtp = async (
 
     let targetIdentifier = '';
     if (channel === 'phone') {
+      const authSettings = await getAuthSettings();
+      if (!authSettings.smsOtp?.enabled) {
+        sendError(res, 'SMS OTP verification is currently disabled. Please verify via your registered email.', 403);
+        return;
+      }
       if (!user.phone) {
         sendError(
           res,
@@ -407,6 +699,11 @@ export const requestDocumentOtp = async (
       }
       targetIdentifier = user.phone;
     } else {
+      const authSettings = await getAuthSettings();
+      if (!authSettings.emailOtp?.enabled) {
+        sendError(res, 'Email OTP verification is currently disabled by administrator.', 403);
+        return;
+      }
       if (!user.email) {
         sendError(res, 'No registered email found on your account.', 400);
         return;
