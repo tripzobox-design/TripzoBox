@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { Logo } from '../../components/ui/Logo';
 import { SEO } from '../../components/common/SEO';
@@ -37,12 +37,6 @@ export const AdminLoginPage: React.FC = () => {
     } else {
       setErrorMessage(res.error || 'Authentication rejected. Verify credentials or role permissions.');
     }
-  };
-
-  const handleFillDemo = () => {
-    setEmail('admin@tripzobox.com');
-    setPassword('Admin@TripzoBox2026!');
-    setErrorMessage('');
   };
 
   return (
@@ -150,24 +144,6 @@ export const AdminLoginPage: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Credentials Helper */}
-          <div className="mt-6 pt-5 border-t border-slate-800/80">
-            <div className="p-3.5 rounded-2xl bg-slate-950/40 border border-slate-800 flex items-center justify-between">
-              <div className="text-left">
-                <p className="text-[11px] font-semibold text-slate-400">Bootstrapped Superadmin</p>
-                <p className="text-xs font-mono text-emerald-400">admin@tripzobox.com</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                className="px-3 py-1.5 text-xs font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition flex items-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" />
-                Autofill
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Security Notice Footer */}
