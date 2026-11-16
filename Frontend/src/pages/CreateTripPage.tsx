@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   MapPin,
@@ -26,11 +26,13 @@ import {
   X,
   Check,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { vaultApi } from '../lib/api';
 
 type CreateTripStep = 1 | 2 | 3;
 
@@ -83,11 +85,10 @@ export const CreateTripPage: React.FC = () => {
   const [description, setDescription] = useState(
     'Escape to the misty hills of Munnar! This trip is perfect for nature lovers, with scenic views, tea gardens, waterfalls and local food. We will explore the best spots, enjoy some great trekking, and capture amazing memories together.'
   );
-  const [photos, setPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80',
-  ]);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([
     {
       day: 1,
@@ -198,15 +199,57 @@ export const CreateTripPage: React.FC = () => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddPhotoMock = () => {
-    const sampleImages = [
-      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=600&q=80',
-    ];
-    const pick = sampleImages[photos.length % sampleImages.length];
-    setPhotos([...photos, pick]);
-    success('Photo added to trip gallery!', 'Photo Uploaded');
+  const handleFilesUpload = async (fileList: FileList | File[]) => {
+    const rawFiles = Array.from(fileList);
+    const imageFiles = rawFiles.filter((f) => f.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      if (rawFiles.length > 0) {
+        error('Please select valid image files (JPG, PNG, WebP, etc.)', 'Invalid File');
+      }
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    const newUploadedUrls: string[] = [];
+
+    for (const file of imageFiles) {
+      // 1. Try uploading to backend /api/v1/upload via vaultApi.uploadFile
+      try {
+        const uploadRes = await vaultApi.uploadFile(file);
+        if (uploadRes && uploadRes.url) {
+          newUploadedUrls.push(uploadRes.url);
+          continue;
+        }
+      } catch (err) {
+        console.warn('Backend upload failed, falling back to local file preview:', err);
+      }
+
+      // 2. Fallback to FileReader Data URL if offline or network failure
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newUploadedUrls.push(dataUrl);
+      } catch (readErr) {
+        console.error('Failed to read image file:', readErr);
+      }
+    }
+
+    setIsUploadingPhoto(false);
+
+    if (newUploadedUrls.length > 0) {
+      setPhotos((prev) => [...prev, ...newUploadedUrls]);
+      success(
+        `${newUploadedUrls.length} photo${newUploadedUrls.length > 1 ? 's' : ''} added to trip gallery!`,
+        'Photos Uploaded'
+      );
+    } else {
+      error('Could not process selected image(s). Please try again.', 'Upload Failed');
+    }
   };
 
   const handlePublishTrip = () => {
@@ -931,19 +974,85 @@ export const CreateTripPage: React.FC = () => {
 
             {/* Add Photos */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-2">Add Photos</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-gray-700">Add Photos</label>
+                {photos.length > 0 && (
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    {photos.length} photo{photos.length > 1 ? 's' : ''} uploaded
+                  </span>
+                )}
+              </div>
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleFilesUpload(e.target.files);
+                  }
+                  e.target.value = '';
+                }}
+              />
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* Upload box */}
-                <button
-                  type="button"
-                  onClick={handleAddPhotoMock}
-                  className="h-28 sm:h-32 border-2 border-dashed border-gray-200 hover:border-primary/50 hover:bg-emerald-50/20 rounded-2xl flex flex-col items-center justify-center p-3 text-center transition-colors cursor-pointer group"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingPhoto(true);
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingPhoto(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingPhoto(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDraggingPhoto(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleFilesUpload(e.dataTransfer.files);
+                    }
+                  }}
+                  className={`h-28 sm:h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group ${
+                    isDraggingPhoto
+                      ? 'border-primary bg-emerald-50/60 scale-[1.01]'
+                      : 'border-gray-200 hover:border-primary/50 hover:bg-emerald-50/20'
+                  }`}
                 >
-                  <Upload className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors mb-1.5" />
-                  <span className="text-[11px] text-gray-500 group-hover:text-gray-700 leading-tight">
-                    Click to upload photos or drag and drop
-                  </span>
-                </button>
+                  {isUploadingPhoto ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                      <span className="text-[11px] font-semibold text-primary">Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors mb-1.5" />
+                      <span className="text-[11px] text-gray-500 group-hover:text-gray-700 leading-tight">
+                        Click to upload photos or drag and drop
+                      </span>
+                    </>
+                  )}
+                </div>
 
                 {/* Thumbnails with delete button */}
                 {photos.map((url, idx) => (
@@ -956,24 +1065,37 @@ export const CreateTripPage: React.FC = () => {
                       alt={`Trip photo ${idx + 1}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
+                    {idx === 0 && (
+                      <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/70 text-[9px] font-bold text-white tracking-wide">
+                        Cover
+                      </span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleRemovePhoto(idx)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemovePhoto(idx);
+                      }}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors cursor-pointer"
+                      title="Remove photo"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
 
-                {/* Add more button */}
-                <button
-                  type="button"
-                  onClick={handleAddPhotoMock}
-                  className="h-28 sm:h-32 border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/20 rounded-2xl flex items-center justify-center text-gray-400 hover:text-primary transition-colors cursor-pointer"
-                >
-                  <Plus className="w-6 h-6" />
-                </button>
+                {/* Add more button (when photos already exist) */}
+                {photos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="h-28 sm:h-32 border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/20 rounded-2xl flex items-center justify-center text-gray-400 hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
+                    title="Add more photos"
+                  >
+                    <Plus className="w-6 h-6" />
+                  </button>
+                )}
               </div>
             </div>
 

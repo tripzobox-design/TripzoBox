@@ -253,48 +253,58 @@ export const ForgotPasswordPage: React.FC = () => {
 
               <div className="space-y-3.5 sm:space-y-4">
                 {/* Option 1: Reset with Email */}
-                <button
-                  type="button"
-                  onClick={() => setStep('email-input')}
-                  className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-3.5 sm:gap-4">
-                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
+                {authConfig.emailOtp && (
+                  <button
+                    type="button"
+                    onClick={() => setStep('email-input')}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3.5 sm:gap-4">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
+                          Reset with Email
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          We'll send a reset link to your email address.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
-                        Reset with Email
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        We'll send a reset link to your email address.
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                </button>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
+                )}
 
                 {/* Option 2: Reset with Phone Number */}
-                <button
-                  type="button"
-                  onClick={() => setStep('phone-input')}
-                  className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-3.5 sm:gap-4">
-                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Smartphone className="w-5 h-5 sm:w-6 sm:h-6" />
+                {authConfig.smsOtp && (
+                  <button
+                    type="button"
+                    onClick={() => setStep('phone-input')}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3.5 sm:gap-4">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Smartphone className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
+                          Reset with Phone Number
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          We'll send an OTP to your registered number.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
-                        Reset with Phone Number
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        We'll send an OTP to your registered number.
-                      </p>
-                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </button>
+                )}
+
+                {!authConfig.emailOtp && !authConfig.smsOtp && (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                    Password recovery via email and SMS is currently disabled by administrator. Please contact support.
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                </button>
+                )}
               </div>
 
               {/* Bottom Back Button */}
