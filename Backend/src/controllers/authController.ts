@@ -27,6 +27,8 @@ import {
   buildFrontendErrorRedirect,
   buildFrontendSuccessRedirect,
   buildFrontendReauthSuccessRedirect,
+  createOAuthHandoffCode,
+  consumeOAuthHandoffCode,
 } from '../services/googleOAuthService.js';
 import { config } from '../config/env.js';
 
@@ -1191,6 +1193,7 @@ export const googleOAuthCallback = async (req: Request, res: Response): Promise<
         res,
         {
           user: user.toSafeUser(),
+          token,
           redirect: redirectPath,
         },
         'Successfully signed in with Google'
@@ -1198,7 +1201,8 @@ export const googleOAuthCallback = async (req: Request, res: Response): Promise<
       return;
     }
 
-    res.redirect(buildFrontendSuccessRedirect(redirectPath));
+    const handoffCode = await createOAuthHandoffCode(user.id, redirectPath);
+    res.redirect(buildFrontendSuccessRedirect(redirectPath, handoffCode));
   } catch (error: any) {
     if (error instanceof GoogleOAuthError) {
       respondCallbackError(error.code, error.message, error.statusCode);
@@ -1209,6 +1213,66 @@ export const googleOAuthCallback = async (req: Request, res: Response): Promise<
       'Unable to complete Google authentication. Please try again.',
       500
     );
+  }
+};
+
+export const exchangeGoogleOAuthCode = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawCode = req.body?.code;
+    if (typeof rawCode !== 'string' || !rawCode.trim()) {
+      sendError(res, 'Authorization code is required', 400);
+      return;
+    }
+
+    const authSettings = await getAuthSettings();
+    if (!authSettings.googleAuth?.enabled) {
+      sendError(res, 'Google Sign-In is currently disabled by administrator.', 403);
+      return;
+    }
+
+    const { userId, redirectPath } = await consumeOAuthHandoffCode(rawCode);
+
+    const user = await User.findOne({
+      $or: [
+        { id: userId },
+        { _id: userId.match(/^[0-9a-fA-F]{24}$/) ? userId : null },
+      ],
+      isDeleted: false,
+    });
+
+    if (!user) {
+      sendError(res, 'Authenticated user account not found or deactivated', 404);
+      return;
+    }
+
+    if (user.isSuspended) {
+      sendError(res, 'Your TripzoBox account has been suspended. Please contact support.', 403);
+      return;
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
+    });
+
+    setAuthCookie(res, token);
+
+    sendSuccess(
+      res,
+      {
+        token,
+        user: user.toSafeUser(),
+        redirect: redirectPath || '/app/dashboard',
+      },
+      'Successfully authenticated with Google'
+    );
+  } catch (error: any) {
+    const statusCode = error instanceof GoogleOAuthError ? error.statusCode : 400;
+    const message = error.message || 'Failed to exchange authorization code';
+    sendError(res, message, statusCode);
   }
 };
 

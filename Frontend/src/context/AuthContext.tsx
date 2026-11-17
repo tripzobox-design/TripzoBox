@@ -9,7 +9,7 @@ interface AuthContextType {
   login: (email?: string, password?: string) => Promise<boolean>;
   signup: (name: string, email: string, password?: string) => Promise<boolean>;
   oauthLogin: (provider: 'Google' | 'Apple', email: string, name?: string, avatarUrl?: string) => Promise<boolean>;
-  completeOAuthSession: () => Promise<User>;
+  completeOAuthSession: (directUser?: User) => Promise<User>;
   logout: () => void;
   clearDeletedAccountSession: (deletedUserId?: string) => void;
   updateProfile: (updatedData: Partial<User>) => Promise<void> | void;
@@ -205,13 +205,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(sanitizeUser(defaultUser));
   };
 
-  const completeOAuthSession = async (): Promise<User> => {
-    localStorage.removeItem('tripzobox_token');
-    const serverUser = await authApi.getMe();
-    if (!serverUser) {
-      throw new Error('Unable to load authenticated Google account.');
+  const completeOAuthSession = async (directUser?: User): Promise<User> => {
+    let resolvedUser: User;
+    if (directUser) {
+      resolvedUser = directUser;
+    } else {
+      const serverUser = await authApi.getMe();
+      if (!serverUser) {
+        throw new Error('Unable to load authenticated Google account.');
+      }
+      resolvedUser = serverUser;
     }
-    const sanitized = sanitizeUser(serverUser);
+    const sanitized = sanitizeUser(resolvedUser);
     setUser(sanitized);
     setIsLoggedIn(true);
     localStorage.setItem('tripzobox_user', JSON.stringify(sanitized));

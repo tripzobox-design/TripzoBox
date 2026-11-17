@@ -72,7 +72,7 @@ export const setAuthCookie = (res: Response, token: string): void => {
   res.cookie(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? 'strict' : 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
@@ -83,7 +83,7 @@ export const clearAuthCookie = (res: Response): void => {
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? 'strict' : 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   });
 };
@@ -93,7 +93,7 @@ export const setReauthCookie = (res: Response, reauthToken: string): void => {
   res.cookie(REAUTH_COOKIE_NAME, reauthToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
     maxAge: 15 * 60 * 1000, // 15 minutes
   });
@@ -104,7 +104,7 @@ export const clearReauthCookie = (res: Response): void => {
   res.clearCookie(REAUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   });
 };

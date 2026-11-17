@@ -15,6 +15,7 @@ import {
   checkVerificationStatus,
   oauthLogin,
   syncSession,
+  exchangeGoogleOAuthCode,
 } from '../controllers/authController.js';
 import {
   requestEmailChangeOtp,
@@ -87,6 +88,7 @@ router.post('/email/verify-otp', requireAuth, verifyEmailChangeOtp);
 
 // OAuth / Social Login
 router.post('/oauth', authLimiter, oauthLogin);
+router.post('/google/exchange', authLimiter, exchangeGoogleOAuthCode);
 
 // Session Synchronization (Ensures valid token in dev mode & across clients)
 router.post('/session-sync', syncSession);

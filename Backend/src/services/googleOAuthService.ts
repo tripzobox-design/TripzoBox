@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { CodeChallengeMethod, OAuth2Client } from 'google-auth-library';
 import { config } from '../config/env.js';
 import { User, IUser } from '../models/User.js';
+import { OAuthHandoffCode } from '../models/OAuthHandoffCode.js';
 
 export const GOOGLE_OAUTH_STATE_COOKIE = 'tripzobox_oauth_state';
 
@@ -83,13 +84,86 @@ export const buildFrontendErrorRedirect = (
   return `${frontendUrl}/login?${params.toString()}`;
 };
 
-export const buildFrontendSuccessRedirect = (redirectPath: string): string => {
+export const buildFrontendSuccessRedirect = (redirectPath: string, handoffCode?: string): string => {
   const { frontendUrl } = getGoogleOAuthConfig();
   const params = new URLSearchParams({
     oauth: 'google',
     redirect: sanitizeRedirectPath(redirectPath),
   });
+  if (handoffCode) {
+    params.set('code', handoffCode);
+  }
   return `${frontendUrl}/login?${params.toString()}`;
+};
+
+export const createOAuthHandoffCode = async (
+  userId: string,
+  redirectPath?: string
+): Promise<string> => {
+  if (!userId) {
+    throw new GoogleOAuthError('invalid_user', 'Cannot create handoff code without a valid user ID', 500);
+  }
+
+  // Generate 32 bytes cryptographically secure random code
+  const rawCode = crypto.randomBytes(32).toString('base64url');
+  const codeHash = crypto.createHash('sha256').update(rawCode).digest('hex');
+  const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds lifetime
+
+  await OAuthHandoffCode.create({
+    codeHash,
+    userId,
+    redirectPath: sanitizeRedirectPath(redirectPath || '/app/dashboard'),
+    expiresAt,
+    consumed: false,
+  });
+
+  return rawCode;
+};
+
+export const consumeOAuthHandoffCode = async (
+  rawCode: string
+): Promise<{ userId: string; redirectPath: string }> => {
+  if (!rawCode || typeof rawCode !== 'string' || rawCode.trim().length < 20) {
+    throw new GoogleOAuthError('invalid_code', 'Invalid authorization code format.', 400);
+  }
+
+  const cleanCode = rawCode.trim();
+  const codeHash = crypto.createHash('sha256').update(cleanCode).digest('hex');
+
+  // Atomically check and consume in a single query
+  const handoff = await OAuthHandoffCode.findOneAndUpdate(
+    {
+      codeHash,
+      consumed: false,
+      expiresAt: { $gt: new Date() },
+    },
+    {
+      $set: {
+        consumed: true,
+        consumedAt: new Date(),
+      },
+    },
+    { new: false }
+  );
+
+  if (!handoff) {
+    const existing = await OAuthHandoffCode.findOne({ codeHash });
+    if (!existing) {
+      throw new GoogleOAuthError('invalid_code', 'Invalid or unrecognized authorization code.', 400);
+    }
+    if (existing.consumed) {
+      throw new GoogleOAuthError('code_already_used', 'This authorization code has already been consumed. Please sign in again.', 400);
+    }
+    if (existing.expiresAt <= new Date()) {
+      throw new GoogleOAuthError('code_expired', 'This authorization code has expired. Please sign in again.', 400);
+    }
+    throw new GoogleOAuthError('invalid_code', 'Unable to process authorization code.', 400);
+  }
+
+  return {
+    userId: handoff.userId,
+    redirectPath: sanitizeRedirectPath(handoff.redirectPath || '/app/dashboard'),
+  };
 };
 
 export const buildFrontendReauthSuccessRedirect = (redirectPath: string): string => {

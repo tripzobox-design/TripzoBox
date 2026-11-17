@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { googleOAuthInit, googleOAuthCallback } from '../controllers/authController.js';
+import {
+  googleOAuthInit,
+  googleOAuthCallback,
+  exchangeGoogleOAuthCode,
+} from '../controllers/authController.js';
 import { rateLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
@@ -12,6 +16,7 @@ const googleOAuthLimiter = rateLimiter({
 
 router.get('/google', googleOAuthLimiter, googleOAuthInit);
 router.get('/google/callback', googleOAuthLimiter, googleOAuthCallback);
+router.post('/google/exchange', googleOAuthLimiter, exchangeGoogleOAuthCode);
 
 export default router;
 

@@ -228,6 +228,14 @@ export const authApi = {
     return res.data;
   },
 
+  exchangeGoogleCode: async (code: string) => {
+    const res = await api.post<{ token: string; user: any; redirect: string }>('/auth/google/exchange', { code });
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
+  },
+
   getGoogleAuthUrl: (redirectPath?: string): string => {
     const origin = getBackendOrigin();
     const params = new URLSearchParams();

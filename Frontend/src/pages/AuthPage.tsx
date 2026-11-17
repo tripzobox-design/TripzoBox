@@ -297,22 +297,41 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     }
 
     if (oauthStatus === 'google') {
+      const handoffCode = searchParams.get('code');
       setOauthError('');
       setIsLoading(true);
-      const target = getRedirectTarget();
-      completeOAuthSession()
-        .then((authenticatedUser) => {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.5 },
-          });
-          success(
-            `Welcome${authenticatedUser?.name ? `, ${authenticatedUser.name}` : ''}! Signed in with Google.`,
-            'Google Login Successful'
-          );
-          navigate(target, { replace: true });
-        })
+      const fallbackTarget = getRedirectTarget();
+
+      const finishGoogleLogin = async () => {
+        let destination = fallbackTarget;
+        let authenticatedUser: any;
+
+        if (handoffCode) {
+          // Exchange temporary single-use code for JWT session & profile
+          const exchangeData = await authApi.exchangeGoogleCode(handoffCode);
+          if (exchangeData?.redirect) {
+            destination = exchangeData.redirect;
+          }
+          authenticatedUser = await completeOAuthSession(exchangeData?.user);
+        } else {
+          // Fallback if session already exists or direct cookie available
+          authenticatedUser = await completeOAuthSession();
+        }
+
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.5 },
+        });
+        success(
+          `Welcome${authenticatedUser?.name ? `, ${authenticatedUser.name}` : ''}! Signed in with Google.`,
+          'Google Login Successful'
+        );
+        // Strips temporary code and redirects immediately to target dashboard
+        navigate(destination, { replace: true });
+      };
+
+      finishGoogleLogin()
         .catch((err: any) => {
           const msg = err?.message || 'Unable to verify Google login session. Please try again.';
           setOauthError(msg);

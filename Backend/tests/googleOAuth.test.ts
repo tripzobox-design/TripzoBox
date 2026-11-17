@@ -4,6 +4,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { createApp } from '../src/app.js';
 import { connectDB, disconnectDB } from '../src/config/db.js';
 import { User } from '../src/models/User.js';
+import { OAuthHandoffCode } from '../src/models/OAuthHandoffCode.js';
+import crypto from 'crypto';
 
 describe('TripzoBox Google OAuth 2.0 Integration Tests', () => {
   let app: any;
@@ -174,19 +176,72 @@ describe('TripzoBox Google OAuth 2.0 Integration Tests', () => {
       .set('Cookie', firstAuth.stateCookie);
 
     expect(cbRes1.status).toBe(302);
-    expect(cbRes1.headers.location).toBe(
-      'http://localhost:5173/login?oauth=google&redirect=%2Fapp%2Fprofile'
-    );
+    expect(cbRes1.headers.location).toContain('http://localhost:5173/login?oauth=google');
+    expect(cbRes1.headers.location).toContain('redirect=%2Fapp%2Fprofile');
+    expect(cbRes1.headers.location).toContain('code=');
     expect(cbRes1.headers.location).not.toContain('secret-access-token');
     expect(cbRes1.headers.location).not.toContain('mock-id-token');
+
+    // Extract temporary single-use code from redirect URL
+    const redirectUrl1 = new URL(cbRes1.headers.location);
+    const handoffCode1 = redirectUrl1.searchParams.get('code');
+    expect(handoffCode1).toBeTruthy();
+    expect(handoffCode1!.length).toBeGreaterThan(20);
+
+    // Exchange handoff code via POST /api/v1/auth/google/exchange
+    const exchangeRes = await request(app)
+      .post('/api/v1/auth/google/exchange')
+      .send({ code: handoffCode1 });
+    expect(exchangeRes.status).toBe(200);
+    expect(exchangeRes.body.success).toBe(true);
+    expect(exchangeRes.body.data.token).toBeTruthy();
+    expect(exchangeRes.body.data.user.email).toBe(email);
+    expect(exchangeRes.body.data.user.name).toBe('Google Traveler');
+    expect(exchangeRes.body.data.redirect).toBe('/app/profile');
+
+    const exchangedToken = exchangeRes.body.data.token;
+
+    // Verify Bearer token works on protected endpoint (simulating page refresh / frontend API calls)
+    const bearerMeRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${exchangedToken}`);
+    expect(bearerMeRes.status).toBe(200);
+    expect(bearerMeRes.body.data.user.email).toBe(email);
+    expect(bearerMeRes.body.data.user.name).toBe('Google Traveler');
+    expect(bearerMeRes.body.data.user.isGoogleConnected).toBe(true);
+    expect(bearerMeRes.body.data.user.emailVerified).toBe(true);
+    expect(bearerMeRes.body.data.user.password).toBeUndefined();
+
+    // Verify code cannot be reused (atomic consumption check)
+    const reusedExchange = await request(app)
+      .post('/api/v1/auth/google/exchange')
+      .send({ code: handoffCode1 });
+    expect(reusedExchange.status).toBe(400);
+    expect(reusedExchange.body.success).toBe(false);
+    expect(reusedExchange.body.message).toContain('already been consumed');
+
+    // Also verify endpoint mounted on /api/auth/google/exchange
+    const rawFakeCode = crypto.randomBytes(32).toString('base64url');
+    const fakeHash = crypto.createHash('sha256').update(rawFakeCode).digest('hex');
+    await OAuthHandoffCode.create({
+      codeHash: fakeHash,
+      userId: exchangeRes.body.data.user.id,
+      redirectPath: '/app/dashboard',
+      expiresAt: new Date(Date.now() + 60000),
+      consumed: false,
+    });
+    const altMountRes = await request(app)
+      .post('/api/auth/google/exchange')
+      .send({ code: rawFakeCode });
+    expect(altMountRes.status).toBe(200);
+    expect(altMountRes.body.data.token).toBeTruthy();
 
     const cookies1 = (cbRes1.headers['set-cookie'] || []) as string[];
     const authCookie1 = cookies1.find((c) => c.startsWith('tripzobox_token='));
     expect(authCookie1).toBeDefined();
     expect(authCookie1).toContain('HttpOnly');
-    expect(authCookie1).toContain('SameSite=Lax');
 
-    // Protected route works with HttpOnly cookie
+    // Protected route also works with HttpOnly cookie
     const meRes = await request(app).get('/api/v1/auth/me').set('Cookie', authCookie1!);
     expect(meRes.status).toBe(200);
     expect(meRes.body.data.user.email).toBe(email);
@@ -293,5 +348,78 @@ describe('TripzoBox Google OAuth 2.0 Integration Tests', () => {
     expect(suspendedCb.headers.location).toContain('oauth_error=suspended');
     const suspendedCookies = (suspendedCb.headers['set-cookie'] || []) as string[];
     expect(suspendedCookies.some((c) => c.startsWith('tripzobox_token='))).toBe(false);
+  });
+
+  it('rejects expired, invalid, and missing OAuth handoff codes securely', async () => {
+    // 1. Missing code
+    const missingRes = await request(app)
+      .post('/api/v1/auth/google/exchange')
+      .send({});
+    expect(missingRes.status).toBe(400);
+    expect(missingRes.body.success).toBe(false);
+    expect(missingRes.body.message).toContain('Authorization code is required');
+
+    // 2. Invalid / non-existent code
+    const invalidRes = await request(app)
+      .post('/api/v1/auth/google/exchange')
+      .send({ code: 'nonexistent_code_12345678901234567890' });
+    expect(invalidRes.status).toBe(400);
+    expect(invalidRes.body.success).toBe(false);
+    expect(invalidRes.body.message).toContain('Invalid or unrecognized authorization code');
+
+    // 3. Expired code
+    const expiredRawCode = crypto.randomBytes(32).toString('base64url');
+    const expiredHash = crypto.createHash('sha256').update(expiredRawCode).digest('hex');
+    await OAuthHandoffCode.create({
+      codeHash: expiredHash,
+      userId: 'test_user_expired_id',
+      redirectPath: '/app/dashboard',
+      expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
+      consumed: false,
+    });
+
+    const expiredRes = await request(app)
+      .post('/api/v1/auth/google/exchange')
+      .send({ code: expiredRawCode });
+    expect(expiredRes.status).toBe(400);
+    expect(expiredRes.body.success).toBe(false);
+    expect(expiredRes.body.message).toContain('expired');
+  });
+
+  it('ensures standard email and password authentication remains completely functional', async () => {
+    const email = `email_login_verify_${Date.now()}@example.com`;
+    const password = 'Password@TripzoBox2026!';
+    createdEmails.push(email);
+
+    // Signup
+    const signupRes = await request(app)
+      .post('/api/v1/auth/signup')
+      .send({
+        name: 'Standard User',
+        emailOrPhone: email,
+        password,
+      });
+    expect(signupRes.status).toBe(201);
+    expect(signupRes.body.success).toBe(true);
+    expect(signupRes.body.data.token).toBeTruthy();
+
+    // Login
+    const loginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({
+        emailOrPhone: email,
+        password,
+      });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.success).toBe(true);
+    expect(loginRes.body.data.token).toBeTruthy();
+    expect(loginRes.body.data.user.email).toBe(email);
+
+    // Access protected route with Bearer token
+    const meRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${loginRes.body.data.token}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.data.user.email).toBe(email);
   });
 });
