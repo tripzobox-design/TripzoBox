@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/User.js';
 import { OTPVerification } from '../models/OTPVerification.js';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -362,6 +363,7 @@ export const requestReset = async (
     }
 
     let smsResult: any = null;
+    let resetToken: string | undefined;
     if (isPhoneMethod) {
       const targetPhone = user.phone || clean;
       smsResult = await sendPhoneOtp(targetPhone, otp).catch((err) => {
@@ -370,7 +372,12 @@ export const requestReset = async (
       });
     } else if (user.email || clean.includes('@')) {
       const targetEmail = user.email || clean;
-      await sendPasswordResetEmail(targetEmail, user.name || 'Traveler', otp).catch((err) => {
+      resetToken = jwt.sign(
+        { purpose: 'password_reset', email: targetEmail, userId: user.id },
+        config.jwtSecret,
+        { expiresIn: '15m' }
+      );
+      await sendPasswordResetEmail(targetEmail, user.name || 'Traveler', otp, resetToken).catch((err) => {
         console.warn('[PasswordReset] Email dispatch note:', err.message);
       });
     }
@@ -385,12 +392,14 @@ export const requestReset = async (
         smsStatus: smsResult?.status,
         isSimulated: smsResult ? smsResult.isSimulated : false,
         providerError: smsResult?.error,
-        // In development mode, provide OTP in debug payload for effortless testing
-        ...(process.env.NODE_ENV !== 'production' && { devOtp: otp }),
+        // In development mode, provide OTP and token in debug payload for effortless testing
+        ...(process.env.NODE_ENV !== 'production' && { devOtp: otp, resetToken }),
       },
-      smsResult?.status === 'DELIVERED'
-        ? `Verification code delivered via Fast2SMS to ${user.phone || clean}`
-        : `Verification code sent via ${isPhoneMethod ? 'SMS' : 'email'}`
+      isPhoneMethod
+        ? (smsResult?.status === 'DELIVERED'
+          ? `Verification code delivered via Fast2SMS to ${user.phone || clean}`
+          : 'Verification code sent via SMS')
+        : `Password reset link sent to ${user.email || clean}`
     );
   } catch (error) {
     next(error);
@@ -521,7 +530,7 @@ export const resetPassword = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { emailOrPhone, newPassword } = req.body;
+    const { emailOrPhone, newPassword, token } = req.body;
     const clean = emailOrPhone.trim().toLowerCase();
 
     const user = await User.findOne({
@@ -533,8 +542,34 @@ export const resetPassword = async (
       return;
     }
 
+    if (token && typeof token === 'string') {
+      try {
+        const decoded: any = jwt.verify(token, config.jwtSecret);
+        if (
+          decoded.purpose === 'password_reset' &&
+          decoded.email &&
+          decoded.email.toLowerCase() !== clean &&
+          decoded.userId !== user.id
+        ) {
+          sendError(res, 'Invalid password reset token for this account', 400);
+          return;
+        }
+      } catch {
+        // Fallback: If not a signed JWT, check in-memory OTP verification
+        const stored = otpStore.get(clean);
+        if (stored && stored.otp !== token && stored.expiresAt >= Date.now()) {
+          sendError(res, 'Invalid or expired password reset token', 400);
+          return;
+        }
+      }
+    }
+
     user.password = newPassword;
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await user.save();
+
+    // Invalidate OTP store for this user
+    otpStore.delete(clean);
 
     sendSuccess(res, null, 'Password reset successfully. You can now log in.');
   } catch (error) {

@@ -235,10 +235,12 @@ export const sendVerificationEmail = async (
 export const sendPasswordResetEmail = async (
   email: string,
   name: string,
-  otp: string
+  otp: string,
+  token?: string
 ): Promise<EmailResult> => {
-  const resetLink = `${config.frontendUrl}/forgot-password?step=phone-otp&email=${encodeURIComponent(email)}`;
   const cleanEmail = email.toLowerCase().trim();
+  const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : `&otp=${encodeURIComponent(otp)}`;
+  const resetLink = `${config.frontendUrl}/forgot-password?step=new-password&email=${encodeURIComponent(cleanEmail)}${tokenQuery}`;
   const realTransporter = getRealTransporter();
 
   if (realTransporter) {
@@ -248,21 +250,31 @@ export const sendPasswordResetEmail = async (
         to: email,
         subject: 'Reset your TripzoBox password 🔐',
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e5e7eb; border-radius: 20px; background-color: #ffffff;">
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 36px 28px; border: 1px solid #e5e7eb; border-radius: 20px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div style="margin-bottom: 24px;">
-              <h1 style="color: #064e3b; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Tripzobox</h1>
-              <p style="color: #059669; font-size: 13px; font-weight: 600; margin: 0;">Password Reset Request</p>
+              <h1 style="color: #064e3b; font-size: 26px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.5px;">Tripzobox</h1>
+              <p style="color: #059669; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">Password Reset Request</p>
             </div>
-            <h2 style="color: #111827; font-size: 20px; margin-bottom: 12px;">Your Password Reset Code</h2>
+            <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin-bottom: 12px;">Reset Your Password</h2>
             <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-              Hi <strong>${name}</strong>, we received a request to reset your password. Use the 6-digit verification code below:
+              Hi <strong>${name}</strong>, we received a request to reset your TripzoBox password. Click the button below to choose your new password:
             </p>
-            <div style="margin: 24px 0; background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 18px; border-radius: 12px; text-align: center;">
-              <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #047857;">${otp}</span>
+            <div style="margin: 32px 0; text-align: center;">
+              <a href="${resetLink}" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 36px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);">
+                Create New Password
+              </a>
             </div>
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin-top: 24px;">
-              This code will expire in 15 minutes. If you did not request a password reset, please ignore this email.
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin-bottom: 8px; text-align: center;">
+              Or copy and paste this link into your browser:
             </p>
+            <p style="text-align: center; margin-bottom: 24px;">
+              <a href="${resetLink}" style="color: #059669; word-break: break-all; font-size: 12px;">${resetLink}</a>
+            </p>
+            <div style="border-top: 1px solid #f3f4f6; padding-top: 20px; margin-top: 24px;">
+              <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0;">
+                This link will expire in 15 minutes. If you did not request a password reset, please ignore this email and your password will remain unchanged.
+              </p>
+            </div>
           </div>
         `,
       });
@@ -270,6 +282,7 @@ export const sendPasswordResetEmail = async (
       return {
         sent: true,
         isSimulated: false,
+        verificationLink: resetLink,
       };
     } catch (err: any) {
       console.error('[Email Service] Failed to send password reset email:', err.message);
@@ -288,7 +301,9 @@ export const sendPasswordResetEmail = async (
         html: `
           <div style="padding: 24px; font-family: sans-serif;">
             <h2>TripzoBox Password Reset</h2>
-            <p>Your OTP Code is: <strong>${otp}</strong></p>
+            <p>Hi ${name}, click below to reset your password:</p>
+            <p><a href="${resetLink}" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Create New Password</a></p>
+            <p>Or use link: ${resetLink}</p>
           </div>
         `,
       });
@@ -301,21 +316,30 @@ export const sendPasswordResetEmail = async (
     // Ignore ethereal test errors
   }
 
+  latestEmailDispatches.set(cleanEmail, {
+    email: cleanEmail,
+    verificationLink: resetLink,
+    previewUrl,
+    isSimulated: !realTransporter,
+    sentAt: Date.now(),
+    otp,
+  });
+
   console.log(`\n======================================================`);
-  console.log(`[Email Service (Simulated Local Mode)]`);
+  console.log(`[Email Service (${realTransporter ? 'Live SMTP' : 'Simulated Local Mode'})]`);
   console.log(`To: ${email} (${name})`);
   console.log(`Subject: Reset your TripzoBox password 🔐`);
-  console.log(`OTP Code: ${otp}`);
+  console.log(`Reset Link: ${resetLink}`);
   if (previewUrl) {
     console.log(`Ethereal Preview URL: ${previewUrl}`);
   }
-  console.log(`Note: To send real emails to Gmail, configure SMTP_HOST, SMTP_USER, SMTP_PASS in Backend/.env`);
   console.log(`======================================================\n`);
 
   return {
     sent: true,
-    isSimulated: true,
+    isSimulated: !realTransporter,
     previewUrl,
+    verificationLink: resetLink,
   };
 };
 

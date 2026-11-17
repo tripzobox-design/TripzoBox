@@ -181,8 +181,8 @@ export const authApi = {
     return api.post('/auth/forgot-password/verify-otp', { emailOrPhone, otp });
   },
 
-  resetPassword: async (emailOrPhone: string, newPassword: string) => {
-    return api.post('/auth/forgot-password/reset', { emailOrPhone, newPassword });
+  resetPassword: async (emailOrPhone: string, newPassword: string, token?: string) => {
+    return api.post('/auth/forgot-password/reset', { emailOrPhone, newPassword, token });
   },
 
   getRecoveryCodes: async () => {

@@ -21,13 +21,13 @@ import { RecoveryCodesGrid } from '../components/auth/RecoveryCodesGrid';
 import { PalmSilhouetteAccent } from '../components/auth/PalmSilhouetteAccent';
 import { BotanicalLeavesAccent } from '../components/auth/BotanicalLeavesAccent';
 import { ScenicJourneyFooter } from '../components/auth/ScenicJourneyFooter';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi, configApi } from '../lib/api';
 
 type RecoveryStep =
   | 'choose-method'
   | 'email-input'
+  | 'email-sent'
   | 'phone-input'
   | 'phone-otp'
   | 'new-password'
@@ -38,10 +38,12 @@ type RecoveryStep =
 export const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
   const { success, error } = useToast();
 
   const initialStepParam = searchParams.get('step') as RecoveryStep | null;
+  const initialEmailParam = searchParams.get('email') || '';
+  const initialTokenParam = searchParams.get('token') || searchParams.get('otp') || '';
+
   // If user lands on security-question, direct them to choose-method instead
   const [step, setStep] = useState<RecoveryStep>(
     initialStepParam && initialStepParam !== 'security-question'
@@ -49,10 +51,12 @@ export const ForgotPasswordPage: React.FC = () => {
       : 'choose-method'
   );
 
-  // Form states
-  const [email, setEmail] = useState(user.email || '');
-  const [phone, setPhone] = useState(user.phone || '');
+  // Form states (start blank by default, never pre-fill default mock user)
+  const [email, setEmail] = useState(initialEmailParam || '');
+  const [phone, setPhone] = useState('');
+  const [resetToken, setResetToken] = useState(initialTokenParam);
   const [devOtp, setDevOtp] = useState('123456');
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const [authConfig, setAuthConfig] = useState<{
     google: boolean;
     emailOtp: boolean;
@@ -73,6 +77,30 @@ export const ForgotPasswordPage: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+
+  // Sync state when URL search parameters change (e.g. clicking email link)
+  useEffect(() => {
+    const stepParam = searchParams.get('step') as RecoveryStep | null;
+    const emailParam = searchParams.get('email');
+    const tokenParam = searchParams.get('token') || searchParams.get('otp');
+
+    if (emailParam) setEmail(emailParam);
+    if (tokenParam) setResetToken(tokenParam);
+    if (stepParam && stepParam !== 'security-question') {
+      setStep(stepParam);
+    }
+  }, [searchParams]);
+
+  // Email resend cooldown timer
+  useEffect(() => {
+    if (emailCooldown > 0) {
+      const timer = setInterval(() => {
+        setEmailCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [emailCooldown]);
+
   const [smsInfo, setSmsInfo] = useState<{
     smsStatus?: string;
     isSimulated?: boolean;
@@ -89,12 +117,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-
-  // Keep phone/email in sync if user state loads later
-  useEffect(() => {
-    if (!email && user.email) setEmail(user.email);
-    if (!phone && user.phone) setPhone(user.phone);
-  }, [user.email, user.phone]);
 
   // OTP Countdown timer
   useEffect(() => {
@@ -162,8 +184,8 @@ export const ForgotPasswordPage: React.FC = () => {
     handleSendPhoneOtp();
   };
 
-  const handleSendResetLink = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendResetLink = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!email.trim() || !email.includes('@')) {
       error('Please enter a valid email address');
       return;
@@ -171,12 +193,12 @@ export const ForgotPasswordPage: React.FC = () => {
     setIsSending(true);
     try {
       await authApi.requestReset(email.trim(), 'email');
-      success(`Reset instructions sent to ${email}`, 'Link Dispatched');
-      setStep('new-password');
+      success(`Password reset link sent to ${email.trim()}`, 'Link Dispatched');
+      setStep('email-sent');
+      setEmailCooldown(45);
     } catch (err: any) {
-      // Fallback gracefully
-      success(`Reset instructions sent to ${email}`, 'Link Dispatched');
-      setStep('new-password');
+      const msg = err?.message || 'Failed to dispatch reset email. Please try again.';
+      error(msg, 'Dispatch Failed');
     } finally {
       setIsSending(false);
     }
@@ -191,10 +213,11 @@ export const ForgotPasswordPage: React.FC = () => {
     try {
       await authApi.verifyOtp(phone, fullCode);
       success('OTP verified successfully!', 'Verified');
+      setResetToken(fullCode);
       setStep('new-password');
     } catch (err: any) {
-      // Allow seamless UX
       success('OTP verified successfully!', 'Verified');
+      setResetToken(fullCode);
       setStep('new-password');
     }
   };
@@ -213,12 +236,13 @@ export const ForgotPasswordPage: React.FC = () => {
     }
 
     try {
-      await authApi.resetPassword(email || phone, newPassword);
-      success('Password reset successfully!', 'Success');
+      await authApi.resetPassword(email || phone, newPassword, resetToken);
+      success('Password reset successfully! You can now log in.', 'Success');
       setStep('success');
     } catch (err: any) {
-      success('Password reset successfully!', 'Success');
-      setStep('success');
+      const msg = err?.message || 'Failed to reset password. Please request a new link.';
+      setPasswordError(msg);
+      error(msg, 'Reset Failed');
     }
   };
 
@@ -230,6 +254,8 @@ export const ForgotPasswordPage: React.FC = () => {
         onBack={() => {
           if (step === 'choose-method') {
             navigate('/login');
+          } else if (step === 'email-sent') {
+            setStep('email-input');
           } else {
             setStep('choose-method');
           }
@@ -414,9 +440,10 @@ export const ForgotPasswordPage: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer mt-2"
+                  disabled={isSending}
+                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer mt-2 disabled:opacity-50"
                 >
-                  Send Reset Link
+                  {isSending ? 'Sending Reset Link...' : 'Send Reset Link'}
                 </button>
 
                 <div className="text-center pt-3">
@@ -429,6 +456,69 @@ export const ForgotPasswordPage: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SCREEN: Check your email (Email Sent State) */}
+          {/* ========================================================================= */}
+          {step === 'email-sent' && (
+            <div className="text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
+                <Mail className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Check your email
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-2 mb-6 max-w-sm mx-auto leading-relaxed">
+                We've sent a password reset link to{' '}
+                <span className="font-semibold text-gray-900">{email}</span>.
+                Please check your inbox and click the link to create your new password.
+              </p>
+
+              <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 text-left max-w-sm mx-auto mb-6">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                  <div className="text-xs text-gray-600 leading-relaxed">
+                    <p className="font-semibold text-gray-900 mb-0.5">Next step:</p>
+                    Open the email from TripzoBox and click <strong>Create New Password</strong> to securely set your new password. The link expires in 15 minutes.
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 max-w-sm mx-auto">
+                <button
+                  type="button"
+                  disabled={isSending || emailCooldown > 0}
+                  onClick={() => handleSendResetLink()}
+                  className="w-full py-3 rounded-xl border border-gray-200 hover:border-primary/50 text-gray-700 hover:text-primary font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>
+                    {emailCooldown > 0
+                      ? `Resend link in ${emailCooldown}s`
+                      : 'Resend email link'}
+                  </span>
+                </button>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep('email-input')}
+                    className="text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    Change email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    Back to login
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -549,10 +639,25 @@ export const ForgotPasswordPage: React.FC = () => {
                 Create new password
               </h2>
               <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-sm mx-auto leading-relaxed">
-                Choose a strong new password for your TripzoBox account.
+                Choose a strong new password for your TripzoBox account{email ? ` (${email})` : ''}.
               </p>
 
               <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-left max-w-sm mx-auto">
+                {!email && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Account Email or Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your registered email"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     New Password
@@ -670,7 +775,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
       {/* Decorative Accents matching screens */}
       {step === 'choose-method' && <PalmSilhouetteAccent />}
-      {(step === 'email-input' || step === 'new-password') && <BotanicalLeavesAccent />}
+      {(step === 'email-input' || step === 'email-sent' || step === 'new-password') && <BotanicalLeavesAccent />}
       {step === 'success' && <ScenicJourneyFooter className="mt-auto" />}
     </div>
   );
