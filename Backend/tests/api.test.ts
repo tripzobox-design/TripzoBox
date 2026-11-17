@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { createApp } from '../src/app.js';
@@ -21,11 +21,22 @@ describe('TripzoBox Backend API Integration Tests', () => {
   });
 
   describe('Health Checks', () => {
-    it('GET /health returns healthy status', async () => {
+    it('GET /health returns healthy status and connected database state', async () => {
       const res = await request(app).get('/health');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('healthy');
+      expect(res.body.data.database).toBe('connected');
+    });
+
+    it('GET /health returns 503 when database is disconnected or connecting', async () => {
+      const readyStateSpy = vi.spyOn(mongoose.connection, 'readyState', 'get').mockReturnValue(0);
+      const res = await request(app).get('/health');
+      expect(res.status).toBe(503);
+      expect(res.body.success).toBe(false);
+      expect(res.body.data.status).toBe('degraded');
+      expect(res.body.data.database).toBe('disconnected');
+      readyStateSpy.mockRestore();
     });
 
     it('GET /api/v1/health returns API operational status', async () => {

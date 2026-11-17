@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import mongoose from 'mongoose';
 import { config } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { sendSuccess, sendError } from './utils/response.js';
@@ -92,9 +93,39 @@ export const createApp = (): Express => {
   // Serve static uploaded files
   app.use('/uploads', express.static(config.uploadDir));
 
-  // Health check endpoint
+  // Health check endpoint (Readiness: requires active database connection)
   app.get('/health', (req: Request, res: Response) => {
-    sendSuccess(res, { status: 'healthy', timestamp: new Date().toISOString() }, 'TripzoBox API Server OK');
+    const isDbConnected = mongoose.connection.readyState === 1;
+    const dbStatusMap: Record<number, string> = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting',
+    };
+    const databaseStatus = dbStatusMap[mongoose.connection.readyState] || 'unknown';
+
+    if (!isDbConnected) {
+      res.status(503).json({
+        success: false,
+        message: 'TripzoBox API Server Degraded - Database not ready',
+        data: {
+          status: 'degraded',
+          database: databaseStatus,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return;
+    }
+
+    sendSuccess(
+      res,
+      {
+        status: 'healthy',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+      },
+      'TripzoBox API Server OK'
+    );
   });
 
   // SEO Endpoints for crawlers querying API root

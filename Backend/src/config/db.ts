@@ -10,7 +10,7 @@ export const connectDB = async (): Promise<typeof mongoose> => {
     return conn;
   } catch (error) {
     console.error('[MongoDB] Connection error:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
