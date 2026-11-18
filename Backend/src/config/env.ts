@@ -11,10 +11,16 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'tripzobox_jwt_dev_secret_key_secure_2026_super_safe',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   cookieSecret: process.env.COOKIE_SECRET || 'tripzobox_cookie_secret_dev_2026',
-  frontendUrl: process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl:
+    process.env.FRONTEND_ORIGIN ||
+    process.env.FRONTEND_URL ||
+    (process.env.NODE_ENV === 'production' ? 'https://tripzobox.com' : 'http://localhost:5173'),
   adminUrl: process.env.ADMIN_ORIGIN || process.env.ADMIN_URL || 'http://localhost:5174',
   uploadDir: path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads'),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10),
+  brevoApiKey: (process.env.BREVO_API_KEY || '').trim(),
+  emailFrom: (process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@tripzobox.com').trim(),
+  emailFromName: (process.env.EMAIL_FROM_NAME || 'TripzoBox').trim(),
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
   smtpSecure: process.env.SMTP_SECURE === 'true',
@@ -38,6 +44,13 @@ export const validateEnv = (): void => {
     }
     if (!process.env.MONGODB_URI) {
       throw new Error('MONGODB_URI is required in production');
+    }
+    const hasBrevo = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim());
+    const hasSmtp = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+    if (!hasBrevo && !hasSmtp) {
+      console.warn(
+        '[Config Warning] Production is missing BREVO_API_KEY (or SMTP_USER/SMTP_PASS). Transactional email delivery requires BREVO_API_KEY in Render.'
+      );
     }
   }
 };

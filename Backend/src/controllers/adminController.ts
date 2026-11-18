@@ -2594,16 +2594,26 @@ export const getSmsEmailStatus = async (
     };
 
     const isSmtpConfigured = Boolean(smtpUser && smtpPass);
+    const isBrevoConfigured = Boolean(config.brevoApiKey);
+    const isEmailConfigured = isBrevoConfigured || isSmtpConfigured;
     const isFast2SmsConfigured = Boolean(fast2SmsKey && fast2SmsKey.length > 10);
 
     sendSuccess(res, {
       emailService: {
-        provider: smtpHost.includes('gmail') ? 'Gmail SMTP (Nodemailer)' : 'Custom SMTP',
-        host: smtpHost,
-        user: smtpUser ? `${smtpUser.split('@')[0]}@${smtpUser.split('@')[1]}` : 'Not Configured',
-        passwordMasked: maskKey(smtpPass),
-        status: isSmtpConfigured ? 'CONNECTED' : 'NOT_CONFIGURED',
-        isConfigured: isSmtpConfigured,
+        provider: isBrevoConfigured
+          ? 'Brevo HTTPS Transactional API'
+          : smtpHost.includes('gmail')
+          ? 'Gmail SMTP (Nodemailer)'
+          : 'Custom SMTP',
+        host: isBrevoConfigured ? 'api.brevo.com' : smtpHost,
+        user: isBrevoConfigured
+          ? config.emailFrom
+          : smtpUser
+          ? `${smtpUser.split('@')[0]}@${smtpUser.split('@')[1]}`
+          : 'Not Configured',
+        passwordMasked: isBrevoConfigured ? maskKey(config.brevoApiKey) : maskKey(smtpPass),
+        status: isEmailConfigured ? 'CONNECTED' : 'NOT_CONFIGURED',
+        isConfigured: isEmailConfigured,
       },
       smsService: {
         provider: 'Fast2SMS Gateway',

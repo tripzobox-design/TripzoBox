@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import { config, validateEnv } from './config/env.js';
+import { verifyEmailService } from './services/emailService.js';
 
 const startServer = async (): Promise<void> => {
   try {
@@ -52,6 +53,10 @@ const startServer = async (): Promise<void> => {
     // Connect to MongoDB after HTTP listener starts
     try {
       await connectDB();
+      // Verify email service (Brevo HTTPS API or SMTP) asynchronously on startup
+      verifyEmailService().catch((emailErr) => {
+        console.warn('[Server] Email service verification note:', emailErr.message);
+      });
     } catch (dbError) {
       console.error('[Server] Initial MongoDB connection failed:', dbError);
       if (!isShuttingDown) {

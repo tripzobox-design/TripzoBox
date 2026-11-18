@@ -377,9 +377,15 @@ export const requestReset = async (
         config.jwtSecret,
         { expiresIn: '15m' }
       );
-      await sendPasswordResetEmail(targetEmail, user.name || 'Traveler', otp, resetToken).catch((err) => {
-        console.warn('[PasswordReset] Email dispatch note:', err.message);
-      });
+      try {
+        await sendPasswordResetEmail(targetEmail, user.name || 'Traveler', otp, resetToken);
+      } catch (err: any) {
+        console.error('[PasswordReset] Email dispatch error:', err.message);
+        if (config.nodeEnv === 'production') {
+          sendError(res, 'Unable to send password reset email. Please try again later or contact support.', 500);
+          return;
+        }
+      }
     }
 
     sendSuccess(
