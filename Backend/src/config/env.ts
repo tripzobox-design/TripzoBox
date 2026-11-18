@@ -4,9 +4,13 @@ import path from 'path';
 // Load .env
 dotenv.config();
 
+const isProduction =
+  (process.env.NODE_ENV || '').trim().toLowerCase() === 'production' ||
+  process.env.RENDER === 'true';
+
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv: (process.env.NODE_ENV || (process.env.RENDER === 'true' ? 'production' : 'development')).trim().toLowerCase(),
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/tripzobox',
   jwtSecret: process.env.JWT_SECRET || 'tripzobox_jwt_dev_secret_key_secure_2026_super_safe',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
@@ -14,11 +18,16 @@ export const config = {
   frontendUrl:
     process.env.FRONTEND_ORIGIN ||
     process.env.FRONTEND_URL ||
-    (process.env.NODE_ENV === 'production' ? 'https://tripzobox.com' : 'http://localhost:5173'),
+    (isProduction ? 'https://tripzobox.com' : 'http://localhost:5173'),
   adminUrl: process.env.ADMIN_ORIGIN || process.env.ADMIN_URL || 'http://localhost:5174',
   uploadDir: path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads'),
   maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10),
-  brevoApiKey: (process.env.BREVO_API_KEY || '').trim(),
+  brevoApiKey: (
+    process.env.BREVO_API_KEY ||
+    process.env.BREVO_KEY ||
+    process.env.SENDINBLUE_API_KEY ||
+    ''
+  ).trim(),
   emailFrom: (process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@tripzobox.com').trim(),
   emailFromName: (process.env.EMAIL_FROM_NAME || 'TripzoBox').trim(),
   smtpHost: process.env.SMTP_HOST || '',

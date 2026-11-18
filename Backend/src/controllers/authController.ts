@@ -381,10 +381,8 @@ export const requestReset = async (
         await sendPasswordResetEmail(targetEmail, user.name || 'Traveler', otp, resetToken);
       } catch (err: any) {
         console.error('[PasswordReset] Email dispatch error:', err.message);
-        if (config.nodeEnv === 'production') {
-          sendError(res, 'Unable to send password reset email. Please try again later or contact support.', 500);
-          return;
-        }
+        sendError(res, 'Unable to send password reset email. Please try again later or contact support.', 500);
+        return;
       }
     }
 
@@ -396,10 +394,10 @@ export const requestReset = async (
         phone: user.phone || (!clean.includes('@') ? clean : undefined),
         email: user.email || (clean.includes('@') ? clean : undefined),
         smsStatus: smsResult?.status,
-        isSimulated: smsResult ? smsResult.isSimulated : false,
+        isSimulated: isPhoneMethod ? (smsResult ? smsResult.isSimulated : false) : false,
         providerError: smsResult?.error,
-        // In development mode, provide OTP and token in debug payload for effortless testing
-        ...(process.env.NODE_ENV !== 'production' && { devOtp: otp, resetToken }),
+        // In local development mode only, provide OTP and token in debug payload for effortless testing
+        ...(config.nodeEnv !== 'production' && process.env.RENDER !== 'true' && { devOtp: otp, resetToken }),
       },
       isPhoneMethod
         ? (smsResult?.status === 'DELIVERED'
@@ -693,17 +691,19 @@ export const resendVerificationEmail = async (
       rawEmailOtp
     );
 
+    const isProductionEnv = config.nodeEnv === 'production' || process.env.RENDER === 'true';
+
     sendSuccess(
       res,
       {
         email: user?.email || targetEmail,
-        isSimulated: emailResult.isSimulated,
-        verificationLink: emailResult.verificationLink,
-        previewUrl: emailResult.previewUrl,
+        isSimulated: isProductionEnv ? false : emailResult.isSimulated,
+        verificationLink: !isProductionEnv ? emailResult.verificationLink : undefined,
+        previewUrl: !isProductionEnv ? emailResult.previewUrl : undefined,
         hasSmtpConfigured: !emailResult.isSimulated,
-        devOtp: rawEmailOtp,
+        devOtp: !isProductionEnv ? rawEmailOtp : undefined,
       },
-      emailResult.isSimulated
+      emailResult.isSimulated && !isProductionEnv
         ? 'Verification code generated (development mode).'
         : `A verification code and link has been sent to ${user?.email || targetEmail}`
     );
@@ -738,14 +738,15 @@ export const checkVerificationStatus = async (
     }
 
     const dispatch = latestEmailDispatches.get(email);
-    const hasSmtpConfigured = !!(config.smtpUser && config.smtpPass);
+    const isEmailConfigured = !!(config.brevoApiKey || (config.smtpUser && config.smtpPass));
+    const isProductionEnv = config.nodeEnv === 'production' || process.env.RENDER === 'true';
 
     sendSuccess(res, {
       emailVerified: !!user.emailVerified,
-      hasSmtpConfigured,
-      isSimulated: dispatch?.isSimulated ?? !hasSmtpConfigured,
-      verificationLink: dispatch?.verificationLink,
-      previewUrl: dispatch?.previewUrl,
+      hasSmtpConfigured: isEmailConfigured,
+      isSimulated: isProductionEnv ? false : (dispatch?.isSimulated ?? !isEmailConfigured),
+      verificationLink: !isProductionEnv ? dispatch?.verificationLink : undefined,
+      previewUrl: !isProductionEnv ? dispatch?.previewUrl : undefined,
     });
   } catch (error) {
     next(error);

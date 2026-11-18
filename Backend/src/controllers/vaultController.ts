@@ -16,6 +16,7 @@ import {
 } from '../models/VaultSettings.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { config } from '../config/env.js';
 
 export const getDocuments = async (
   req: AuthRequest,
@@ -785,7 +786,7 @@ export const requestDocumentOtp = async (
         expiresInSeconds: 600,
         resendCooldownSeconds: 60,
         dispatchStatus,
-        ...(process.env.NODE_ENV !== 'production' && { devOtp: rawOtp }),
+        ...(config.nodeEnv !== 'production' && process.env.RENDER !== 'true' && { devOtp: rawOtp }),
       },
       `Verification code sent to your registered ${channel === 'phone' ? 'phone number' : 'email address'}`
     );

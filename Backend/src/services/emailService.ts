@@ -72,7 +72,7 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;');
 
 const getEtherealTransporter = async (): Promise<Transporter | null> => {
-  if (config.nodeEnv === 'production') return null;
+  if (config.nodeEnv === 'production' || process.env.RENDER === 'true') return null;
   if (etherealTransporter) return etherealTransporter;
   if (isCreatingEthereal) return null;
   try {
@@ -269,7 +269,7 @@ export const dispatchTransactionalEmail = async (
 ): Promise<EmailResult> => {
   const cleanEmail = params.to.toLowerCase().trim();
   const masked = maskEmail(cleanEmail);
-  const isProduction = config.nodeEnv === 'production';
+  const isProduction = config.nodeEnv === 'production' || process.env.RENDER === 'true';
 
   // 1. Primary Production Delivery: Brevo HTTPS API
   if (config.brevoApiKey) {
@@ -352,6 +352,9 @@ export const dispatchTransactionalEmail = async (
   }
 
   // 4. Simulated / Ethereal Test in development only
+  if (isProduction) {
+    throw new Error('Email delivery unavailable: Simulated email mode is strictly forbidden in production.');
+  }
   let previewUrl: string | undefined;
   try {
     const ethereal = await getEtherealTransporter();
@@ -494,7 +497,6 @@ export const sendPasswordResetEmail = async (
     html,
     emailType: 'Password reset',
     otp,
-    verificationLink: resetLink,
   });
 };
 

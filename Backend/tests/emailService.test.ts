@@ -402,5 +402,84 @@ describe('TripzoBox Production Email Delivery (Brevo HTTPS API & SMTP) Suite', (
       expect(res.body.success).toBe(false);
       expect(res.body.message).toContain('Unable to send password reset email');
     });
+
+    it('returns HTTP 500 when credentials are missing in production', async () => {
+      config.nodeEnv = 'production';
+      config.brevoApiKey = '';
+      config.smtpUser = '';
+      config.smtpPass = '';
+
+      const res = await request(app)
+        .post('/api/v1/auth/forgot-password/request')
+        .send({
+          emailOrPhone: testUserEmail,
+          method: 'email',
+        });
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Unable to send password reset email');
+    });
+
+    it('never leaks devOtp, resetToken, or full reset URLs in production API response or logs', async () => {
+      config.nodeEnv = 'production';
+      config.brevoApiKey = 'xkeysib-prod-key';
+      config.smtpUser = '';
+      config.smtpPass = '';
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ messageId: '<brevo-no-leak-msg>' }),
+        } as Response;
+      });
+
+      const res = await request(app)
+        .post('/api/v1/auth/forgot-password/request')
+        .send({
+          emailOrPhone: testUserEmail,
+          method: 'email',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.devOtp).toBeUndefined();
+      expect(res.body.data.resetToken).toBeUndefined();
+      expect(res.body.data.isSimulated).toBe(false);
+
+      const logs = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logs).not.toContain('step=new-password');
+      expect(logs).not.toContain('token=');
+      expect(logs).toContain('a***6@tripzobox.com');
+    });
+
+    it('enforces production safeguards when RENDER=true even if NODE_ENV is unset', async () => {
+      config.nodeEnv = 'development';
+      const origRender = process.env.RENDER;
+      process.env.RENDER = 'true';
+      config.brevoApiKey = '';
+      config.smtpUser = '';
+      config.smtpPass = '';
+
+      try {
+        const res = await request(app)
+          .post('/api/v1/auth/forgot-password/request')
+          .send({
+            emailOrPhone: testUserEmail,
+            method: 'email',
+          });
+
+        expect(res.status).toBe(500);
+        expect(res.body.success).toBe(false);
+      } finally {
+        if (origRender === undefined) {
+          delete process.env.RENDER;
+        } else {
+          process.env.RENDER = origRender;
+        }
+      }
+    });
   });
 });

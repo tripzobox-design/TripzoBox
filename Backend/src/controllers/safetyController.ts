@@ -16,6 +16,7 @@ import { getAuthSettings } from '../services/authSettingsService.js';
 import { identityVerificationService } from '../services/identityVerificationService.js';
 import { sendVerificationEmail } from '../services/emailService.js';
 import { signToken, setAuthCookie } from '../utils/token.js';
+import { config } from '../config/env.js';
 
 // ============================================================================
 // 1. MOBILE PHONE OTP VERIFICATION
@@ -321,18 +322,20 @@ export const requestEmailChangeOtp = async (
       rawOtp
     );
 
+    const isProductionEnv = config.nodeEnv === 'production' || process.env.RENDER === 'true';
+
     sendSuccess(
       res,
       {
         email: rawEmail,
         expiresInSeconds: 900,
         resendCooldownSeconds: 60,
-        isSimulated: emailResult.isSimulated,
-        previewUrl: emailResult.previewUrl,
+        isSimulated: isProductionEnv ? false : emailResult.isSimulated,
+        previewUrl: !isProductionEnv ? emailResult.previewUrl : undefined,
         hasSmtpConfigured: !emailResult.isSimulated,
-        ...(process.env.NODE_ENV !== 'production' && { devOtp: rawOtp }),
+        ...(!isProductionEnv && { devOtp: rawOtp }),
       },
-      emailResult.isSimulated
+      emailResult.isSimulated && !isProductionEnv
         ? `Verification code generated for ${rawEmail} (development mode)`
         : `A 6-digit verification code has been sent to ${rawEmail}`
     );
