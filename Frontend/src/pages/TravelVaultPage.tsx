@@ -322,9 +322,7 @@ export const TravelVaultPage: React.FC = () => {
   const [inlineShareContacts, setInlineShareContacts] = useState<TripzoBoxVaultContact[]>([]);
   const [inlineContactSearch, setInlineContactSearch] = useState('');
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
-  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string>(
-    'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
-  );
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string>('');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [uploadedFileMime, setUploadedFileMime] = useState<string>('');
   const [savingDocBusy, setSavingDocBusy] = useState(false);
@@ -421,25 +419,7 @@ export const TravelVaultPage: React.FC = () => {
     setSelectedUploadFile(null);
     setUploadedFileName('');
     setUploadedFileMime('');
-    if (catName === 'Passport') {
-      setUploadedPreviewUrl(
-        'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
-      );
-    } else if (catName === 'ID Card') {
-      setUploadedPreviewUrl(
-        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'
-      );
-    } else if (catName === 'Tickets & Bookings') {
-      setUploadedPreviewUrl(
-        'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=600&q=80'
-      );
-    } else if (catName === 'Insurance') {
-      setUploadedPreviewUrl(
-        'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80'
-      );
-    } else {
-      setUploadedPreviewUrl('');
-    }
+    setUploadedPreviewUrl('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

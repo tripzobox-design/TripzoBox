@@ -10,11 +10,8 @@ import { EmergencyAssistanceModal } from '../components/safety/EmergencyAssistan
 
 export const MessagesPage: React.FC = () => {
   const { user, isLoggedIn } = useAuth();
-  const isDemoUser = user?.id === 'user_mubarak';
-  const [threads, setThreads] = useState<ChatThread[]>(isDemoUser ? mockChatThreads : []);
-  const [activeThreadId, setActiveThreadId] = useState<string>(
-    isDemoUser && mockChatThreads[0] ? mockChatThreads[0].id : ''
-  );
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string>('');
   const [messageText, setMessageText] = useState('');
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [threadQuery, setThreadQuery] = useState('');
@@ -31,28 +28,21 @@ export const MessagesPage: React.FC = () => {
       return;
     }
 
-    if (!isDemoUser) {
-      setThreads([]);
-      setActiveThreadId('');
-    }
-
     messagesApi
       .getThreads()
       .then((serverThreads) => {
         if (!active || !Array.isArray(serverThreads)) return;
-        if (!isDemoUser || serverThreads.length > 0) {
-          setThreads(serverThreads);
-          setActiveThreadId((prev) =>
-            serverThreads.some((t: any) => t.id === prev) ? prev : serverThreads[0]?.id || ''
-          );
-        }
+        setThreads(serverThreads);
+        setActiveThreadId((prev) =>
+          serverThreads.some((t: any) => t.id === prev) ? prev : serverThreads[0]?.id || ''
+        );
       })
       .catch(() => {});
 
     return () => {
       active = false;
     };
-  }, [isLoggedIn, user?.id, isDemoUser]);
+  }, [isLoggedIn, user?.id]);
 
   const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0];
 

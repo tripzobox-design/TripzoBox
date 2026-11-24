@@ -15,36 +15,11 @@ interface DiaryContextType {
   getStoryBySlug: (slug: string) => Story | undefined;
 }
 
-const DEMO_USER_ID = 'user_mubarak';
-
 const scopedDiaryKey = (userId?: string): string =>
-  userId && userId !== DEMO_USER_ID
-    ? `tripzobox_diary_entries:${userId}`
-    : 'tripzobox_diary_entries';
-
-const loadDemoEntries = (): DiaryEntry[] => {
-  const saved = localStorage.getItem('tripzobox_diary_entries');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      const existingIds = new Set(parsed.map((e: DiaryEntry) => e.id));
-      const newEntries = mockDiaryEntries.filter((m) => !existingIds.has(m.id));
-      if (newEntries.length > 0) {
-        const merged = [...parsed, ...newEntries];
-        localStorage.setItem('tripzobox_diary_entries', JSON.stringify(merged));
-        return merged;
-      }
-      return parsed;
-    } catch {
-      return mockDiaryEntries;
-    }
-  }
-  return mockDiaryEntries;
-};
+  userId ? `tripzobox_diary_entries:${userId}` : 'tripzobox_diary_entries';
 
 const loadScopedEntries = (userId?: string): DiaryEntry[] => {
   if (!userId) return [];
-  if (userId === DEMO_USER_ID) return loadDemoEntries();
   try {
     const saved = localStorage.getItem(scopedDiaryKey(userId));
     return saved ? (JSON.parse(saved) as DiaryEntry[]) : [];
@@ -94,9 +69,7 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .getEntries()
         .then((serverEntries) => {
           if (active && Array.isArray(serverEntries)) {
-            if (user.id !== DEMO_USER_ID || serverEntries.length > 0) {
-              setEntries(serverEntries);
-            }
+            setEntries(serverEntries);
           }
         })
         .catch(() => {});

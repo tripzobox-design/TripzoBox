@@ -187,7 +187,7 @@ export const AppShell: React.FC = () => {
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-float border border-border py-2 z-40 text-left">
                     <div className="px-4 py-2 border-b border-border/80">
                       <p className="text-xs font-semibold text-text">{user.name}</p>
-                      <p className="text-[11px] text-text-muted truncate">{user.city}, {user.country}</p>
+                      <p className="text-[11px] text-text-muted truncate">{[user.city, user.country].filter(Boolean).join(', ') || 'Location not set'}</p>
                     </div>
 
                     <div className="py-1">
@@ -326,7 +326,20 @@ export const AppShell: React.FC = () => {
           <span>Diary</span>
         </NavLink>
 
-        {/* Item 5: Profile */}
+        {/* Item 5: Travel Vault */}
+        <NavLink
+          to="/app/vault"
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
+              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
+            }`
+          }
+        >
+          <Shield className="w-5 h-5" />
+          <span>Travel Vault</span>
+        </NavLink>
+
+        {/* Item 6: Profile */}
         <NavLink
           to="/app/profile"
           className={({ isActive }) =>

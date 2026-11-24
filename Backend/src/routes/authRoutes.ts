@@ -90,7 +90,7 @@ router.post('/email/verify-otp', requireAuth, verifyEmailChangeOtp);
 router.post('/oauth', authLimiter, oauthLogin);
 router.post('/google/exchange', authLimiter, exchangeGoogleOAuthCode);
 
-// Session Synchronization (Ensures valid token in dev mode & across clients)
+// Session Synchronization endpoint is disabled for security
 router.post('/session-sync', syncSession);
 
 export default router;

@@ -71,10 +71,8 @@ const DEFAULT_OFFLINE_ACCESS: Record<string, boolean> = {
   Other: false,
 };
 
-const DEMO_USER_ID = 'user_mubarak';
-
 const scopedKey = (base: string, userId?: string): string =>
-  userId && userId !== DEMO_USER_ID ? `${base}:${userId}` : base;
+  userId ? `${base}:${userId}` : base;
 
 const readJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -85,59 +83,28 @@ const readJson = <T,>(key: string, fallback: T): T => {
   }
 };
 
-const loadDemoDocuments = (): VaultDocument[] => {
-  const saved = localStorage.getItem('tripzobox_vault_documents');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      const existingIds = new Set(parsed.map((d: VaultDocument) => d.id));
-      const newDocs = mockDocuments.filter((m) => !existingIds.has(m.id));
-      if (newDocs.length > 0) {
-        const merged = [...parsed, ...newDocs];
-        localStorage.setItem('tripzobox_vault_documents', JSON.stringify(merged));
-        return merged;
-      }
-      return parsed;
-    } catch {
-      return mockDocuments;
-    }
-  }
-  return mockDocuments;
-};
-
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
 
 export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoggedIn } = useAuth();
-  const isDemoOfflineUser = isLoggedIn && user?.id === DEMO_USER_ID;
 
   const [documents, setDocuments] = useState<VaultDocument[]>(() => {
     if (!isLoggedIn) return [];
-    if (user?.id === DEMO_USER_ID) return loadDemoDocuments();
     return readJson<VaultDocument[]>(scopedKey('tripzobox_vault_documents', user?.id), []);
   });
 
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>(() => {
     if (!isLoggedIn) return [];
-    if (user?.id === DEMO_USER_ID) {
-      return readJson<EmergencyContact[]>('tripzobox_emergency_contacts', mockEmergencyContacts);
-    }
     return readJson<EmergencyContact[]>(scopedKey('tripzobox_emergency_contacts', user?.id), []);
   });
 
   const [trustedContacts, setTrustedContacts] = useState<TrustedContact[]>(() => {
     if (!isLoggedIn) return [];
-    if (user?.id === DEMO_USER_ID) {
-      return readJson<TrustedContact[]>('tripzobox_trusted_contacts', mockTrustedContacts);
-    }
     return readJson<TrustedContact[]>(scopedKey('tripzobox_trusted_contacts', user?.id), []);
   });
 
   const [sharedAccessRecords, setSharedAccessRecords] = useState<SharedAccessRecord[]>(() => {
     if (!isLoggedIn) return [];
-    if (user?.id === DEMO_USER_ID) {
-      return readJson<SharedAccessRecord[]>('tripzobox_shared_access', mockSharedAccessRecords);
-    }
     return readJson<SharedAccessRecord[]>(scopedKey('tripzobox_shared_access', user?.id), []);
   });
 
@@ -145,13 +112,6 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [emergencyAccessConfig, setEmergencyAccessConfig] = useState<EmergencyAccessConfig>(() => {
     if (!isLoggedIn) return DEFAULT_EMERGENCY_CONFIG;
-    if (user?.id === DEMO_USER_ID) {
-      return readJson<EmergencyAccessConfig>('tripzobox_emergency_config', {
-        includedDocTypes: ['Passport', 'Insurance'],
-        primaryContact: '+91 98765 43210',
-        secondaryContact: '+91 98765 43211',
-      });
-    }
     return readJson<EmergencyAccessConfig>(
       scopedKey('tripzobox_emergency_config', user?.id),
       DEFAULT_EMERGENCY_CONFIG
@@ -188,35 +148,16 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    if (user.id === DEMO_USER_ID) {
-      setDocuments(loadDemoDocuments());
-      setEmergencyContacts(
-        readJson<EmergencyContact[]>('tripzobox_emergency_contacts', mockEmergencyContacts)
-      );
-      setTrustedContacts(
-        readJson<TrustedContact[]>('tripzobox_trusted_contacts', mockTrustedContacts)
-      );
-      setSharedAccessRecords(
-        readJson<SharedAccessRecord[]>('tripzobox_shared_access', mockSharedAccessRecords)
-      );
-      setEmergencyAccessConfig(
-        readJson<EmergencyAccessConfig>('tripzobox_emergency_config', {
-          includedDocTypes: ['Passport', 'Insurance'],
-          primaryContact: '+91 98765 43210',
-          secondaryContact: '+91 98765 43211',
-        })
-      );
-    } else {
-      setDocuments(readJson<VaultDocument[]>(scopedKey('tripzobox_vault_documents', user.id), []));
-      setEmergencyContacts(
-        readJson<EmergencyContact[]>(scopedKey('tripzobox_emergency_contacts', user.id), [])
-      );
-      setTrustedContacts(
-        readJson<TrustedContact[]>(scopedKey('tripzobox_trusted_contacts', user.id), [])
-      );
-      setSharedAccessRecords(
-        readJson<SharedAccessRecord[]>(scopedKey('tripzobox_shared_access', user.id), [])
-      );
+    setDocuments(readJson<VaultDocument[]>(scopedKey('tripzobox_vault_documents', user.id), []));
+    setEmergencyContacts(
+      readJson<EmergencyContact[]>(scopedKey('tripzobox_emergency_contacts', user.id), [])
+    );
+    setTrustedContacts(
+      readJson<TrustedContact[]>(scopedKey('tripzobox_trusted_contacts', user.id), [])
+    );
+    setSharedAccessRecords(
+      readJson<SharedAccessRecord[]>(scopedKey('tripzobox_shared_access', user.id), [])
+    );
       setEmergencyAccessConfig(
         readJson<EmergencyAccessConfig>(
           scopedKey('tripzobox_emergency_config', user.id),
@@ -235,15 +176,12 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           DEFAULT_OFFLINE_ACCESS
         )
       );
-    }
 
     vaultApi
       .getDocuments()
       .then((serverDocs) => {
         if (active && Array.isArray(serverDocs)) {
-          if (user.id !== DEMO_USER_ID || serverDocs.length > 0) {
-            setDocuments(serverDocs);
-          }
+          setDocuments(serverDocs);
         }
       })
       .catch(() => {});
@@ -252,9 +190,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .getEmergencyContacts()
       .then((serverContacts) => {
         if (active && Array.isArray(serverContacts)) {
-          if (user.id !== DEMO_USER_ID || serverContacts.length > 0) {
-            setEmergencyContacts(serverContacts);
-          }
+          setEmergencyContacts(serverContacts);
         }
       })
       .catch(() => {});
@@ -263,9 +199,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .getTrustedContacts()
       .then((serverTrusted) => {
         if (active && Array.isArray(serverTrusted)) {
-          if (user.id !== DEMO_USER_ID || serverTrusted.length > 0) {
-            setTrustedContacts(serverTrusted);
-          }
+          setTrustedContacts(serverTrusted);
         }
       })
       .catch(() => {});
@@ -274,9 +208,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .getSharedAccess()
       .then((serverShared) => {
         if (active && Array.isArray(serverShared)) {
-          if (user.id !== DEMO_USER_ID || serverShared.length > 0) {
-            setSharedAccessRecords(serverShared);
-          }
+          setSharedAccessRecords(serverShared);
         }
       })
       .catch(() => {});
@@ -586,8 +518,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     vaultApi.updateSecuritySettings(settings).catch(() => {});
   };
 
-  // Preserve unused flag reference if needed
-  void isDemoOfflineUser;
+
 
   return (
     <VaultContext.Provider

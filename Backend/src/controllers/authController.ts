@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { ClientSession } from 'mongoose';
 import { User, IUser } from '../models/User.js';
 import { OTPVerification } from '../models/OTPVerification.js';
+import { ConsumedResetToken } from '../models/ConsumedResetToken.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { runWithTransaction } from '../utils/transaction.js';
 import {
   signToken,
   verifyToken,
@@ -38,8 +42,19 @@ const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 export const signup = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { name, emailOrPhone, password, birthDate, gender, country, travelStyle, travelInterests, avatarUrl } =
-      req.body;
+    const {
+      name,
+      emailOrPhone,
+      password,
+      birthDate,
+      gender,
+      country,
+      travelStyle,
+      travelInterests,
+      avatarUrl,
+      securityQuestion,
+      securityAnswer,
+    } = req.body;
 
     const isEmail = emailOrPhone.includes('@');
     const email = isEmail ? emailOrPhone.toLowerCase().trim() : undefined;
@@ -70,6 +85,23 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
     const usernameBase = (email ? email.split('@')[0] : name).replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const username = `${usernameBase}_${Math.floor(100 + Math.random() * 900)}`;
 
+    let hashedSecurityAnswer: string | undefined;
+    if (securityQuestion && securityAnswer) {
+      const salt = await bcrypt.genSalt(10);
+      hashedSecurityAnswer = await bcrypt.hash(securityAnswer.trim().toLowerCase(), salt);
+    }
+
+    const plainRecoveryCodes: string[] = [];
+    const hashedRecoveryCodes: Array<{ codeHash: string; used: boolean }> = [];
+    for (let i = 0; i < 6; i++) {
+      const seg1 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const seg2 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const code = `${seg1}-${seg2}`;
+      plainRecoveryCodes.push(code);
+      const codeHash = await bcrypt.hash(code, 10);
+      hashedRecoveryCodes.push({ codeHash, used: false });
+    }
+
     const user = new User({
       id: `user_${Date.now()}`,
       name,
@@ -80,9 +112,12 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
       avatarUrl: avatarUrl || '',
       birthDate,
       gender,
-      country: country || 'India',
+      country: country || '',
       travelStyle: travelStyle || 'Solo',
       travelInterests: travelInterests || ['Hiking', 'Nature', 'Photography', 'Food'],
+      securityQuestion: securityQuestion || undefined,
+      securityAnswer: hashedSecurityAnswer,
+      recoveryCodes: hashedRecoveryCodes,
       emailVerified: false,
       phoneVerified: false,
     });
@@ -132,6 +167,7 @@ export const signup = async (req: Request, res: Response, next: NextFunction): P
       {
         token,
         user: user.toSafeUser(),
+        recoveryCodes: plainRecoveryCodes,
         ...(rawEmailOtp && process.env.NODE_ENV !== 'production' && { devOtp: rawEmailOtp }),
       },
       'Account created successfully',
@@ -164,22 +200,29 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
-    if (!user.password && user.isGoogleConnected) {
-      sendError(
-        res,
-        'This account signs in with Google. Please continue with Google or reset your password.',
-        401
-      );
+    // Accounts without a password cannot authenticate via password login
+    if (!user.password) {
+      if (user.isGoogleConnected) {
+        sendError(
+          res,
+          'This account signs in with Google. Please continue with Google or reset your password.',
+          401
+        );
+        return;
+      }
+      sendError(res, 'Invalid credentials.', 401);
       return;
     }
 
-    // Verify password if user has password set
-    if (user.password && password) {
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        sendError(res, 'Invalid password. Please check your credentials.', 401);
-        return;
-      }
+    // Enforce password verification for password-based accounts
+    if (!password) {
+      sendError(res, 'Invalid credentials.', 401);
+      return;
+    }
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      sendError(res, 'Invalid credentials.', 401);
+      return;
     }
 
     const token = signToken({
@@ -292,7 +335,8 @@ export const setSecurityQuestion = async (
 
     const { question, answer } = req.body;
     req.user.securityQuestion = question;
-    req.user.securityAnswer = answer.trim().toLowerCase();
+    const salt = await bcrypt.genSalt(10);
+    req.user.securityAnswer = await bcrypt.hash(answer.trim().toLowerCase(), salt);
     await req.user.save();
 
     sendSuccess(res, null, 'Security question configured successfully');
@@ -320,21 +364,135 @@ export const requestReset = async (
     });
 
     if (!user) {
-      if (process.env.NODE_ENV !== 'production') {
-        const isEmail = clean.includes('@');
-        user = new User({
-          id: `user_${Date.now()}`,
-          name: isEmail ? clean.split('@')[0] : 'Traveler',
-          username: (isEmail ? clean.split('@')[0] : 'traveler') + '_' + Math.floor(100 + Math.random() * 900),
-          email: isEmail ? clean : undefined,
-          phone: !isEmail ? clean : undefined,
-          password: 'Password123!',
-        });
-        await user.save();
-      } else {
-        sendError(res, 'No account found matching this email or phone number', 404);
+      sendError(res, 'No account found matching this email or phone number', 404);
+      return;
+    }
+
+    // Method 1: Security Question recovery
+    if (method === 'security-question') {
+      const { securityAnswer } = req.body;
+      const userWithSec = await User.findById(user._id).select('+securityAnswer');
+      if (!userWithSec || !userWithSec.securityQuestion) {
+        sendError(res, 'No security question configured for this account.', 400);
         return;
       }
+
+      // If user hasn't provided the answer yet, return the question
+      if (!securityAnswer) {
+        sendSuccess(
+          res,
+          {
+            method: 'security-question',
+            question: userWithSec.securityQuestion,
+            emailOrPhone: clean,
+          },
+          'Security question retrieved'
+        );
+        return;
+      }
+
+      // Verify answer (supports both bcrypt hashed and legacy lowercase plaintext)
+      const isMatch = userWithSec.securityAnswer?.startsWith('$2')
+        ? await bcrypt.compare(securityAnswer.trim().toLowerCase(), userWithSec.securityAnswer)
+        : userWithSec.securityAnswer === securityAnswer.trim().toLowerCase();
+
+      if (!isMatch) {
+        sendError(res, 'Incorrect security answer. Please check and try again.', 400);
+        return;
+      }
+
+      // Answer verified! Generate single-use password reset token
+      const jti = crypto.randomUUID();
+      const targetEmail = user.email || clean;
+      const resetToken = jwt.sign(
+        { purpose: 'password_reset', email: targetEmail, userId: user.id, jti, tokenVersion: user.tokenVersion ?? 0 },
+        config.jwtSecret,
+        { expiresIn: '15m' }
+      );
+
+      sendSuccess(
+        res,
+        {
+          method: 'security-question',
+          verified: true,
+          resetToken,
+          emailOrPhone: clean,
+        },
+        'Security question verified. You can now reset your password.'
+      );
+      return;
+    }
+
+    // Method 2: Recovery Code recovery
+    if (method === 'recovery-code') {
+      const { recoveryCode } = req.body;
+      if (!recoveryCode || typeof recoveryCode !== 'string') {
+        sendError(res, 'Please provide your account recovery code.', 400);
+        return;
+      }
+
+      const userWithCodes = await User.findById(user._id).select('+recoveryCodes');
+      const codes: any[] = userWithCodes?.recoveryCodes || [];
+      const cleanInputCode = recoveryCode.trim().toUpperCase();
+
+      let matchedIndex = -1;
+      for (let i = 0; i < codes.length; i++) {
+        const item = codes[i];
+        if (typeof item === 'string') {
+          // Legacy string code
+          if (item.toUpperCase() === cleanInputCode) {
+            matchedIndex = i;
+            break;
+          }
+        } else if (item && typeof item === 'object') {
+          if (!item.used) {
+            const isMatch = item.codeHash?.startsWith('$2')
+              ? await bcrypt.compare(cleanInputCode, item.codeHash)
+              : item.codeHash === cleanInputCode;
+            if (isMatch) {
+              matchedIndex = i;
+              break;
+            }
+          }
+        }
+      }
+
+      if (matchedIndex === -1) {
+        sendError(res, 'Invalid or already used recovery code.', 400);
+        return;
+      }
+
+      // Mark the matched recovery code as used (single-use enforcement)
+      const matchedItem = codes[matchedIndex];
+      if (typeof matchedItem === 'string') {
+        codes.splice(matchedIndex, 1);
+      } else {
+        matchedItem.used = true;
+        matchedItem.usedAt = new Date();
+      }
+      userWithCodes!.markModified('recoveryCodes');
+      await userWithCodes!.save();
+
+      // Recovery code verified! Issue single-use password reset token
+      const jti = crypto.randomUUID();
+      const targetEmail = user.email || clean;
+      const resetToken = jwt.sign(
+        { purpose: 'password_reset', email: targetEmail, userId: user.id, jti, tokenVersion: user.tokenVersion ?? 0 },
+        config.jwtSecret,
+        { expiresIn: '15m' }
+      );
+
+      sendSuccess(
+        res,
+        {
+          method: 'recovery-code',
+          verified: true,
+          resetToken,
+          emailOrPhone: clean,
+        },
+        'Recovery code verified. You can now reset your password.'
+      );
+      return;
     }
 
     // Generate 6 digit OTP
@@ -372,8 +530,9 @@ export const requestReset = async (
       });
     } else if (user.email || clean.includes('@')) {
       const targetEmail = user.email || clean;
+      const jti = crypto.randomUUID();
       resetToken = jwt.sign(
-        { purpose: 'password_reset', email: targetEmail, userId: user.id },
+        { purpose: 'password_reset', email: targetEmail, userId: user.id, jti, tokenVersion: user.tokenVersion ?? 0 },
         config.jwtSecret,
         { expiresIn: '15m' }
       );
@@ -448,84 +607,12 @@ export const verifyOtp = async (
 };
 
 export const syncSession = async (
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): Promise<void> => {
-  try {
-    const { email, phone, name } = req.body;
-    const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanPhone = (phone || '').trim();
-
-    let user = null;
-    if (cleanEmail) {
-      user = await User.findOne({ email: cleanEmail });
-    }
-    if (!user && cleanPhone) {
-      const digits = cleanPhone.replace(/\D/g, '').slice(-10);
-      user = await User.findOne({ phone: new RegExp(digits) });
-    }
-
-    if (!user) {
-      const defaultMubarak = await User.findOne({ id: 'user_mubarak' });
-      if (cleanEmail || cleanPhone) {
-        user = new User({
-          id: `user_${Date.now()}`,
-          name: name || (cleanEmail ? cleanEmail.split('@')[0] : 'Traveler'),
-          username: (cleanEmail ? cleanEmail.split('@')[0] : 'traveler') + '_' + Math.floor(100 + Math.random() * 900),
-          email: cleanEmail || undefined,
-          phone: cleanPhone || undefined,
-          password: 'Password123!',
-          emailVerified: false,
-          phoneVerified: false,
-          role: 'user',
-        });
-        await user.save();
-      } else {
-        user = defaultMubarak;
-      }
-    }
-
-    if (!user || user.isDeleted) {
-      sendError(res, 'Unable to initialize session', 400);
-      return;
-    }
-
-    // Update if phone/email provided
-    let updated = false;
-    if (cleanEmail && user.email !== cleanEmail) {
-      user.email = cleanEmail;
-      updated = true;
-    }
-    if (cleanPhone && user.phone !== cleanPhone) {
-      user.phone = cleanPhone;
-      updated = true;
-    }
-    if (updated) {
-      await user.save();
-    }
-
-    const token = signToken({
-      userId: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      tokenVersion: user.tokenVersion ?? 0,
-    });
-
-    setAuthCookie(res, token);
-
-    sendSuccess(
-      res,
-      {
-        token,
-        user: user.toSafeUser(),
-      },
-      'Session synchronized successfully'
-    );
-  } catch (error) {
-    next(error);
-  }
+  // Endpoint removed for security — unauthenticated session creation is not permitted
+  sendError(res, 'Not found', 404);
 };
 
 export const resetPassword = async (
@@ -546,31 +633,139 @@ export const resetPassword = async (
       return;
     }
 
-    if (token && typeof token === 'string') {
-      try {
-        const decoded: any = jwt.verify(token, config.jwtSecret);
-        if (
-          decoded.purpose === 'password_reset' &&
-          decoded.email &&
-          decoded.email.toLowerCase() !== clean &&
-          decoded.userId !== user.id
-        ) {
-          sendError(res, 'Invalid password reset token for this account', 400);
-          return;
-        }
-      } catch {
-        // Fallback: If not a signed JWT, check in-memory OTP verification
-        const stored = otpStore.get(clean);
-        if (stored && stored.otp !== token && stored.expiresAt >= Date.now()) {
-          sendError(res, 'Invalid or expired password reset token', 400);
-          return;
-        }
-      }
+    // Token is required — reject immediately if missing
+    if (!token || typeof token !== 'string') {
+      sendError(res, 'A valid reset token is required.', 400);
+      return;
     }
 
-    user.password = newPassword;
-    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
-    await user.save();
+    let decodedToken: any;
+    let tokenIdentifier: string;
+    let tokenExpiresAt: Date;
+    try {
+      decodedToken = jwt.verify(token, config.jwtSecret);
+      // Reject if purpose wrong OR either email OR userId doesn't match (|| not &&)
+      if (
+        decodedToken.purpose !== 'password_reset' ||
+        !decodedToken.email ||
+        decodedToken.email.toLowerCase() !== clean ||
+        decodedToken.userId !== user.id
+      ) {
+        sendError(res, 'Invalid password reset token for this account.', 400);
+        return;
+      }
+
+      // Check if user tokenVersion has changed since this token was issued
+      if (decodedToken.tokenVersion !== undefined && decodedToken.tokenVersion !== (user.tokenVersion ?? 0)) {
+        sendError(res, 'This password reset token has already been used.', 400);
+        return;
+      }
+
+      // Enforce single-use across restarts and horizontal instances via persistent MongoDB registry
+      tokenIdentifier = decodedToken.jti || crypto.createHash('sha256').update(token).digest('hex');
+      const alreadyConsumed = await ConsumedResetToken.findOne({ tokenIdentifier });
+      if (alreadyConsumed) {
+        sendError(res, 'This password reset token has already been used.', 400);
+        return;
+      }
+
+      tokenExpiresAt = decodedToken.exp ? new Date(decodedToken.exp * 1000) : new Date(Date.now() + 15 * 60 * 1000);
+    } catch {
+      // JWT invalid, expired, or tampered — always reject
+      sendError(res, 'Invalid or expired password reset token.', 400);
+      return;
+    }
+
+    // Ensure unique security index exists on ConsumedResetToken before critical path
+    try {
+      await ConsumedResetToken.init();
+    } catch (indexErr: any) {
+      console.error('[PasswordReset] Failed to ensure security index on ConsumedResetToken:', indexErr?.message);
+      sendError(res, 'Authentication service temporarily unavailable. Please try again.', 503);
+      return;
+    }
+
+    // Check persistent MongoDB registry for consumed tokens
+    const alreadyConsumed = await ConsumedResetToken.findOne({ tokenIdentifier });
+    if (alreadyConsumed) {
+      sendError(res, 'This password reset token has already been used.', 400);
+      return;
+    }
+
+    // Atomically claim the token and update the user password within a MongoDB transaction
+    // when supported (Atlas replica set), falling back safely with rollback on standalone instances.
+    let tokenConsumedInDb = false;
+    try {
+      await runWithTransaction(async (session: ClientSession | null) => {
+        const opts = session ? { session } : {};
+
+        // 1. Atomically register the consumed token in persistent MongoDB collection
+        await ConsumedResetToken.create(
+          [
+            {
+              tokenIdentifier,
+              userId: user.id,
+              email: clean,
+              expiresAt: tokenExpiresAt,
+              consumedAt: new Date(),
+            },
+          ],
+          opts
+        );
+        tokenConsumedInDb = true;
+
+        // 2. Hash password and atomically update user password + increment tokenVersion
+        // Using conditional matching on expectedTokenVersion prevents race conditions when
+        // multiple reset tokens for the same account are submitted simultaneously.
+        // For expectedTokenVersion === 0, also match legacy records where tokenVersion is missing/null.
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        const expectedTokenVersion =
+          decodedToken.tokenVersion !== undefined ? decodedToken.tokenVersion : (user.tokenVersion ?? 0);
+
+        const versionFilter =
+          expectedTokenVersion === 0
+            ? {
+                $or: [
+                  { tokenVersion: 0 },
+                  { tokenVersion: { $exists: false } },
+                  { tokenVersion: null },
+                ],
+              }
+            : { tokenVersion: expectedTokenVersion };
+
+        const updateResult = await User.updateOne(
+          {
+            _id: user._id,
+            ...versionFilter,
+          },
+          {
+            $set: { password: hashedPassword, mustResetPassword: false },
+            $inc: { tokenVersion: 1 },
+          },
+          opts
+        );
+
+        if (updateResult.matchedCount === 0) {
+          throw new Error('TOKEN_VERSION_MISMATCH');
+        }
+      });
+    } catch (err: any) {
+      if (err?.code === 11000 || (err?.name === 'MongoServerError' && String(err?.message).includes('E11000'))) {
+        sendError(res, 'This password reset token has already been used.', 400);
+        return;
+      }
+      if (err?.message === 'TOKEN_VERSION_MISMATCH') {
+        sendError(res, 'This password reset token has already been used.', 400);
+        return;
+      }
+      // If transactions are not active (standalone) and user update failed after claiming token:
+      if (tokenConsumedInDb) {
+        await ConsumedResetToken.deleteOne({ tokenIdentifier }).catch(() => {});
+      }
+      throw err;
+    }
 
     // Invalidate OTP store for this user
     otpStore.delete(clean);
@@ -592,19 +787,28 @@ export const getRecoveryCodes = async (
       return;
     }
 
-    // If user already has recovery codes, return them, else generate 6 codes
-    let codes = req.user.recoveryCodes;
-    if (!codes || codes.length === 0) {
-      codes = Array.from({ length: 6 }, () => {
-        const seg1 = Math.random().toString(36).substring(2, 6).toUpperCase();
-        const seg2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-        return `${seg1}-${seg2}`;
-      });
-      req.user.recoveryCodes = codes;
-      await req.user.save();
+    const user = await User.findById(req.user._id).select('+recoveryCodes');
+    if (!user) {
+      sendError(res, 'User not found', 404);
+      return;
     }
 
-    sendSuccess(res, { recoveryCodes: codes }, 'Recovery codes retrieved successfully');
+    // Generate fresh cryptographically secure recovery codes
+    const plainCodes: string[] = [];
+    const hashedCodes: Array<{ codeHash: string; used: boolean }> = [];
+    for (let i = 0; i < 6; i++) {
+      const seg1 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const seg2 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const code = `${seg1}-${seg2}`;
+      plainCodes.push(code);
+      const codeHash = await bcrypt.hash(code, 10);
+      hashedCodes.push({ codeHash, used: false });
+    }
+
+    user.recoveryCodes = hashedCodes;
+    await user.save();
+
+    sendSuccess(res, { recoveryCodes: plainCodes }, 'Recovery codes generated successfully');
   } catch (error) {
     next(error);
   }

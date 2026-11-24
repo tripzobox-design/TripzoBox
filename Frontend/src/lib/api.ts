@@ -173,8 +173,8 @@ export const authApi = {
     return api.post('/auth/security-question', { question, answer });
   },
 
-  requestReset: async (emailOrPhone: string, method: string = 'email') => {
-    return api.post('/auth/forgot-password/request', { emailOrPhone, method });
+  requestReset: async (emailOrPhone: string, method: string = 'email', extra?: Record<string, any>) => {
+    return api.post('/auth/forgot-password/request', { emailOrPhone, method, ...extra });
   },
 
   verifyOtp: async (emailOrPhone: string, otp: string) => {

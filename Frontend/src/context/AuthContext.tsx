@@ -1,13 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { currentUser as defaultUser } from '../data/mockUsers';
 import { authApi } from '../lib/api';
 
 interface AuthContextType {
   user: User;
   isLoggedIn: boolean;
   login: (email?: string, password?: string) => Promise<boolean>;
-  signup: (name: string, email: string, password?: string) => Promise<boolean>;
+  signup: (
+    name: string,
+    email: string,
+    password?: string,
+    securityQuestion?: string,
+    securityAnswer?: string
+  ) => Promise<any>;
   oauthLogin: (provider: 'Google' | 'Apple', email: string, name?: string, avatarUrl?: string) => Promise<boolean>;
   completeOAuthSession: (directUser?: User) => Promise<User>;
   logout: () => void;
@@ -30,6 +35,32 @@ const sanitizeUser = (u: User): User => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const emptyUser: User = {
+  id: '',
+  name: '',
+  username: '',
+  email: '',
+  phone: '',
+  bio: '',
+  city: '',
+  country: '',
+  languages: [],
+  travelStyle: '',
+  travelInterests: [],
+  budgetStyle: 'budget',
+  travelPace: '',
+  preferredGroupSize: '',
+  dreamDestination: '',
+  avatarUrl: '',
+  coverUrl: '',
+  emailVerified: false,
+  phoneVerified: false,
+  isGoogleConnected: false,
+  stats: { trips: 0, stories: 0, followers: 0, following: 0 },
+  role: 'user',
+  identityVerificationStatus: 'unverified' as any,
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(() => {
     const saved = localStorage.getItem('tripzobox_user');
@@ -38,10 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsed = JSON.parse(saved);
         return sanitizeUser(parsed);
       } catch (e) {
-        return sanitizeUser(defaultUser);
+        return emptyUser;
       }
     }
-    return sanitizeUser(defaultUser);
+    return emptyUser;
   });
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -74,15 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (active && hadAuthStatus && !isOAuthCallback) {
-        authApi
-          .syncSession({ email: user.email, phone: user.phone, name: user.name })
-          .then((data) => {
-            if (active && data?.user) {
-              setUser((prev) => sanitizeUser({ ...prev, ...data.user }));
-              setIsLoggedIn(true);
-            }
-          })
-          .catch(() => {});
+        // Session was stale — clear auth state cleanly; never re-sync unauthenticated
+        localStorage.removeItem('tripzobox_auth_status');
+        setIsLoggedIn(false);
+        setUser(emptyUser);
       }
     };
 
@@ -103,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (emailOrPhone?: string, password?: string): Promise<boolean> => {
     try {
       if (emailOrPhone) {
-        const data = await authApi.login(emailOrPhone, password || 'Password123!');
+        const data = await authApi.login(emailOrPhone, password);
         if (data?.user) {
           setUser(sanitizeUser(data.user));
         }
@@ -111,67 +137,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoggedIn(true);
       return true;
     } catch (err: any) {
-      if (err?.statusCode === 401 || err?.statusCode === 400 || err?.statusCode === 409) {
-        throw err;
-      }
-      console.warn('[AuthContext] Backend login call failed, falling back to local session:', err);
-      if (emailOrPhone) {
-        const trimmed = emailOrPhone.trim();
-        const isEmail = trimmed.includes('@');
-        const digits = trimmed.replace(/\D/g, '');
-        const isPhone = !/[a-zA-Z]/.test(trimmed) && digits.length >= 10 && digits.length <= 15;
-        setUser((prev) =>
-          sanitizeUser({
-            ...prev,
-            name: !isEmail && !isPhone ? trimmed : prev.name || 'Traveler',
-            email: isEmail ? trimmed : prev.email,
-            phone: isPhone ? trimmed : '',
-            phoneVerified: isPhone,
-          })
-        );
-      }
-      setIsLoggedIn(true);
-      return true;
+      // Always propagate errors — never grant local session on backend failure
+      throw err;
     }
   };
 
-  const signup = async (name: string, emailOrPhone: string, password?: string): Promise<boolean> => {
+  const signup = async (
+    name: string,
+    emailOrPhone: string,
+    password?: string,
+    securityQuestion?: string,
+    securityAnswer?: string
+  ): Promise<any> => {
     try {
       const data = await authApi.signup({
         name,
         emailOrPhone,
-        password: password || 'Password123!',
+        password,
+        securityQuestion,
+        securityAnswer,
       });
       if (data?.user) {
         setUser(sanitizeUser(data.user));
       }
       setIsLoggedIn(true);
-      return true;
+      return data || true;
     } catch (err: any) {
-      if (err?.statusCode === 409 || err?.statusCode === 400 || err?.statusCode === 401) {
-        throw err;
-      }
-      console.warn('[AuthContext] Backend signup call failed, falling back to local session:', err);
-      const trimmed = emailOrPhone.trim();
-      const isEmail = trimmed.includes('@');
-      const digits = trimmed.replace(/\D/g, '');
-      const isPhone = !/[a-zA-Z]/.test(trimmed) && digits.length >= 10 && digits.length <= 15;
-      setUser((prev) =>
-        sanitizeUser({
-          ...prev,
-          id: `user_${Date.now()}`,
-          name: name.trim() || 'Traveler',
-          username: (name.trim() || 'traveler').toLowerCase().replace(/[^a-z0-9]/g, '_'),
-          email: isEmail ? trimmed : '',
-          phone: isPhone ? trimmed : '',
-          phoneVerified: isPhone,
-          emailVerified: false,
-          avatarUrl: '',
-          stats: { trips: 0, stories: 0, followers: 0, following: 0 },
-        })
-      );
-      setIsLoggedIn(true);
-      return true;
+      // Always propagate errors — never grant local session on backend failure
+      throw err;
     }
   };
 
@@ -179,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('tripzobox_token');
     localStorage.setItem('tripzobox_auth_status', 'false');
     setIsLoggedIn(false);
-    setUser(sanitizeUser(defaultUser));
+    setUser(emptyUser);
     authApi.logout().catch(() => {});
   };
 
@@ -202,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Ignore storage failures
     }
     setIsLoggedIn(false);
-    setUser(sanitizeUser(defaultUser));
+    setUser(emptyUser);
   };
 
   const completeOAuthSession = async (directUser?: User): Promise<User> => {
@@ -243,22 +236,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoggedIn(true);
       return true;
     } catch (err: any) {
-      console.warn('[AuthContext] Backend oauth call failed, falling back to local session:', err);
-      const cleanEmail = email.trim().toLowerCase();
-      setUser((prev) =>
-        sanitizeUser({
-          ...prev,
-          name: name || prev.name || cleanEmail.split('@')[0],
-          email: cleanEmail,
-          emailVerified: true,
-          avatarUrl:
-            avatarUrl ||
-            prev.avatarUrl ||
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-        })
-      );
-      setIsLoggedIn(true);
-      return true;
+      // Always propagate errors — never grant local session on backend failure
+      throw err;
     }
   };
 

@@ -19,7 +19,7 @@ export interface IUser extends Document {
   travelStyle?: string;
   securityQuestion?: string;
   securityAnswer?: string;
-  recoveryCodes?: string[];
+  recoveryCodes?: Array<string | { codeHash: string; used?: boolean; usedAt?: Date }>;
   emailVerified: boolean;
   phoneVerified: boolean;
   phoneVerifiedAt?: Date;
@@ -119,15 +119,18 @@ const UserSchema = new Schema<IUser>(
       enum: ['female', 'male', 'non-binary', 'prefer-not-to-say'],
       default: 'prefer-not-to-say',
     },
-    city: { type: String, default: 'Kerala' },
-    country: { type: String, default: 'India' },
+    city: { type: String, default: '' },
+    country: { type: String, default: '' },
     languages: { type: [String], default: ['English', 'Hindi'] },
     bio: { type: String, default: 'Travel enthusiast exploring mountains and misty hills.' },
     birthDate: { type: String },
     travelStyle: { type: String, default: 'Solo' },
     securityQuestion: { type: String },
     securityAnswer: { type: String, select: false },
-    recoveryCodes: { type: [String], select: false },
+    recoveryCodes: {
+      type: [Schema.Types.Mixed],
+      select: false,
+    },
     emailVerified: { type: Boolean, default: false },
     emailVerifiedAt: { type: Date },
     phoneVerified: { type: Boolean, default: false },

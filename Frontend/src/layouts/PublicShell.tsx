@@ -29,7 +29,8 @@ const MOBILE_NAV_ITEMS = [
   { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
   { label: 'Trips', path: '/app/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
   { label: 'Diary', path: '/app/diary', icon: BookOpen, matchPaths: ['/app/diary', '/app/stories', '/app/diary/add'] },
-  { label: 'Profile', path: '/app/profile', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/vault', '/app/messages', '/app/notifications'] },
+  { label: 'Travel Vault', path: '/app/vault', icon: Shield, matchPaths: ['/app/vault'] },
+  { label: 'Profile', path: '/app/profile', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/messages', '/app/notifications'] },
 ] as const;
 
 export const PublicShell: React.FC = () => {
@@ -293,7 +294,8 @@ export const PublicShell: React.FC = () => {
             { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
             { label: 'Trips', path: '/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
             { label: 'Trip Diary', path: isLoggedIn ? '/app/diary' : '/stories', icon: BookOpen, matchPaths: ['/app/diary', '/stories', '/app/stories', '/diary'] },
-            { label: isLoggedIn ? 'Profile' : 'Log In', path: isLoggedIn ? '/app/profile' : '/login', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/vault', '/app/messages', '/app/notifications', '/login', '/signup'] },
+            { label: 'Travel Vault', path: '/app/vault', icon: Shield, matchPaths: ['/app/vault'] },
+            { label: isLoggedIn ? 'Profile' : 'Log In', path: isLoggedIn ? '/app/profile' : '/login', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/messages', '/app/notifications', '/login', '/signup'] },
           ].map(({ label, path, icon: Icon, matchPaths }) => {
             const isActive = matchPaths.some((mp) =>
               mp === '/'

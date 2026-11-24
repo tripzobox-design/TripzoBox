@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
-    "test": "vitest run --no-file-parallelism --hook-timeout 30000 --test-timeout 30000"
+    "test": "vitest run --pool=forks --no-file-parallelism --hook-timeout 30000 --test-timeout 30000"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -340,6 +340,18 @@ describe('TripzoBox Production Email Delivery (Brevo HTTPS API & SMTP) Suite', (
       config.smtpUser = '';
       config.smtpPass = '';
 
+      vi.spyOn(nodemailer, 'createTestAccount').mockResolvedValueOnce({
+        user: 'mock_ethereal_user',
+        pass: 'mock_ethereal_pass',
+        smtp: { host: 'smtp.ethereal.email', port: 587, secure: false },
+        imap: { host: 'imap.ethereal.email', port: 993, secure: true },
+        pop3: { host: 'pop3.ethereal.email', port: 995, secure: true },
+        web: 'https://ethereal.email',
+      });
+      vi.spyOn(nodemailer, 'createTransport').mockReturnValueOnce({
+        sendMail: vi.fn().mockResolvedValue({ messageId: 'mock-ethereal-msg' }),
+      } as any);
+
       const result = await sendPasswordResetEmail('dev_user@gmail.com', 'Dev User', '112233', 'dev_token');
       expect(result.sent).toBe(true);
       expect(result.isSimulated).toBe(true);

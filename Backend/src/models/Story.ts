@@ -59,7 +59,7 @@ const StorySchema = new Schema<IStory>(
       avatarUrl: { type: String, default: '' },
       city: { type: String },
     },
-    entries: { type: [Schema.Types.Mixed], default: [] },
+    entries: [{ type: Schema.Types.Mixed }],
     likes: { type: Number, default: 0 },
     likedBy: { type: [String], default: [] },
     comments: { type: Number, default: 0 },
@@ -95,7 +95,7 @@ const StorySchema = new Schema<IStory>(
   }
 );
 
-StorySchema.pre('save', function (next) {
+StorySchema.pre('save', function (this: IStory, next) {
   if (!this.id) {
     this.id = `story_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   }

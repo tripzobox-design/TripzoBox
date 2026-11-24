@@ -434,7 +434,7 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Name" value={user.name} readOnly disabled />
-                <Input label="Location" value={`${user.city}, India`} readOnly disabled />
+                <Input label="Location" value={[user.city, user.country].filter(Boolean).join(', ') || 'Not set'} readOnly disabled />
               </div>
               <div>
                 <label className="text-xs font-semibold text-text mb-1 block">Languages Spoken</label>

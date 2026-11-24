@@ -22,10 +22,8 @@ interface TripsContextType {
 
 const TripsContext = createContext<TripsContextType | undefined>(undefined);
 
-const DEMO_USER_ID = 'user_mubarak';
-
 const scopedTripsKey = (base: string, userId?: string): string =>
-  userId && userId !== DEMO_USER_ID ? `${base}:${userId}` : base;
+  userId ? `${base}:${userId}` : base;
 
 const readStored = <T,>(key: string, fallback: T): T => {
   try {
@@ -75,7 +73,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshTrips = async () => {
     try {
       const serverTrips = await tripsApi.getTrips();
-      if (Array.isArray(serverTrips) && serverTrips.length > 0) {
+      if (Array.isArray(serverTrips)) {
         setTrips(serverTrips);
       }
     } catch (e) {

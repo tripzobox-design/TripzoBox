@@ -620,7 +620,7 @@ export const requestJoinTrip = async (
         name: req.user.name,
         avatarUrl: req.user.avatarUrl,
         city: req.user.city,
-        location: `${req.user.city || 'Kerala'}, ${req.user.country || 'India'}`,
+        location: [req.user.city, req.user.country].filter(Boolean).join(', ') || 'Not specified',
         travelStyle: travelStyle || req.user.travelStyle || 'Solo',
         languages: languages || req.user.languages.join(', ') || 'English, Hindi',
         budget: budget || 'Flexible',

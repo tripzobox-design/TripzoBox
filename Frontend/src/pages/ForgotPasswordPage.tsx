@@ -14,6 +14,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  HelpCircle,
 } from 'lucide-react';
 import { AuthHeader } from '../components/auth/AuthHeader';
 import { OtpInputGroup } from '../components/auth/OtpInputGroup';
@@ -44,11 +45,8 @@ export const ForgotPasswordPage: React.FC = () => {
   const initialEmailParam = searchParams.get('email') || '';
   const initialTokenParam = searchParams.get('token') || searchParams.get('otp') || '';
 
-  // If user lands on security-question, direct them to choose-method instead
   const [step, setStep] = useState<RecoveryStep>(
-    initialStepParam && initialStepParam !== 'security-question'
-      ? initialStepParam
-      : 'choose-method'
+    initialStepParam || 'choose-method'
   );
 
   // Form states (start blank by default, never pre-fill default mock user)
@@ -57,6 +55,18 @@ export const ForgotPasswordPage: React.FC = () => {
   const [resetToken, setResetToken] = useState(initialTokenParam);
   const [devOtp, setDevOtp] = useState('123456');
   const [emailCooldown, setEmailCooldown] = useState(0);
+
+  // Security Question Recovery state
+  const [secEmail, setSecEmail] = useState(initialEmailParam || '');
+  const [fetchedQuestion, setFetchedQuestion] = useState('');
+  const [secAnswer, setSecAnswer] = useState('');
+  const [isFetchingQuestion, setIsFetchingQuestion] = useState(false);
+  const [isVerifyingSec, setIsVerifyingSec] = useState(false);
+
+  // Recovery Code Recovery state
+  const [recEmail, setRecEmail] = useState(initialEmailParam || '');
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [isVerifyingRec, setIsVerifyingRec] = useState(false);
   const [authConfig, setAuthConfig] = useState<{
     google: boolean;
     emailOtp: boolean;
@@ -86,7 +96,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
     if (emailParam) setEmail(emailParam);
     if (tokenParam) setResetToken(tokenParam);
-    if (stepParam && stepParam !== 'security-question') {
+    if (stepParam) {
       setStep(stepParam);
     }
   }, [searchParams]);
@@ -222,6 +232,85 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
+  const handleFetchQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!secEmail.trim()) {
+      error('Please enter your account email or phone number');
+      return;
+    }
+    setIsFetchingQuestion(true);
+    try {
+      const res: any = await authApi.requestReset(secEmail.trim(), 'security-question');
+      if (res?.data?.question) {
+        setFetchedQuestion(res.data.question);
+      } else {
+        error('No security question configured for this account.');
+      }
+    } catch (err: any) {
+      error(err?.message || 'No security question configured for this account.');
+    } finally {
+      setIsFetchingQuestion(false);
+    }
+  };
+
+  const handleVerifyAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!secAnswer.trim()) {
+      error('Please enter your secret security answer');
+      return;
+    }
+    setIsVerifyingSec(true);
+    try {
+      const res: any = await authApi.requestReset(secEmail.trim(), 'security-question', {
+        securityAnswer: secAnswer.trim(),
+      });
+      const token = res?.data?.resetToken;
+      if (token) {
+        setResetToken(token);
+        setEmail(secEmail.trim());
+        setStep('new-password');
+        success('Security answer verified! Please set your new password.', 'Verified');
+      } else {
+        error('Verification failed. Please try again.');
+      }
+    } catch (err: any) {
+      error(err?.message || 'Incorrect security answer. Please check and try again.');
+    } finally {
+      setIsVerifyingSec(false);
+    }
+  };
+
+  const handleVerifyRecoveryCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recEmail.trim()) {
+      error('Please enter your account email or phone number');
+      return;
+    }
+    if (!recoveryCodeInput.trim()) {
+      error('Please enter your recovery code');
+      return;
+    }
+    setIsVerifyingRec(true);
+    try {
+      const res: any = await authApi.requestReset(recEmail.trim(), 'recovery-code', {
+        recoveryCode: recoveryCodeInput.trim(),
+      });
+      const token = res?.data?.resetToken;
+      if (token) {
+        setResetToken(token);
+        setEmail(recEmail.trim());
+        setStep('new-password');
+        success('Recovery code verified! Please set your new password.', 'Verified');
+      } else {
+        error('Invalid recovery code.');
+      }
+    } catch (err: any) {
+      error(err?.message || 'Invalid or already used recovery code.');
+    } finally {
+      setIsVerifyingRec(false);
+    }
+  };
+
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
@@ -325,6 +414,59 @@ export const ForgotPasswordPage: React.FC = () => {
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
                 )}
+
+                {/* Option 3: Reset with Security Question */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSecEmail(email || phone || '');
+                    setFetchedQuestion('');
+                    setSecAnswer('');
+                    setStep('security-question');
+                  }}
+                  className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-3.5 sm:gap-4">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
+                        Reset with Security Question
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Answer your secret security question.
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+
+                {/* Option 4: Reset with Recovery Code */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecEmail(email || phone || '');
+                    setRecoveryCodeInput('');
+                    setStep('recovery-codes');
+                  }}
+                  className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-primary/50 hover:bg-emerald-50/30 transition-all shadow-2xs group cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-3.5 sm:gap-4">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-emerald-100/70 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors">
+                        Reset with Recovery Code
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Use one of your 8-character emergency backup codes.
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
 
                 {!authConfig.emailOtp && !authConfig.smsOtp && (
                   <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
@@ -626,9 +768,171 @@ export const ForgotPasswordPage: React.FC = () => {
           )}
 
           {/* ========================================================================= */}
+          {/* SCREEN: Reset with Security Question */}
+          {/* ========================================================================= */}
+          {step === 'security-question' && (
+            <div className="text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
+                <HelpCircle className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Reset via Security Question
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-sm mx-auto leading-relaxed">
+                {!fetchedQuestion
+                  ? 'Enter your account email or phone number to look up your security question.'
+                  : 'Answer your secret security question to verify your identity.'}
+              </p>
+
+              {!fetchedQuestion ? (
+                <form onSubmit={handleFetchQuestion} className="space-y-4 text-left max-w-sm mx-auto">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Account Email or Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={secEmail}
+                      onChange={(e) => setSecEmail(e.target.value)}
+                      placeholder="e.g. name@example.com or +91 98765 43210"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isFetchingQuestion || !secEmail.trim()}
+                    className="w-full py-3 sm:py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isFetchingQuestion ? 'Finding Account...' : 'Continue'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyAnswer} className="space-y-4 text-left max-w-sm mx-auto">
+                  <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs">
+                    <span className="text-emerald-700 font-semibold block mb-0.5">Your Security Question:</span>
+                    <span className="text-emerald-950 font-bold text-sm">{fetchedQuestion}</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Your Secret Answer
+                    </label>
+                    <input
+                      type="text"
+                      value={secAnswer}
+                      onChange={(e) => setSecAnswer(e.target.value)}
+                      placeholder="Enter your secret answer"
+                      required
+                      autoFocus
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isVerifyingSec || !secAnswer.trim()}
+                    className="w-full py-3 sm:py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifyingSec ? 'Verifying...' : 'Verify & Reset Password'}
+                  </button>
+                </form>
+              )}
+
+              <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between max-w-sm mx-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFetchedQuestion('');
+                    setSecAnswer('');
+                    setStep('choose-method');
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Choose Another Method</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SCREEN: Reset with Recovery Code */}
+          {/* ========================================================================= */}
+          {step === 'recovery-codes' && (
+            <div className="text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">
+                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-gray-900 tracking-tight">
+                Reset via Recovery Code
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1.5 mb-6 max-w-sm mx-auto leading-relaxed">
+                Enter your account email/phone and one of your 8-character single-use emergency backup codes.
+              </p>
+
+              <form onSubmit={handleVerifyRecoveryCode} className="space-y-4 text-left max-w-sm mx-auto">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Account Email or Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={recEmail}
+                    onChange={(e) => setRecEmail(e.target.value)}
+                    placeholder="e.g. name@example.com or +91 98765 43210"
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Recovery Code (e.g. 8P3K-2D9Q)
+                  </label>
+                  <input
+                    type="text"
+                    value={recoveryCodeInput}
+                    onChange={(e) => setRecoveryCodeInput(e.target.value.toUpperCase())}
+                    placeholder="XXXX-XXXX"
+                    required
+                    maxLength={10}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm font-mono tracking-wider outline-none transition-all uppercase"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isVerifyingRec || !recEmail.trim() || !recoveryCodeInput.trim()}
+                  className="w-full py-3 sm:py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isVerifyingRec ? 'Verifying...' : 'Verify Code & Reset Password'}
+                </button>
+              </form>
+
+              <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between max-w-sm mx-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryCodeInput('');
+                    setStep('choose-method');
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Choose Another Method</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
           {/* SCREEN: Create new password */}
           {/* ========================================================================= */}
-          {(step === 'new-password' || step === 'security-question' || step === 'recovery-codes') && (
+          {step === 'new-password' && (
             <div className="text-center animate-in fade-in duration-300">
               {/* Lock Badge */}
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 sm:mb-5 shadow-xs">

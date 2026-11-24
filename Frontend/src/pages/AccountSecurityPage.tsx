@@ -831,7 +831,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                       <span>·</span>
                       <span className="flex items-center gap-1 text-emerald-700 font-medium">
                         <MapPin className="w-3 h-3" />
-                        {user.city}, {user.country || 'India'}
+                        {[user.city, user.country].filter(Boolean).join(', ') || 'Location not set'}
                       </span>
                     </p>
 

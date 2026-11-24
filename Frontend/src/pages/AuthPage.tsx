@@ -31,6 +31,9 @@ import {
   Sparkles,
   AlertCircle,
   ExternalLink,
+  HelpCircle,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Logo } from '../components/ui/Logo';
@@ -38,6 +41,7 @@ import { AuthStepper } from '../components/auth/AuthStepper';
 import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
 import { BotanicalLeavesAccent } from '../components/auth/BotanicalLeavesAccent';
 import { OtpInputGroup } from '../components/auth/OtpInputGroup';
+import { RecoveryCodesGrid } from '../components/auth/RecoveryCodesGrid';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi, configApi, getBackendOrigin } from '../lib/api';
@@ -165,6 +169,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
   const [emailOrPhone, setEmailOrPhone] = useState(isLoggedIn ? user.email || '' : '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState("What is your mother's name?");
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [signupRecoveryCodes, setSignupRecoveryCodes] = useState<string[]>([]);
+  const [showRecoveryCodesModal, setShowRecoveryCodesModal] = useState(false);
+  const [recoverySavedConfirmed, setRecoverySavedConfirmed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -178,7 +187,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     isLoggedIn ? user.gender || 'prefer-not-to-say' : 'prefer-not-to-say'
   );
   const [birthDate, setBirthDate] = useState(isLoggedIn ? user.birthDate || '' : '');
-  const [country, setCountry] = useState(isLoggedIn ? user.country || 'India' : 'India');
+  const [country, setCountry] = useState(isLoggedIn ? user.country || '' : '');
 
   const handleSignupAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -212,6 +221,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     emailOrPhone?: string;
     password?: string;
     confirmPassword?: string;
+    securityQuestion?: string;
+    securityAnswer?: string;
   }>({});
 
   const validateStep1 = () => {
@@ -242,6 +253,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
         errs.confirmPassword = 'Confirm password is required';
       } else if (confirmPassword !== password) {
         errs.confirmPassword = 'Passwords do not match';
+      }
+      if (!securityQuestion || securityQuestion.trim().length < 5) {
+        errs.securityQuestion = 'Security question is required';
+      }
+      if (!securityAnswer || securityAnswer.trim().length < 2) {
+        errs.securityAnswer = 'Security answer must be at least 2 characters';
       }
     }
 
@@ -362,11 +379,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
         error(err.message || 'Invalid email or password', 'Login Failed');
       }
     } else {
-      // Sign Up: Advance to Step 2 (Personal Info)
+      // Sign Up: Advance to Step 2 (Personal Info) or Recovery Codes
       try {
-        await signup(fullName, emailOrPhone, password);
+        const res: any = await signup(fullName, emailOrPhone, password, securityQuestion, securityAnswer);
         setIsLoading(false);
-        setSignUpStep(2);
+        const codes = res?.recoveryCodes || res?.data?.recoveryCodes;
+        if (Array.isArray(codes) && codes.length > 0) {
+          setSignupRecoveryCodes(codes);
+          setShowRecoveryCodesModal(true);
+        } else {
+          setSignUpStep(2);
+        }
       } catch (err: any) {
         setIsLoading(false);
         error(err.message || 'An error occurred during registration', 'Signup Failed');
@@ -1507,6 +1530,64 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
               </div>
             )}
 
+            {/* Security Question (Sign Up only) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Security Question
+                </label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none">
+                    <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </div>
+                  <select
+                    value={securityQuestion}
+                    onChange={(e) => setSecurityQuestion(e.target.value)}
+                    className="w-full bg-white text-gray-900 text-xs sm:text-sm rounded-lg sm:rounded-xl border pl-9 sm:pl-10 pr-4 py-2 sm:py-3 outline-none transition-all border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="What is your mother's name?">What is your mother's name?</option>
+                    <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                    <option value="What city were you born in?">What city were you born in?</option>
+                    <option value="What was your first school?">What was your first school?</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Security Answer (Sign Up only) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Security Answer
+                </label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 sm:left-3.5 text-gray-400 pointer-events-none">
+                    <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={securityAnswer}
+                    onChange={(e) => {
+                      setSecurityAnswer(e.target.value);
+                      if (errors.securityAnswer)
+                        setErrors((prev) => ({ ...prev, securityAnswer: undefined }));
+                    }}
+                    placeholder="Your secret answer (used for account recovery)"
+                    className={`w-full bg-white text-gray-900 text-xs sm:text-sm rounded-lg sm:rounded-xl border pl-9 sm:pl-10 pr-4 py-2 sm:py-3 outline-none transition-all ${
+                      errors.securityAnswer
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20'
+                    }`}
+                  />
+                </div>
+                {errors.securityAnswer && (
+                  <p className="text-[10px] sm:text-[11px] text-red-600 font-medium mt-0.5 sm:mt-1">
+                    {errors.securityAnswer}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Login Only: Remember Me & Forgot Password row */}
             {isLogin && (
               <div className="flex items-center justify-between text-xs pt-0.5">
@@ -1629,10 +1710,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
                     </svg>
                   </div>
                   <p className="font-heading font-bold text-base text-gray-900">
-                    {fullName || 'tamilan'}
+                    {fullName || 'Apple User'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {emailOrPhone.includes('@') ? emailOrPhone : 'valarthamizhrr@icloud.com'}
+                    {emailOrPhone.includes('@') ? emailOrPhone : 'user@icloud.com'}
                   </p>
                 </div>
 
@@ -1641,8 +1722,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
                     type="button"
                     onClick={() =>
                       executeOAuth(
-                        emailOrPhone.includes('@') ? emailOrPhone : 'valarthamizhrr@icloud.com',
-                        fullName || 'tamilan'
+                        emailOrPhone.includes('@') ? emailOrPhone : 'user@icloud.com',
+                        fullName || 'Apple User'
                       )
                     }
                     className="w-full py-3.5 rounded-xl bg-black hover:bg-gray-900 text-white font-semibold text-sm transition-colors cursor-pointer"
@@ -1658,6 +1739,52 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
                   </button>
                 </div>
               </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recovery Codes Presentation Modal */}
+      {showRecoveryCodesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100 text-center relative max-h-[90vh] overflow-y-auto">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-primary flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <ShieldCheck className="w-7 h-7" />
+            </div>
+
+            <h3 className="font-heading font-extrabold text-xl sm:text-2xl text-gray-900 tracking-tight">
+              Save Your Recovery Codes
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 mb-5 leading-relaxed">
+              These single-use backup codes allow you to regain access to your account if you ever forget your password or lose access to your email.
+            </p>
+
+            <RecoveryCodesGrid codes={signupRecoveryCodes} />
+
+            <div className="mt-6 pt-4 border-t border-gray-100 space-y-4">
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 cursor-pointer text-left">
+                <input
+                  type="checkbox"
+                  checked={recoverySavedConfirmed}
+                  onChange={(e) => setRecoverySavedConfirmed(e.target.checked)}
+                  className="w-4 h-4 rounded text-primary focus:ring-primary/20 border-gray-300 cursor-pointer accent-primary shrink-0 mt-0.5"
+                />
+                <span className="text-xs font-semibold text-amber-900 leading-snug">
+                  I have downloaded or copied my recovery codes and stored them in a safe place.
+                </span>
+              </label>
+
+              <button
+                type="button"
+                disabled={!recoverySavedConfirmed}
+                onClick={() => {
+                  setShowRecoveryCodesModal(false);
+                  setSignUpStep(2);
+                }}
+                className="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue to Personal Info
+              </button>
+            </div>
           </div>
         </div>
       )}

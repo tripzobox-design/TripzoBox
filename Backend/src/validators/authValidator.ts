@@ -9,6 +9,8 @@ export const signupSchema = z.object({
   country: z.string().optional(),
   travelStyle: z.string().optional(),
   travelInterests: z.array(z.string()).optional(),
+  securityQuestion: z.string().min(5, 'Security question must be at least 5 characters').optional(),
+  securityAnswer: z.string().min(2, 'Security answer must be at least 2 characters').optional(),
 });
 
 export const loginSchema = z.object({
@@ -43,7 +45,9 @@ export const securityQuestionSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   emailOrPhone: z.string().min(3, 'Email or phone is required'),
-  method: z.enum(['email', 'phone', 'security-question']).default('email'),
+  method: z.enum(['email', 'phone', 'security-question', 'recovery-code']).default('email'),
+  securityAnswer: z.string().optional(),
+  recoveryCode: z.string().optional(),
 });
 
 export const verifyOtpSchema = z.object({
@@ -54,6 +58,6 @@ export const verifyOtpSchema = z.object({
 export const resetPasswordSchema = z.object({
   emailOrPhone: z.string().min(3),
   newPassword: z.string().min(6, 'New password must be at least 6 characters'),
-  token: z.string().optional(),
+  token: z.string().min(1, 'Reset token is required'),
 });
 

@@ -51,3 +51,7 @@ pnpm-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
+client_secret_*.json
+.env
+.env.local
+.env.*.local
