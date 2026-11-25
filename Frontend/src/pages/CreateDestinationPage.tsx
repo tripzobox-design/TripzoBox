@@ -39,7 +39,7 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
 
   // Form State
   const [name, setName] = useState('');
-  const [state, setState] = useState('Kerala');
+  const [state, setState] = useState('');
   const [customState, setCustomState] = useState('');
   const [category, setCategory] = useState<Destination['category']>('Hidden Spots');
   const [shortDescription, setShortDescription] = useState('');
@@ -75,17 +75,12 @@ export const CreateDestinationPage: React.FC<{ embedded?: boolean; onCreated?: (
   const [isPublic, setIsPublic] = useState(true);
 
   // Photos State
-  const [coverPhoto, setCoverPhoto] = useState(
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80'
-  );
+  const [coverPhoto, setCoverPhoto] = useState('');
   const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
 
   // Attractions / Tags State
-  const [attractions, setAttractions] = useState<string[]>([
-    'Scenic Viewpoint',
-    'Quiet Walking Trail',
-  ]);
+  const [attractions, setAttractions] = useState<string[]>([]);
   const [newAttraction, setNewAttraction] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -545,7 +545,7 @@ export const AdminAuthSettingsPage: React.FC = () => {
                 type="text"
                 value={googleCallbackUrl}
                 onChange={(e) => setGoogleCallbackUrl(e.target.value)}
-                placeholder="http://localhost:5000/api/auth/google/callback"
+                placeholder="https://tripzobox-api.onrender.com/api/auth/google/callback"
                 className="w-full bg-white text-slate-800 text-xs rounded-xl border border-slate-200 px-3.5 py-2.5 focus:border-slate-800 focus:ring-2 focus:ring-slate-100 outline-none transition font-mono text-[11px]"
               />
             </div>
@@ -1050,7 +1050,7 @@ export const AdminAuthSettingsPage: React.FC = () => {
                 type="text"
                 value={appleCallbackUrl}
                 onChange={(e) => setAppleCallbackUrl(e.target.value)}
-                placeholder="http://localhost:5000/api/auth/apple/callback"
+                placeholder="https://tripzobox-api.onrender.com/api/auth/apple/callback"
                 className="w-full bg-white text-slate-800 text-xs rounded-xl border border-slate-200 px-3.5 py-2.5 focus:border-slate-800 focus:ring-2 focus:ring-slate-100 outline-none transition font-mono text-[11px]"
               />
             </div>

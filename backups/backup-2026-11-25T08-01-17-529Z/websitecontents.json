@@ -1,0 +1,74 @@
+[
+  {
+    "_id": "6aed8218cd5daebdfdfce2c5",
+    "key": "main_cms",
+    "hero": {
+      "badgeText": "Next-Gen ",
+      "headingLine1": "Explore The World Together",
+      "headingLine2": "Your People.",
+      "headingHighlight": "Safely and Freely",
+      "description": "Updated dynamic tagline from CMS Control Panel",
+      "primaryCtaText": "Start Exploring",
+      "primaryCtaLink": "/explore",
+      "secondaryCtaText": "How It Works",
+      "secondaryCtaLink": "/how-it-works",
+      "bgImageUrl": "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=2400&q=90"
+    },
+    "promotionalBanner": {
+      "enabled": false,
+      "text": "Discover monsoon & winter mountain escapes across the Western Ghats!",
+      "linkText": "Explore Now",
+      "linkUrl": "/trips",
+      "badge": "New Escapes"
+    },
+    "sectionVisibility": {
+      "hero": true,
+      "quickStats": true,
+      "featuredDestinations": true,
+      "trendingTrips": true,
+      "safetyVault": true,
+      "diaryStories": true,
+      "reviews": true
+    },
+    "aboutUs": {
+      "title": "About Tripzobox",
+      "subtitle": "A place to find your people and your next adventure.",
+      "mission": "We believe the people you meet can become as memorable as the places you visit. Tripzobox brings discovery, shared travel plans, and personal stories together so you can spend more time looking forward to the journey.",
+      "story": "A weekend in Munnar, a coastal escape to Varkala, or a first trip with new companions can start with a simple conversation. Our mission is to make it easier to turn that spark into a shared plan.",
+      "heroImage": "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&w=1000&q=85",
+      "values": []
+    },
+    "contactInfo": {
+      "email": "contact@tripzobox.com",
+      "supportEmail": "support@tripzobox.com",
+      "phone": "+91 98765 43210",
+      "address": "TripzoBox HQ, Tech Park, Bengaluru, Karnataka, India",
+      "supportHours": "Monday – Saturday: 9:00 AM – 8:00 PM IST",
+      "socialLinks": {
+        "twitter": "https://twitter.com/tripzobox",
+        "instagram": "https://instagram.com/tripzobox",
+        "facebook": "https://facebook.com/tripzobox",
+        "linkedin": "https://linkedin.com/company/tripzobox"
+      }
+    },
+    "termsAndConditions": "# TripzoBox Terms of Service\n\nWelcome to TripzoBox. By accessing or using our travel community platform, you agree to comply with our community standards, travel safety rules, and terms of service.",
+    "privacyPolicy": "# TripzoBox Privacy Policy\n\nYour privacy is paramount. We do not sell your personal data. Documents stored in Travel Vault are encrypted and accessible only with your explicit permission.",
+    "lastUpdatedBy": {
+      "id": "test_admin_1794984470016",
+      "name": "Admin Test",
+      "email": "admin_1794984470016@tripzobox.com"
+    },
+    "faqs": [],
+    "announcements": [],
+    "createdAt": "2026-11-06T07:30:32.308Z",
+    "updatedAt": "2026-11-18T06:47:50.315Z",
+    "__v": 1,
+    "communityGuidelines": "# TripzoBox Community Guidelines\n\n1. Be respectful to fellow travellers.\n2. No harassment, discrimination, or hate speech.\n3. Communicate honestly and keep emergency contacts updated.\n4. Protect your identity and never share financial credentials.",
+    "featuredDestinations": [],
+    "featuredTrips": [],
+    "helpSupport": "# TripzoBox Help & Support\n\nNeed assistance? Our support team is here 24/7 to help with trip coordination, vault document recovery, and safety inquiries.",
+    "isDraftMode": false,
+    "safetyGuidelines": "# TripzoBox Travel Safety Guidelines\n\n1. Always verify travellers before embarking on journeys.\n2. Store your emergency documents in the Travel Vault.\n3. Share your live itinerary with trusted family members.\n4. Report suspicious behavior immediately to TripzoBox Safety.",
+    "version": 1
+  }
+]

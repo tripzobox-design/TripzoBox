@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320e5",
+    "id": "tc_ayesha",
+    "userId": "user_mubarak",
+    "name": "Ayesha Khan",
+    "email": "ayesha.khan@example.com",
+    "phone": "+91 98765 43210",
+    "hasVaultAccess": true,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.192Z",
+    "updatedAt": "2026-11-06T12:41:25.192Z"
+  },
+  {
+    "_id": "6aedcaf5664176f4a11320e6",
+    "id": "tc_rohit",
+    "userId": "user_mubarak",
+    "name": "Rohit Sharma",
+    "email": "rohit.sharma@example.com",
+    "phone": "+91 98765 43212",
+    "hasVaultAccess": true,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.192Z",
+    "updatedAt": "2026-11-06T12:41:25.192Z"
+  }
+]

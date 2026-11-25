@@ -172,7 +172,7 @@ export const AppRoutes: React.FC = () => (
       <Route path="/explore" element={<ExplorePage />} />
       <Route path="/explore/create" element={<CreateDestinationPage />} />
       <Route path="/explore/:destinationSlug" element={<DestinationDetailPage />} />
-      <Route path="/stories" element={<StoriesPage />} />
+      <Route path="/stories" element={<Navigate to="/app/diary?tab=travel-stories" replace />} />
       <Route path="/stories/create" element={<CreateStoryPage />} />
       <Route path="/stories/:storySlug" element={<StoryDetailPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />

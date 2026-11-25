@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "6afd4a106331d3feddd32335",
+    "key": "default_auth_settings",
+    "smsOtp": {
+      "enabled": false,
+      "providerName": "Fast2SMS",
+      "apiKey": "enc:gcm:15974169ef4ae9cb53aa3423:f92b1542116099268422a428e1200689:fd84231439fc9a63103cccfb40f2d8f762932023c1f3e4e73573a417780d123d1ee869e2d590022a155a32f8a46f3c6da0ffe3d5359936397905bc82",
+      "senderId": "TRIPZO",
+      "otpExpiryMinutes": 5,
+      "resendCooldownSeconds": 60,
+      "maxAttempts": 5
+    },
+    "appleAuth": {
+      "enabled": false,
+      "clientId": "",
+      "teamId": "",
+      "keyId": "",
+      "privateKey": "",
+      "callbackUrl": "http://localhost:5000/api/auth/apple/callback"
+    },
+    "googleAuth": {
+      "enabled": true,
+      "clientId": "",
+      "clientSecret": "",
+      "callbackUrl": "http://localhost:5000/api/auth/google/callback"
+    },
+    "emailOtp": {
+      "enabled": true,
+      "otpExpiryMinutes": 15,
+      "resendCooldownSeconds": 60,
+      "maxAttempts": 5,
+      "smtpHost": "smtp.gmail.com",
+      "smtpPort": 587,
+      "smtpUser": "tripzobox@gmail.com",
+      "smtpPass": "enc:gcm:dc02a7c00d76968f31bc70d6:f42ffed3597d4a4250c6857ccf8aaa13:c513d4c6042aff1bade29a899d1b68111aec75",
+      "smtpFrom": "TripzoBox <tripzobox@gmail.com>"
+    },
+    "updatedBy": "system",
+    "createdAt": "2026-11-18T06:47:44.307Z",
+    "updatedAt": "2026-11-18T06:47:44.307Z",
+    "__v": 0
+  }
+]

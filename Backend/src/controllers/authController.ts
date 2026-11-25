@@ -1291,7 +1291,7 @@ export const googleOAuthInit = async (req: Request, res: Response): Promise<void
     res.cookie(GOOGLE_OAUTH_STATE_COOKIE, stateCookieToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 10 * 60 * 1000,
       path: '/',
     });
@@ -1325,7 +1325,7 @@ export const googleOAuthCallback = async (req: Request, res: Response): Promise<
   res.clearCookie(GOOGLE_OAUTH_STATE_COOKIE, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   });
 

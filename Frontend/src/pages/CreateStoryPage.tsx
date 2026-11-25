@@ -124,13 +124,7 @@ export const CreateStoryPage: React.FC = () => {
   // =========================================================================
   // STEP 1 STATE: SELECT EXPERIENCES
   // =========================================================================
-  const [selectedExpIds, setSelectedExpIds] = useState<string[]>([
-    'exp_varkala_beach',
-    'exp_cliff_cafe',
-    'exp_sunset_varkala',
-    'exp_kochi_fort',
-    'exp_munroe_island',
-  ]);
+  const [selectedExpIds, setSelectedExpIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [tripTypeFilter, setTripTypeFilter] = useState<'All' | 'Solo' | 'Group' | 'Family'>('All');
   const [dateRangeFilter, setDateRangeFilter] = useState('All Dates');
@@ -160,10 +154,10 @@ export const CreateStoryPage: React.FC = () => {
   // =========================================================================
   // STEP 2 STATE: STORY DETAILS
   // =========================================================================
-  const [storyTitle, setStoryTitle] = useState('My Unforgettable Western Ghats Journey');
-  const [destination, setDestination] = useState('Munnar & Varkala, Kerala');
-  const [startDate, setStartDate] = useState('2025-05-12');
-  const [endDate, setEndDate] = useState('2025-05-22');
+  const [storyTitle, setStoryTitle] = useState('');
+  const [destination, setDestination] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const travelDates = useMemo(() => {
     if (!startDate && !endDate) return 'Select dates';
@@ -215,12 +209,8 @@ export const CreateStoryPage: React.FC = () => {
     })}`;
   }, [startDate, endDate]);
 
-  const [coverPhoto, setCoverPhoto] = useState(
-    'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80'
-  );
-  const [storySummary, setStorySummary] = useState(
-    'From early misty mornings in Lockhart tea plantations to crimson sunsets over Varkala cliffs, here is how we explored Kerala with a small group of travellers.'
-  );
+  const [coverPhoto, setCoverPhoto] = useState('');
+  const [storySummary, setStorySummary] = useState('');
 
   // =========================================================================
   // STEP 3 STATE: YOUR TRAVEL GUIDE (MODULES & EDITOR)
@@ -234,25 +224,15 @@ export const CreateStoryPage: React.FC = () => {
     photosGallery: true,
   });
 
-  const [fullStoryNarrative, setFullStoryNarrative] = useState(
-    'From early misty mornings in Lockhart tea plantations to crimson sunsets over Varkala cliffs, here is how we explored Kerala with a small group of travellers.'
-  );
+  const [fullStoryNarrative, setFullStoryNarrative] = useState('');
 
-  const [storyPhotos, setStoryPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=600&q=80',
-  ]);
+  const [storyPhotos, setStoryPhotos] = useState<string[]>([]);
 
   // =========================================================================
   // STEP 4 STATE: REVIEW & POST
   // =========================================================================
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
-  const [categories, setCategories] = useState<string[]>([
-    'Nature',
-    'Adventure',
-    'Food',
-  ]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
 
   const toggleCategory = (cat: string) => {
@@ -318,7 +298,7 @@ export const CreateStoryPage: React.FC = () => {
       {/* Back Link */}
       <div className="flex items-center justify-between">
         <Link
-          to="/stories"
+          to="/app/diary?tab=travel-stories"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-primary transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

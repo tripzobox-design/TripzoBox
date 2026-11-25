@@ -42,7 +42,10 @@ export const config = {
   googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   googleClientSecret: (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
   googleCallbackUrl: (
-    process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
+    process.env.GOOGLE_CALLBACK_URL ||
+    (isProduction
+      ? 'https://tripzobox-api.onrender.com/api/auth/google/callback'
+      : 'http://localhost:5000/api/auth/google/callback')
   ).trim(),
 };
 

@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DiaryEntry, Story } from '../types';
-import { mockDiaryEntries } from '../data/mockDiary';
-import { mockStories } from '../data/mockStories';
 import { useAuth } from './AuthContext';
 import { diaryApi, storiesApi } from '../lib/api';
 
@@ -38,23 +36,10 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const [stories, setStories] = useState<Story[]>(() => {
-    const saved = localStorage.getItem('tripzobox_stories');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((s: Story) => s.id));
-        const newStories = mockStories.filter((m) => !existingIds.has(m.id));
-        if (newStories.length > 0) {
-          const merged = [...parsed, ...newStories];
-          localStorage.setItem('tripzobox_stories', JSON.stringify(merged));
-          return merged;
-        }
-        return parsed;
-      } catch {
-        return mockStories;
-      }
-    }
-    return mockStories;
+    try {
+      localStorage.removeItem('tripzobox_stories');
+    } catch {}
+    return [];
   });
 
   // Sync private diary entries & public community stories when auth session changes
@@ -78,8 +63,15 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     storiesApi
       .getStories()
       .then((serverStories) => {
-        if (active && Array.isArray(serverStories) && serverStories.length > 0) {
+        if (active && Array.isArray(serverStories)) {
           setStories(serverStories);
+          try {
+            if (serverStories.length === 0) {
+              localStorage.removeItem('tripzobox_stories');
+            } else {
+              localStorage.setItem('tripzobox_stories', JSON.stringify(serverStories));
+            }
+          } catch {}
         }
       })
       .catch(() => {});

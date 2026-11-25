@@ -71,7 +71,7 @@ export const AboutPage: React.FC = () => {
             { icon: MapPin, title: 'Discover a place', text: 'Browse familiar favourites and hidden spots. Share a discovery with photos and useful local details.', link: '/explore', action: 'Explore destinations' },
             { icon: Users, title: 'Make a shared plan', text: 'Find a trip or host your own room. Discuss the route, group size, costs, and expectations before departure.', link: '/trips', action: 'Browse trips' },
             { icon: Shield, title: 'Prepare thoughtfully', text: 'Keep important travel information organized and read our guidance on boundaries and group conduct.', link: '/safety', action: 'Read safety guidance' },
-            { icon: BookOpen, title: 'Keep the story', text: 'Record your experience in a diary and share the moments, tips, and recommendations others can learn from.', link: '/stories', action: 'Read travel stories' },
+            { icon: BookOpen, title: 'Keep the story', text: 'Record your experience in a diary and share the moments, tips, and recommendations others can learn from.', link: '/app/diary?tab=travel-stories', action: 'Read travel stories' },
           ].map(({ icon: Icon, title, text, link, action }) => <article key={title} className="flex flex-col items-start"><Icon className="w-6 h-6 text-primary" /><h3 className="font-heading font-bold text-base text-text mt-3">{title}</h3><p className="text-sm text-text-muted leading-relaxed mt-2 mb-4">{text}</p><Link to={link} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover mt-auto">{action}<ArrowRight className="w-4 h-4" /></Link></article>)}
         </div>
       </section>

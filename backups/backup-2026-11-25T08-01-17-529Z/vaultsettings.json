@@ -1,0 +1,304 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320eb",
+    "userId": "user_mubarak",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "+91 98765 43210",
+      "secondaryContact": "+91 98765 43211"
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-06T12:41:25.196Z",
+    "updatedAt": "2026-11-06T12:41:25.196Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aedcde401b7b28048acb1dd",
+    "userId": "user_1793969636352",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "ID Card",
+        "Passport",
+        "Flight Tickets",
+        "Travel Insurance"
+      ],
+      "primaryContact": "+91 98765 43210",
+      "secondaryContact": "+91 98765 43211"
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-06T12:53:56.709Z",
+    "updatedAt": "2026-11-11T08:43:01.891Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aee08e2ee139d275a49ea3a",
+    "userId": "user_1793982164035",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "+91 98765 43210",
+      "secondaryContact": "+91 98765 43211"
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-06T17:05:38.532Z",
+    "updatedAt": "2026-11-06T17:05:38.532Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af36997ae30f305e5f8b61e",
+    "userId": "user_1794337174526",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "+91 98765 43210",
+      "secondaryContact": "+91 98765 43211"
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-10T18:59:35.028Z",
+    "updatedAt": "2026-11-10T18:59:35.028Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af36ad9ee588d3f18f6bf06",
+    "userId": "user_1794337496764_67fe",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "+91 98765 43210",
+      "secondaryContact": "+91 98765 43211"
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-10T19:04:57.289Z",
+    "updatedAt": "2026-11-10T19:04:57.289Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af36ddc4a93341d26764280",
+    "userId": "user_1794338268072",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-10T19:17:48.383Z",
+    "updatedAt": "2026-11-10T19:17:48.383Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af40cca67b1befd0f4d0331",
+    "userId": "user_1794378953675",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T06:35:54.707Z",
+    "updatedAt": "2026-11-11T06:35:54.707Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af40ce767b1befd0f4d04dd",
+    "userId": "user_1794378977912",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T06:36:23.187Z",
+    "updatedAt": "2026-11-11T06:36:23.187Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af40d0367b1befd0f4d06a1",
+    "userId": "user_1794379006238",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T06:36:51.476Z",
+    "updatedAt": "2026-11-11T06:36:51.476Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af40d2467b1befd0f4d0880",
+    "userId": "user_1794379039224",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T06:37:24.378Z",
+    "updatedAt": "2026-11-11T06:37:24.378Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af40e0f67b1befd0f4d097c",
+    "userId": "user_1794379278054",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T06:41:19.301Z",
+    "updatedAt": "2026-11-11T06:41:19.301Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af41e7b253b23f880196fa8",
+    "userId": "user_1794383481733",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T07:51:23.031Z",
+    "updatedAt": "2026-11-11T07:51:23.031Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af41ec4253b23f880197064",
+    "userId": "user_1794383555076",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T07:52:36.329Z",
+    "updatedAt": "2026-11-11T07:52:36.329Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af41ec6253b23f88019710a",
+    "userId": "user_1794383555241",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-11T07:52:38.837Z",
+    "updatedAt": "2026-11-11T07:52:38.837Z",
+    "__v": 0
+  },
+  {
+    "_id": "6afac7dd26ba08c7348a198d",
+    "userId": "user_1794336842331",
+    "emergencyConfig": {
+      "includedDocTypes": [
+        "Passport",
+        "Insurance"
+      ],
+      "primaryContact": "",
+      "secondaryContact": ""
+    },
+    "securitySettings": {
+      "twoFactorEnabled": true,
+      "autoLockTime": "15 minutes"
+    },
+    "offlineAccessSettings": {},
+    "createdAt": "2026-11-16T09:07:41.799Z",
+    "updatedAt": "2026-11-16T09:07:41.799Z",
+    "__v": 0
+  }
+]

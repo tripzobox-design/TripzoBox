@@ -35,7 +35,7 @@ export const StoryDetailPage: React.FC = () => {
     return (
       <div className="py-20 text-center">
         <h2 className="font-heading font-bold text-2xl text-text">Story not found</h2>
-        <Button variant="primary" onClick={() => navigate('/stories')} className="mt-4">
+        <Button variant="primary" onClick={() => navigate('/app/diary?tab=travel-stories')} className="mt-4">
           Browse All Stories
         </Button>
       </div>
@@ -73,7 +73,7 @@ export const StoryDetailPage: React.FC = () => {
         
         {/* Back link floating on banner */}
         <Link
-          to="/stories"
+          to="/app/diary?tab=travel-stories"
           className="absolute top-5 left-5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white text-xs font-semibold backdrop-blur-md transition-all border border-white/10"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

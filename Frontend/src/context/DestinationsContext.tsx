@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Destination } from '../types';
-import { mockDestinations } from '../data/mockDestinations';
 import { destinationsApi } from '../lib/api';
 
 interface DestinationsContextType {
@@ -19,23 +18,21 @@ export const DestinationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const customSlugs = new Set(parsed.map((d: Destination) => d.slug));
-          const remainingMock = mockDestinations.filter((d) => !customSlugs.has(d.slug));
-          return [...parsed, ...remainingMock];
+        if (Array.isArray(parsed)) {
+          return parsed;
         }
       }
     } catch (e) {
       console.error('Error loading custom destinations:', e);
     }
-    return mockDestinations;
+    return [];
   });
 
   useEffect(() => {
     destinationsApi
       .getDestinations()
       .then((serverDestinations) => {
-        if (Array.isArray(serverDestinations) && serverDestinations.length > 0) {
+        if (Array.isArray(serverDestinations)) {
           setDestinations(serverDestinations);
         }
       })

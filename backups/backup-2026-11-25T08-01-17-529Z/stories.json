@@ -1,0 +1,146 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320d8",
+    "id": "story_varkala",
+    "slug": "varkala-more-than-just-a-beach",
+    "title": "Varkala – More Than Just a Beach",
+    "destination": "Varkala, Kerala",
+    "dates": "12 - 16 May 2025",
+    "summary": "From cliffside cafes to peaceful beaches, this trip was a perfect mix of relaxation and adventure...",
+    "fullContent": [],
+    "coverImageUrl": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    "galleryImages": [],
+    "author": {
+      "id": "user_priya",
+      "name": "Priya Nair",
+      "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80"
+    },
+    "entries": [],
+    "likes": 124,
+    "likedBy": [],
+    "comments": 18,
+    "views": 890,
+    "readTimeMins": 4,
+    "visibility": "public",
+    "status": "published",
+    "badge": "Featured",
+    "days": 4,
+    "photosCount": 28,
+    "placesCount": 12,
+    "timeAgo": "3 days ago",
+    "rating": 4.8,
+    "reviewCount": 124,
+    "tripType": "Solo",
+    "travelStyle": [
+      "Relaxation",
+      "Beaches",
+      "Food"
+    ],
+    "languages": [
+      "English",
+      "Hindi"
+    ],
+    "tags": [
+      "Beach",
+      "Sunset",
+      "Yoga"
+    ],
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.185Z",
+    "updatedAt": "2026-11-06T12:41:25.185Z"
+  },
+  {
+    "_id": "6aedcaf5664176f4a11320d9",
+    "id": "story_munnar",
+    "slug": "munnar-a-weekend-escape",
+    "title": "Munnar – A Weekend Escape",
+    "destination": "Munnar, Kerala",
+    "dates": "01 - 04 May 2025",
+    "summary": "Cool weather, endless tea gardens and some of the best food I have ever had. Munnar truly has a different kind of magic...",
+    "fullContent": [],
+    "coverImageUrl": "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80",
+    "galleryImages": [],
+    "author": {
+      "id": "user_arjun",
+      "name": "Arjun Mehta",
+      "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80"
+    },
+    "entries": [],
+    "likes": 98,
+    "likedBy": [],
+    "comments": 12,
+    "views": 650,
+    "readTimeMins": 3,
+    "visibility": "public",
+    "status": "published",
+    "badge": "Popular",
+    "days": 3,
+    "photosCount": 32,
+    "placesCount": 10,
+    "timeAgo": "1 week ago",
+    "rating": 4.6,
+    "reviewCount": 98,
+    "tripType": "Group",
+    "travelStyle": [
+      "Nature",
+      "Trekking",
+      "Photography"
+    ],
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "tags": [
+      "Tea Plantation",
+      "Misty Hills",
+      "Trekking"
+    ],
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.185Z",
+    "updatedAt": "2026-11-06T12:41:25.185Z"
+  },
+  {
+    "_id": "6aedd4ee89c77a9d53f8ef30",
+    "id": "story_1793971438921",
+    "slug": "my-unforgettable-western-ghats-journey-8921",
+    "title": "My Unforgettable Western Ghats Journey",
+    "destination": "Munnar & Varkala, Kerala",
+    "dates": "12 - 22 May 2025",
+    "summary": "From early misty mornings in Lockhart tea plantations to crimson sunsets over Varkala cliffs, here is how we explored Kerala with a small group of travellers.",
+    "fullContent": [
+      "From early misty mornings in Lockhart tea plantations to crimson sunsets over Varkala cliffs, here is how we explored Kerala with a small group of travellers."
+    ],
+    "coverImageUrl": "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80",
+    "galleryImages": [
+      "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=600&q=80"
+    ],
+    "author": {
+      "id": "user_1793969636352",
+      "name": "then",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+      "city": "Kerala"
+    },
+    "entries": [],
+    "likes": 1,
+    "likedBy": [],
+    "comments": 0,
+    "views": 12,
+    "readTimeMins": 4,
+    "visibility": "public",
+    "status": "published",
+    "days": 3,
+    "photosCount": 0,
+    "placesCount": 0,
+    "rating": 4.8,
+    "reviewCount": 15,
+    "tripType": "Solo",
+    "travelStyle": [],
+    "languages": [],
+    "tags": [],
+    "createdAt": "2026-11-06T13:23:58.924Z",
+    "updatedAt": "2026-11-06T13:23:58.924Z",
+    "__v": 0
+  }
+]

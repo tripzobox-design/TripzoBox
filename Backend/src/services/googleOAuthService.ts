@@ -32,13 +32,15 @@ export const getGoogleOAuthConfig = () => {
   const callbackUrl = (
     process.env.GOOGLE_CALLBACK_URL ??
     config.googleCallbackUrl ??
-    'http://localhost:5000/api/auth/google/callback'
+    (config.nodeEnv === 'production'
+      ? 'https://tripzobox-api.onrender.com/api/auth/google/callback'
+      : 'http://localhost:5000/api/auth/google/callback')
   ).trim();
   const frontendUrl = (
     process.env.FRONTEND_ORIGIN ||
     process.env.FRONTEND_URL ||
     config.frontendUrl ||
-    'http://localhost:5173'
+    (config.nodeEnv === 'production' ? 'https://tripzobox.com' : 'http://localhost:5173')
   )
     .trim()
     .replace(/\/+$/, '');
@@ -211,10 +213,12 @@ export const createGoogleAuthUrl = (
     { expiresIn: '10m' }
   );
 
+  // Pass signed state token directly in OAuth URL so authentication succeeds even when
+  // cross-origin redirect cookies are dropped by browser privacy features (Safari ITP / Chrome third-party cookies)
   const authUrl = client.generateAuthUrl({
     access_type: 'online',
     scope: ['openid', 'email', 'profile'],
-    state,
+    state: stateCookieToken,
     prompt: 'select_account',
     code_challenge: codeChallenge,
     code_challenge_method: CodeChallengeMethod.S256,
@@ -232,7 +236,7 @@ export const verifyOAuthStateCookie = (
   mode: 'login' | 'reauth';
   expectedUserId?: string;
 } => {
-  if (typeof queryState !== 'string' || !queryState || typeof cookieToken !== 'string' || !cookieToken) {
+  if (typeof queryState !== 'string' || !queryState) {
     throw new GoogleOAuthError(
       'invalid_state',
       'Security verification failed (missing OAuth state). Please try again.',
@@ -241,35 +245,66 @@ export const verifyOAuthStateCookie = (
   }
 
   let decoded: any;
+
+  // Path A: Check if queryState itself is the cryptographically signed JWT state token
   try {
-    decoded = jwt.verify(cookieToken, config.jwtSecret);
+    decoded = jwt.verify(queryState, config.jwtSecret);
   } catch {
-    throw new GoogleOAuthError(
-      'invalid_state',
-      'Your Google sign-in session expired. Please try again.',
-      403
-    );
+    decoded = null;
+  }
+
+  // Path B: Fallback to reading cookieToken if queryState is an opaque random state
+  if (!decoded || decoded.purpose !== 'google_oauth_state') {
+    if (typeof cookieToken !== 'string' || !cookieToken) {
+      throw new GoogleOAuthError(
+        'invalid_state',
+        'Security verification failed (missing or invalid OAuth state). Please try again.',
+        403
+      );
+    }
+
+    try {
+      decoded = jwt.verify(cookieToken, config.jwtSecret);
+    } catch {
+      throw new GoogleOAuthError(
+        'invalid_state',
+        'Your Google sign-in session expired. Please try again.',
+        403
+      );
+    }
+
+    if (
+      !decoded ||
+      decoded.purpose !== 'google_oauth_state' ||
+      typeof decoded.state !== 'string' ||
+      typeof decoded.codeVerifier !== 'string'
+    ) {
+      throw new GoogleOAuthError(
+        'invalid_state',
+        'Security verification failed (invalid OAuth state payload). Please try again.',
+        403
+      );
+    }
+
+    const expectedBuf = Buffer.from(decoded.state, 'utf8');
+    const receivedBuf = Buffer.from(queryState, 'utf8');
+    if (expectedBuf.length !== receivedBuf.length || !crypto.timingSafeEqual(expectedBuf, receivedBuf)) {
+      throw new GoogleOAuthError(
+        'invalid_state',
+        'Security verification failed (OAuth state mismatch). Please try again.',
+        403
+      );
+    }
   }
 
   if (
     !decoded ||
     decoded.purpose !== 'google_oauth_state' ||
-    typeof decoded.state !== 'string' ||
     typeof decoded.codeVerifier !== 'string'
   ) {
     throw new GoogleOAuthError(
       'invalid_state',
       'Security verification failed (invalid OAuth state payload). Please try again.',
-      403
-    );
-  }
-
-  const expectedBuf = Buffer.from(decoded.state, 'utf8');
-  const receivedBuf = Buffer.from(queryState, 'utf8');
-  if (expectedBuf.length !== receivedBuf.length || !crypto.timingSafeEqual(expectedBuf, receivedBuf)) {
-    throw new GoogleOAuthError(
-      'invalid_state',
-      'Security verification failed (OAuth state mismatch). Please try again.',
       403
     );
   }
@@ -293,7 +328,8 @@ export const exchangeCodeForGoogleProfile = async (
   try {
     const tokenResponse = await client.getToken({ code, codeVerifier });
     tokens = tokenResponse.tokens;
-  } catch {
+  } catch (err: any) {
+    console.error('[GoogleOAuth] Code exchange failure:', err?.message, err?.response?.data || err);
     throw new GoogleOAuthError(
       'auth_failed',
       'Failed to exchange Google authorization code. Please try again.',

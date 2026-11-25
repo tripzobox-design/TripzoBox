@@ -546,19 +546,32 @@ export const ExplorePage: React.FC = () => {
                   <Compass className="w-6 h-6" />
                 </div>
                 <h3 className="font-heading font-bold text-lg text-gray-900">
-                  No destinations match your filters
+                  {destinations.length === 0 ? 'No destinations added yet' : 'No destinations match your filters'}
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-                  Try exploring all categories, choosing a different region, or resetting filters.
+                  {destinations.length === 0
+                    ? 'Explore newly discovered places and hidden gems once they are published by administrators or travelers.'
+                    : 'Try exploring all categories, choosing a different region, or resetting filters.'}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset All Filters</span>
-                </button>
+                {destinations.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleAddPlace}
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add First Destination</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset All Filters</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

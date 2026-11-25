@@ -18,6 +18,10 @@ import {
 } from '../models/VaultSettings.js';
 
 const seedDatabase = async () => {
+  if (process.env.NODE_ENV === 'production' && !process.env.FORCE_DEV_SEED) {
+    console.error('CRITICAL: Seed script is strictly disabled in production environments.');
+    process.exit(1);
+  }
   try {
     await connectDB();
     console.log('[Seed] Connected to database. Purging existing collections...');

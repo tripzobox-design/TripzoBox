@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trip } from '../types';
-import { mockTrips } from '../data/mockTrips';
 import { useAuth } from './AuthContext';
 import { tripsApi } from '../lib/api';
 
@@ -15,6 +14,7 @@ interface TripsContextType {
   acceptJoinRequest: (tripId: string, applicantId: string) => void;
   declineJoinRequest: (tripId: string, applicantId: string) => void;
   updateTripRoomType: (tripId: string, roomType: 'public' | 'private') => void;
+  updateTripDetails: (tripId: string, updates: Partial<Trip>) => Promise<void>;
   getTripById: (tripId: string) => Trip | undefined;
   myTrips: Trip[];
   refreshTrips: () => Promise<void>;
@@ -38,23 +38,10 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user, isLoggedIn } = useAuth();
 
   const [trips, setTrips] = useState<Trip[]>(() => {
-    const saved = localStorage.getItem('tripzobox_trips');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((t: Trip) => t.id));
-        const newTrips = mockTrips.filter((m) => !existingIds.has(m.id));
-        if (newTrips.length > 0) {
-          const merged = [...parsed, ...newTrips];
-          localStorage.setItem('tripzobox_trips', JSON.stringify(merged));
-          return merged;
-        }
-        return parsed;
-      } catch (e) {
-        return mockTrips;
-      }
-    }
-    return mockTrips;
+    try {
+      localStorage.removeItem('tripzobox_trips');
+    } catch {}
+    return [];
   });
 
   const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
@@ -75,6 +62,13 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const serverTrips = await tripsApi.getTrips();
       if (Array.isArray(serverTrips)) {
         setTrips(serverTrips);
+        try {
+          if (serverTrips.length === 0) {
+            localStorage.removeItem('tripzobox_trips');
+          } else {
+            localStorage.setItem('tripzobox_trips', JSON.stringify(serverTrips));
+          }
+        } catch {}
       }
     } catch (e) {
       // Backend offline or unreachable, keep cached trips
@@ -289,6 +283,15 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     tripsApi.updateRoomType(tripId, roomType).catch(() => {});
   };
 
+  const updateTripDetails = async (tripId: string, updates: Partial<Trip>) => {
+    setTrips((prevTrips) =>
+      prevTrips.map((t) => (t.id === tripId ? { ...t, ...updates } : t))
+    );
+    try {
+      await tripsApi.updateTrip(tripId, updates);
+    } catch {}
+  };
+
   const getTripById = (tripId: string) => {
     return trips.find((t) => t.id === tripId);
   };
@@ -313,6 +316,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         acceptJoinRequest,
         declineJoinRequest,
         updateTripRoomType,
+        updateTripDetails,
         getTripById,
         myTrips,
         refreshTrips,

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { config } from '../config/env.js';
 import { IdentityStatus } from '../models/IdentityVerification.js';
 
 export interface IdentityVerificationRequest {
@@ -46,7 +47,7 @@ class SandboxIdentityProvider implements IIdentityVerificationProvider {
     return {
       providerReferenceId,
       status: 'PENDING',
-      redirectUrl: `http://localhost:5173/app/profile?tab=safety&idv_ref=${providerReferenceId}`,
+      redirectUrl: `${config.frontendUrl}/app/profile?tab=safety&idv_ref=${providerReferenceId}`,
       isMock: !this.isConfigured,
     };
   }

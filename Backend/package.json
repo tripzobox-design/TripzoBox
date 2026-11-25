@@ -9,6 +9,8 @@
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "bootstrap:admin": "tsx src/scripts/bootstrapAdmin.ts",
+    "wipe:db": "tsx src/scripts/wipeDb.ts",
     "test": "vitest run --pool=forks --no-file-parallelism --hook-timeout 30000 --test-timeout 30000"
   },
   "dependencies": {

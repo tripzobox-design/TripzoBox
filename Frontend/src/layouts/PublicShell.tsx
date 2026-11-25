@@ -20,16 +20,15 @@ import { useAuth } from '../context/AuthContext';
 import { AccountNav } from '../components/common/AccountNav';
 import { MobileNavigation } from '../components/common/MobileNavigation';
 import { NotificationBell } from '../components/common/NotificationBell';
-import { MobileSuggestionWidget } from '../components/common/MobileSuggestionWidget';
 import { useNotifications } from '../context/NotificationsContext';
 
 // Mobile bottom navigation items for authenticated users
 const MOBILE_NAV_ITEMS = [
   { label: 'Home', path: '/app/dashboard', icon: Home, matchPaths: ['/app/dashboard', '/'] },
-  { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
-  { label: 'Trips', path: '/app/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
-  { label: 'Diary', path: '/app/diary', icon: BookOpen, matchPaths: ['/app/diary', '/app/stories', '/app/diary/add'] },
   { label: 'Travel Vault', path: '/app/vault', icon: Shield, matchPaths: ['/app/vault'] },
+  { label: 'Trips', path: '/app/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
+  { label: 'Trip Diary', path: '/app/diary', icon: BookOpen, matchPaths: ['/app/diary', '/app/stories', '/app/diary/add'] },
+  { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
   { label: 'Profile', path: '/app/profile', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/messages', '/app/notifications'] },
 ] as const;
 
@@ -180,7 +179,6 @@ export const PublicShell: React.FC = () => {
       {/* Main Page Canvas */}
       <main className={`flex-1 min-h-0 flex flex-col ${isExpandedLayout ? 'pb-20 lg:pb-0' : ''}`}>
         <Outlet />
-        <MobileSuggestionWidget />
       </main>
 
       {/* Public Footer */}
@@ -221,7 +219,7 @@ export const PublicShell: React.FC = () => {
                   <Link to="/trips" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 transition-colors">
                     Find a Trip
                   </Link>
-                  <Link to="/stories" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 transition-colors">
+                  <Link to="/app/diary?tab=travel-stories" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 transition-colors">
                     Travel Stories
                   </Link>
                   <Link to="/how-it-works" className="text-xs sm:text-sm text-gray-600 hover:text-emerald-700 transition-colors">
@@ -291,10 +289,10 @@ export const PublicShell: React.FC = () => {
         <div className="flex items-stretch h-16 min-h-[48px]">
           {[
             { label: 'Home', path: isLoggedIn ? '/app/dashboard' : '/', icon: Home, matchPaths: ['/app/dashboard', '/'] },
-            { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
-            { label: 'Trips', path: '/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
-            { label: 'Trip Diary', path: isLoggedIn ? '/app/diary' : '/stories', icon: BookOpen, matchPaths: ['/app/diary', '/stories', '/app/stories', '/diary'] },
             { label: 'Travel Vault', path: '/app/vault', icon: Shield, matchPaths: ['/app/vault'] },
+            { label: 'Trips', path: '/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
+            { label: 'Trip Diary', path: '/app/diary?tab=travel-stories', icon: BookOpen, matchPaths: ['/app/diary', '/stories', '/app/stories', '/diary'] },
+            { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
             { label: isLoggedIn ? 'Profile' : 'Log In', path: isLoggedIn ? '/app/profile' : '/login', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/messages', '/app/notifications', '/login', '/signup'] },
           ].map(({ label, path, icon: Icon, matchPaths }) => {
             const isActive = matchPaths.some((mp) =>

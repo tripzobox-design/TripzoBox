@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320e2",
+    "id": "em_1",
+    "userId": "user_mubarak",
+    "name": "Aisha Ali",
+    "relation": "Sister",
+    "phone": "+91 98765 43210",
+    "isPrimary": true,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.191Z",
+    "updatedAt": "2026-11-06T12:41:25.191Z"
+  },
+  {
+    "_id": "6aedcaf5664176f4a11320e3",
+    "id": "em_2",
+    "userId": "user_mubarak",
+    "name": "Dr. Tariq Mahmood",
+    "relation": "Family Physician",
+    "phone": "+91 90101 43211",
+    "isPrimary": false,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.191Z",
+    "updatedAt": "2026-11-06T12:41:25.191Z"
+  }
+]

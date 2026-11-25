@@ -346,12 +346,9 @@ export const TravelVaultPage: React.FC = () => {
   const [sharedTab, setSharedTab] = useState<'active' | 'received'>('active');
 
   // Screen 8: Emergency Access Edit State
-  const [emergencyDocs, setEmergencyDocs] = useState<string[]>([
-    'ID Card',
-    'Passport',
-    'Flight Tickets',
-    'Travel Insurance',
-  ]);
+  const [emergencyDocs, setEmergencyDocs] = useState<string[]>(
+    emergencyAccessConfig.includedDocTypes || []
+  );
   const [emergencyPrimary, setEmergencyPrimary] = useState(
     emergencyAccessConfig.primaryContact || ''
   );

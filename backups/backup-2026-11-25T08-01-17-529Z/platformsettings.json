@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "6aed81b271e1a127d6b9a167",
+    "key": "global_settings",
+    "websiteName": "TripzoBox Global",
+    "websiteTagline": "Explore The World Without Limits",
+    "contactEmail": "operations@tripzobox.com",
+    "supportPhone": "+91 98765 00000",
+    "socialLinks": {
+      "instagram": "https://instagram.com/tripzobox",
+      "twitter": "https://twitter.com/tripzobox",
+      "facebook": "https://facebook.com/tripzobox",
+      "linkedin": "https://linkedin.com/company/tripzobox",
+      "youtube": "https://youtube.com/@tripzobox"
+    },
+    "maintenanceMode": false,
+    "registrationEnabled": true,
+    "tripCreationEnabled": true,
+    "publicDiaryEnabled": true,
+    "communityGuidelinesUrl": "/community-rules",
+    "safetyGuidelinesUrl": "/safety",
+    "emergencyHelpline": "112 / 100",
+    "updatedBy": "admin_1794984470016@tripzobox.com",
+    "createdAt": "2026-11-06T07:28:50.663Z",
+    "updatedAt": "2026-11-18T06:47:50.330Z",
+    "__v": 0
+  }
+]

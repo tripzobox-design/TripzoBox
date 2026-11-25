@@ -1,0 +1,1198 @@
+{
+  "database": "tripzobox",
+  "createdAt": "2026-11-25T08:01:17.561Z",
+  "collections": {
+    "trustedcontacts": {
+      "count": 2,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        }
+      ],
+      "fileName": "trustedcontacts.json"
+    },
+    "diaryentries": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "category": 1
+          },
+          "name": "category_1",
+          "background": true
+        }
+      ],
+      "fileName": "diaryentries.json"
+    },
+    "otpverifications": {
+      "count": 12,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "identifier": 1
+          },
+          "name": "identifier_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "expiresAt": 1
+          },
+          "name": "expiresAt_1",
+          "background": true,
+          "expireAfterSeconds": 3600
+        },
+        {
+          "v": 2,
+          "key": {
+            "consumed": 1
+          },
+          "name": "consumed_1",
+          "background": true
+        }
+      ],
+      "fileName": "otpverifications.json"
+    },
+    "platformsettings": {
+      "count": 1,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "key": 1
+          },
+          "name": "key_1",
+          "background": true,
+          "unique": true
+        }
+      ],
+      "fileName": "platformsettings.json"
+    },
+    "users": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "username": 1
+          },
+          "name": "username_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "email": 1
+          },
+          "name": "email_1",
+          "background": true,
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "phone": 1
+          },
+          "name": "phone_1",
+          "background": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "identityVerificationStatus": 1
+          },
+          "name": "identityVerificationStatus_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "googleId": 1
+          },
+          "name": "googleId_1",
+          "background": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSuspended": 1
+          },
+          "name": "isSuspended_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isDeleted": 1
+          },
+          "name": "isDeleted_1",
+          "background": true
+        }
+      ],
+      "fileName": "users.json"
+    },
+    "websitecontents": {
+      "count": 1,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "key": 1
+          },
+          "name": "key_1",
+          "background": true,
+          "unique": true
+        }
+      ],
+      "fileName": "websitecontents.json"
+    },
+    "authsettings": {
+      "count": 1,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "key": 1
+          },
+          "name": "key_1",
+          "background": true,
+          "unique": true
+        }
+      ],
+      "fileName": "authsettings.json"
+    },
+    "travelpackages": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "slug": 1
+          },
+          "name": "slug_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "destination": 1
+          },
+          "name": "destination_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "featured": 1
+          },
+          "name": "featured_1",
+          "background": true
+        }
+      ],
+      "fileName": "travelpackages.json"
+    },
+    "vaultsettings": {
+      "count": 15,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true,
+          "unique": true
+        }
+      ],
+      "fileName": "vaultsettings.json"
+    },
+    "userblocks": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "blockerId": 1
+          },
+          "name": "blockerId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "blockedUserId": 1
+          },
+          "name": "blockedUserId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "blockerId": 1,
+            "blockedUserId": 1
+          },
+          "name": "blockerId_1_blockedUserId_1",
+          "background": true,
+          "unique": true
+        }
+      ],
+      "fileName": "userblocks.json"
+    },
+    "identityverifications": {
+      "count": 78,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "providerReferenceId": 1
+          },
+          "name": "providerReferenceId_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        }
+      ],
+      "fileName": "identityverifications.json"
+    },
+    "emergencycontacts": {
+      "count": 2,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        }
+      ],
+      "fileName": "emergencycontacts.json"
+    },
+    "stories": {
+      "count": 3,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "slug": 1
+          },
+          "name": "slug_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "destination": 1
+          },
+          "name": "destination_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "author.id": 1
+          },
+          "name": "author.id_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "visibility": 1
+          },
+          "name": "visibility_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        }
+      ],
+      "fileName": "stories.json"
+    },
+    "sharedaccessrecords": {
+      "count": 2,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "documentId": 1
+          },
+          "name": "documentId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "sharedWithUserId": 1
+          },
+          "name": "sharedWithUserId_1",
+          "background": true
+        }
+      ],
+      "fileName": "sharedaccessrecords.json"
+    },
+    "messages": {
+      "count": 2,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripId": 1
+          },
+          "name": "tripId_1",
+          "background": true
+        }
+      ],
+      "fileName": "messages.json"
+    },
+    "userreports": {
+      "count": 78,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "reporterId": 1
+          },
+          "name": "reporterId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetType": 1
+          },
+          "name": "targetType_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetId": 1
+          },
+          "name": "targetId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "category": 1
+          },
+          "name": "category_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        }
+      ],
+      "fileName": "userreports.json"
+    },
+    "oauthhandoffcodes": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "codeHash": 1
+          },
+          "name": "codeHash_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "expiresAt": 1
+          },
+          "name": "expiresAt_1",
+          "background": true,
+          "expireAfterSeconds": 300
+        },
+        {
+          "v": 2,
+          "key": {
+            "consumed": 1
+          },
+          "name": "consumed_1",
+          "background": true
+        }
+      ],
+      "fileName": "oauthhandoffcodes.json"
+    },
+    "consumedresettokens": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "tokenIdentifier": 1
+          },
+          "name": "tokenIdentifier_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "expiresAt": 1
+          },
+          "name": "expiresAt_1",
+          "background": true,
+          "expireAfterSeconds": 0
+        }
+      ],
+      "fileName": "consumedresettokens.json"
+    },
+    "trips": {
+      "count": 408,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "destination": 1
+          },
+          "name": "destination_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "startCity": 1
+          },
+          "name": "startCity_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripType": 1
+          },
+          "name": "tripType_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "leader.id": 1
+          },
+          "name": "leader.id_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "roomType": 1
+          },
+          "name": "roomType_1",
+          "background": true
+        }
+      ],
+      "fileName": "trips.json"
+    },
+    "adminauditlogs": {
+      "count": 1104,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "adminId": 1
+          },
+          "name": "adminId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "action": 1
+          },
+          "name": "action_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetType": 1
+          },
+          "name": "targetType_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetId": 1
+          },
+          "name": "targetId_1",
+          "background": true
+        }
+      ],
+      "fileName": "adminauditlogs.json"
+    },
+    "joinrequests": {
+      "count": 496,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripId": 1
+          },
+          "name": "tripId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripId": 1,
+            "userId": 1,
+            "status": 1
+          },
+          "name": "tripId_1_userId_1_status_1",
+          "background": true
+        }
+      ],
+      "fileName": "joinrequests.json"
+    },
+    "travellerreviews": {
+      "count": 77,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripId": 1
+          },
+          "name": "tripId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "reviewerId": 1
+          },
+          "name": "reviewerId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "revieweeId": 1
+          },
+          "name": "revieweeId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tripId": 1,
+            "reviewerId": 1,
+            "revieweeId": 1
+          },
+          "name": "tripId_1_reviewerId_1_revieweeId_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isReported": 1
+          },
+          "name": "isReported_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        }
+      ],
+      "fileName": "travellerreviews.json"
+    },
+    "moderationactions": {
+      "count": 231,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "adminId": 1
+          },
+          "name": "adminId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "reportId": 1
+          },
+          "name": "reportId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetUserId": 1
+          },
+          "name": "targetUserId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "action": 1
+          },
+          "name": "action_1",
+          "background": true
+        }
+      ],
+      "fileName": "moderationactions.json"
+    },
+    "notifications": {
+      "count": 543,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "read": 1
+          },
+          "name": "read_1",
+          "background": true
+        }
+      ],
+      "fileName": "notifications.json"
+    },
+    "vaultdocuments": {
+      "count": 0,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        }
+      ],
+      "fileName": "vaultdocuments.json"
+    },
+    "destinations": {
+      "count": 8,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "id": 1
+          },
+          "name": "id_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "slug": 1
+          },
+          "name": "slug_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "category": 1
+          },
+          "name": "category_1",
+          "background": true
+        }
+      ],
+      "fileName": "destinations.json"
+    }
+  },
+  "totalDocuments": 3064
+}

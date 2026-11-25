@@ -1,0 +1,34 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320e8",
+    "id": "share_passport_ayesha",
+    "userId": "user_mubarak",
+    "documentId": "doc_passport_india",
+    "documentName": "Passport",
+    "documentType": "Passport",
+    "sharedWithName": "Ayesha Khan",
+    "sharedWithRole": "Trip member",
+    "permission": "View",
+    "expires": "Until trip end",
+    "active": true,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.193Z",
+    "updatedAt": "2026-11-06T12:41:25.193Z"
+  },
+  {
+    "_id": "6aedcaf5664176f4a11320e9",
+    "id": "share_flight_rohit",
+    "userId": "user_mubarak",
+    "documentId": "doc_flight_ticket_delhi",
+    "documentName": "Flight Ticket",
+    "documentType": "FlightTicket",
+    "sharedWithName": "Rohit Sharma",
+    "sharedWithRole": "Trip member",
+    "permission": "View • Download",
+    "expires": "15 Oct 2025",
+    "active": true,
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.193Z",
+    "updatedAt": "2026-11-06T12:41:25.193Z"
+  }
+]

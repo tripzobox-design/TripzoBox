@@ -14,17 +14,13 @@ export const AddExperiencePage: React.FC = () => {
   const { addEntry } = useDiary();
   const { success } = useToast();
 
-  const [place, setPlace] = useState('Munnar');
+  const [place, setPlace] = useState('');
   const [category, setCategory] = useState<DiaryEntry['category']>('Nature');
   const [rating, setRating] = useState(5);
-  const [price, setPrice] = useState('500');
-  const [text, setText] = useState(
-    'Beautiful hill gardens and cool weather. A must visit! The morning mist hovering over the Lockhart tea estate was pure magic. We stopped at a small roadside stall for cardamom tea and warm banana fritters.'
-  );
-  const [tips, setTips] = useState('Reach Top Station early morning for views above the cloud line.');
-  const [photos, setPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80',
-  ]);
+  const [price, setPrice] = useState('');
+  const [text, setText] = useState('');
+  const [tips, setTips] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const [errors, setErrors] = useState<{ place?: string; text?: string }>({});
 

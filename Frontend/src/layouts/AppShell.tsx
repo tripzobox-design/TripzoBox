@@ -14,6 +14,7 @@ import {
   X,
   LogOut,
   Settings,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
@@ -48,12 +49,13 @@ export const AppShell: React.FC = () => {
     { label: 'Profile', path: '/app/profile', icon: User },
   ];
 
-  // Mobile Bottom Tab Bar items (5 items max)
+  // Mobile Bottom Tab Bar items
   const bottomNavItems = [
     { label: 'Home', path: '/', icon: LayoutDashboard },
+    { label: 'Travel Vault', path: '/app/vault', icon: Shield },
     { label: 'Trips', path: '/app/trips', icon: Compass },
-    // Center element is elevated Create CTA
-    { label: 'Diary', path: '/app/diary', icon: BookOpen },
+    { label: 'Trip Diary', path: '/app/diary', icon: BookOpen },
+    { label: 'Explore', path: '/explore', icon: MapPin },
     { label: 'Profile', path: '/app/profile', icon: User },
   ];
 
@@ -275,63 +277,25 @@ export const AppShell: React.FC = () => {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-border px-3 py-2 flex items-center justify-around"
         aria-label="Mobile Navigation"
       >
-        {/* Item 1: Dashboard */}
+        {/* Item 1: Home */}
         <NavLink
           to="/"
           className={({ isActive }) =>
             `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
             }`
           }
         >
-          <LayoutDashboard className="w-5 h-5" />
+          <Home className="w-5 h-5" />
           <span>Home</span>
         </NavLink>
 
-        {/* Item 2: Trips */}
-        <NavLink
-          to="/app/trips"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
-            }`
-          }
-        >
-          <Compass className="w-5 h-5" />
-          <span>Trips</span>
-        </NavLink>
-
-        {/* Item 3: Center Elevated Add/Create Button */}
-        <div className="relative -top-4">
-          <button
-            type="button"
-            onClick={() => setQuickAddOpen(!quickAddOpen)}
-            className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-hover hover:bg-primary-hover active:scale-95 transition-all"
-            aria-label="Create or Add"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
-        </div>
-
-        {/* Item 4: Travel Diary */}
-        <NavLink
-          to="/app/diary"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
-            }`
-          }
-        >
-          <BookOpen className="w-5 h-5" />
-          <span>Diary</span>
-        </NavLink>
-
-        {/* Item 5: Travel Vault */}
+        {/* Item 2: Travel Vault */}
         <NavLink
           to="/app/vault"
           className={({ isActive }) =>
             `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
             }`
           }
         >
@@ -339,12 +303,51 @@ export const AppShell: React.FC = () => {
           <span>Travel Vault</span>
         </NavLink>
 
+        {/* Item 3: Trips */}
+        <NavLink
+          to="/app/trips"
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
+            }`
+          }
+        >
+          <Search className="w-5 h-5" />
+          <span>Trips</span>
+        </NavLink>
+
+        {/* Item 4: Trip Diary */}
+        <NavLink
+          to="/app/diary"
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
+            }`
+          }
+        >
+          <BookOpen className="w-5 h-5" />
+          <span>Trip Diary</span>
+        </NavLink>
+
+        {/* Item 5: Explore */}
+        <NavLink
+          to="/explore"
+          className={({ isActive }) =>
+            `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
+            }`
+          }
+        >
+          <Compass className="w-5 h-5" />
+          <span>Explore</span>
+        </NavLink>
+
         {/* Item 6: Profile */}
         <NavLink
           to="/app/profile"
           className={({ isActive }) =>
             `flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-              isActive ? 'text-primary' : 'text-text-muted hover:text-text'
+              isActive ? 'text-primary font-bold' : 'text-text-muted hover:text-text'
             }`
           }
         >

@@ -268,13 +268,29 @@ export const DashboardPage: React.FC = () => {
               : 'space-y-3 sm:space-y-3.5'
           }
         >
-          {recentTrips.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              variant={tripsViewMode === 'grid' ? 'vertical' : 'horizontal'}
-            />
-          ))}
+          {recentTrips.length > 0 ? (
+            recentTrips.map((trip) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                variant={tripsViewMode === 'grid' ? 'vertical' : 'horizontal'}
+              />
+            ))
+          ) : (
+            <div className="col-span-full rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-xs">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                <Compass className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-800">No scheduled trips yet</p>
+              <p className="text-xs text-gray-500 mt-0.5 mb-3">Be the first to schedule an upcoming group or solo adventure!</p>
+              <Link
+                to="/app/trips/create"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors"
+              >
+                <span>Plan a Trip</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -290,7 +306,7 @@ export const DashboardPage: React.FC = () => {
             </p>
           </div>
           <Link
-            to="/stories"
+            to="/app/diary?tab=travel-stories"
             className="text-xs sm:text-sm font-semibold text-primary hover:text-primary-hover inline-flex items-center gap-1 group shrink-0 ml-3"
           >
             <span>Explore all</span>
@@ -299,11 +315,27 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* 3-column responsive story cards on tablet & desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {communityStories.map((story) => (
-            <StoryCard key={story.id} story={story} variant="standard" />
-          ))}
-        </div>
+        {communityStories.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {communityStories.map((story) => (
+              <StoryCard key={story.id} story={story} variant="standard" />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-xs">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <p className="text-sm font-semibold text-gray-800">No community stories published yet</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">Record your adventures in your private diary and share them with the community.</p>
+            <Link
+              to="/app/diary"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors"
+            >
+              <span>Write a Story</span>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* 5. HIDDEN SPOTS SECTION */}
@@ -327,45 +359,61 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* 3-column responsive destination cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5">
-          {hiddenSpots.map((dest) => (
-            <div
-              key={dest.id}
-              onClick={() => navigate(`/explore/${dest.slug}`)}
-              className="bg-white rounded-2xl p-3 border border-border/80 shadow-subtle hover:shadow-card hover:border-primary/40 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-gray-100">
-                  <img
-                    src={dest.imageUrl}
-                    alt={dest.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-accent" />
-                    <span>Hidden Spot</span>
+        {hiddenSpots.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5">
+            {hiddenSpots.map((dest) => (
+              <div
+                key={dest.id}
+                onClick={() => navigate(`/explore/${dest.slug}`)}
+                className="bg-white rounded-2xl p-3 border border-border/80 shadow-subtle hover:shadow-card hover:border-primary/40 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-gray-100">
+                    <img
+                      src={dest.imageUrl}
+                      alt={dest.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-accent" />
+                      <span>Hidden Spot</span>
+                    </div>
+                  </div>
+                  <div className="pt-3 px-1">
+                    <h4 className="font-heading font-bold text-base text-text group-hover:text-primary transition-colors">
+                      {dest.name}
+                    </h4>
+                    <p className="text-xs text-text-muted font-medium mt-0.5">
+                      {dest.state}
+                    </p>
+                    <p className="text-xs text-text-muted mt-1.5 line-clamp-2 leading-relaxed">
+                      {dest.shortDescription}
+                    </p>
                   </div>
                 </div>
-                <div className="pt-3 px-1">
-                  <h4 className="font-heading font-bold text-base text-text group-hover:text-primary transition-colors">
-                    {dest.name}
-                  </h4>
-                  <p className="text-xs text-text-muted font-medium mt-0.5">
-                    {dest.state}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1.5 line-clamp-2 leading-relaxed">
-                    {dest.shortDescription}
-                  </p>
+                <div className="pt-3 px-1 mt-2 border-t border-gray-100 flex items-center justify-between text-xs text-primary font-semibold group-hover:text-primary-hover">
+                  <span>View destination</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
-              <div className="pt-3 px-1 mt-2 border-t border-gray-100 flex items-center justify-between text-xs text-primary font-semibold group-hover:text-primary-hover">
-                <span>View destination</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-xs">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+              <Compass className="w-5 h-5" />
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-semibold text-gray-800">No hidden spots submitted yet</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">Discover and publish unexplored destinations to inspire fellow travelers.</p>
+            <Link
+              to="/app/explore/create"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors"
+            >
+              <span>Submit a Spot</span>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -208,9 +208,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     user.travelInterests && user.travelInterests.length > 0
       ? user.travelInterests
-      : ['Adventure', 'Nature', 'Photography', 'Mountains']
+      : []
   );
-  const [travelStyle, setTravelStyle] = useState<string>(user.travelStyle || 'Solo');
+  const [travelStyle, setTravelStyle] = useState<string>(user.travelStyle || '');
 
   // Email Verification Step State
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -406,28 +406,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
       }
       setOauthError('');
       setIsLoading(true);
-      const backendOrigin = getBackendOrigin();
       try {
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), 5000);
-        const healthRes = await fetch(`${backendOrigin}/health`, {
-          method: 'GET',
-          signal: controller.signal,
-        });
-        window.clearTimeout(timeoutId);
-
-        if (!healthRes.ok) {
-          throw new Error('Authentication server is currently unavailable.');
-        }
-
         localStorage.removeItem('tripzobox_token');
-        window.location.href = authApi.getGoogleAuthUrl(getRedirectTarget());
+        const targetUrl = authApi.getGoogleAuthUrl(getRedirectTarget());
+        window.location.href = targetUrl;
       } catch (err: any) {
         setIsLoading(false);
-        const msg =
-          err?.name === 'AbortError'
-            ? 'Authentication server timed out. Please verify the backend is running on http://localhost:5000.'
-            : 'Unable to connect to the authentication server. Please verify the backend is running on http://localhost:5000.';
+        const msg = err?.message || 'Unable to initiate Google sign-in. Please try again.';
         setOauthError(msg);
         error(msg, 'Connection Error');
       }

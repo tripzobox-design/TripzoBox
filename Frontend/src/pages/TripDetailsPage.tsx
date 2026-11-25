@@ -33,6 +33,9 @@ import {
   ShieldCheck,
   PhoneCall,
   UserX,
+  Plus,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +67,7 @@ export const TripDetailsPage: React.FC = () => {
     acceptJoinRequest,
     declineJoinRequest,
     updateTripRoomType,
+    updateTripDetails,
   } = useTrips();
   const { user, isLoggedIn } = useAuth();
   const { success, info } = useToast();
@@ -77,6 +81,57 @@ export const TripDetailsPage: React.FC = () => {
   const [showRoomTypeConfirm, setShowRoomTypeConfirm] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
+
+  // Itinerary Edit Modal State
+  const [isItineraryModalOpen, setIsItineraryModalOpen] = useState(false);
+  const [editingDays, setEditingDays] = useState<{ day: number; title: string; desc: string }[]>([]);
+  const [isSavingItinerary, setIsSavingItinerary] = useState(false);
+
+  const handleOpenItineraryModal = () => {
+    if (trip?.itinerary && trip.itinerary.length > 0) {
+      setEditingDays(trip.itinerary.map((d) => ({ ...d })));
+    } else {
+      setEditingDays([
+        { day: 1, title: '', desc: '' },
+      ]);
+    }
+    setIsItineraryModalOpen(true);
+  };
+
+  const handleAddEditingDay = () => {
+    setEditingDays((prev) => [
+      ...prev,
+      { day: prev.length + 1, title: '', desc: '' },
+    ]);
+  };
+
+  const handleRemoveEditingDay = (index: number) => {
+    setEditingDays((prev) =>
+      prev.filter((_, i) => i !== index).map((d, i) => ({ ...d, day: i + 1 }))
+    );
+  };
+
+  const handleSaveItinerary = async () => {
+    if (!trip) return;
+    const cleaned = editingDays
+      .map((d, idx) => ({
+        day: idx + 1,
+        title: d.title.trim() || `Day ${idx + 1} Activities`,
+        desc: d.desc.trim(),
+      }))
+      .filter((d) => d.title || d.desc);
+
+    setIsSavingItinerary(true);
+    try {
+      await updateTripDetails(trip.id, { itinerary: cleaned });
+      success('Day-by-day plan updated successfully!', 'Itinerary Saved 🎉');
+      setIsItineraryModalOpen(false);
+    } catch {
+      info('Could not save itinerary. Please try again.');
+    } finally {
+      setIsSavingItinerary(false);
+    }
+  };
 
   // Trust & Safety Modals
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -684,26 +739,63 @@ export const TripDetailsPage: React.FC = () => {
             {/* TAB: ITINERARY */}
             {activeTab === 'itinerary' && (
               <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
-                <h4 className="font-heading font-semibold text-base text-text mb-3">
-                  Day-by-Day Plan
-                </h4>
-                <div className="space-y-3">
-                  {trip.itinerary?.map((item) => (
-                    <div
-                      key={item.day}
-                      className="p-4 rounded-xl bg-light-bg border border-border flex items-start gap-3.5"
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-heading font-semibold text-base text-text">
+                    Day-by-Day Plan
+                  </h4>
+                  {isLeader && (
+                    <button
+                      type="button"
+                      onClick={handleOpenItineraryModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-white text-xs font-semibold transition-colors cursor-pointer"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
-                        D{item.day}
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{trip.itinerary && trip.itinerary.length > 0 ? 'Edit Plan' : 'Add Day Plan'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {trip.itinerary && trip.itinerary.length > 0 ? (
+                    trip.itinerary.map((item) => (
+                      <div
+                        key={item.day}
+                        className="p-4 rounded-xl bg-light-bg border border-border flex items-start gap-3.5"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
+                          D{item.day}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-semibold text-sm text-text">{item.title}</h5>
+                          <p className="text-xs text-text-muted mt-1 leading-relaxed whitespace-pre-line">
+                            {item.desc || 'No detailed activity description added for this day.'}
+                          </p>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-8 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/60 text-center space-y-3">
+                      <Calendar className="w-10 h-10 text-emerald-600/50 mx-auto" />
                       <div>
-                        <h5 className="font-semibold text-sm text-text">{item.title}</h5>
-                        <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                          {item.desc}
+                        <h5 className="font-bold text-sm text-gray-900">No day-by-day plan added yet</h5>
+                        <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                          {isLeader
+                            ? 'As trip leader, outline your planned daily schedule, routes, and activities so travellers know what to expect.'
+                            : 'The trip leader has not published daily schedule details for this trip yet.'}
                         </p>
                       </div>
+                      {isLeader && (
+                        <button
+                          type="button"
+                          onClick={handleOpenItineraryModal}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Add Day-by-Day Plan</span>
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
@@ -912,20 +1004,26 @@ export const TripDetailsPage: React.FC = () => {
                 <h4 className="font-heading font-semibold text-base text-text mb-3">
                   Past Traveller Feedback
                 </h4>
-                <div className="space-y-3">
-                  {trip.reviews?.map((rev) => (
-                    <div key={rev.id} className="p-4 rounded-xl bg-light-bg border border-border space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Avatar src={rev.author.avatarUrl} name={rev.author.name} size="xs" />
-                          <span className="text-xs font-semibold text-text">{rev.author.name}</span>
+                {trip.reviews && trip.reviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {trip.reviews.map((rev) => (
+                      <div key={rev.id} className="p-4 rounded-xl bg-light-bg border border-border space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Avatar src={rev.author.avatarUrl} name={rev.author.name} size="xs" />
+                            <span className="text-xs font-semibold text-text">{rev.author.name}</span>
+                          </div>
+                          <StarRating value={rev.rating} readOnly size="sm" />
                         </div>
-                        <StarRating value={rev.rating} readOnly size="sm" />
+                        <p className="text-xs text-text-muted italic">"{rev.comment}"</p>
                       </div>
-                      <p className="text-xs text-text-muted italic">"{rev.comment}"</p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 text-center">
+                    <p className="text-xs text-gray-500">No traveller feedback or reviews yet for this trip.</p>
+                  </div>
+                )}
               </div>
             )}
             {infoTab === 'images' && (
@@ -1071,12 +1169,12 @@ export const TripDetailsPage: React.FC = () => {
                   to={`/app/trips/${trip.id}/requests`}
                   className="w-full py-2.5 rounded-xl border border-primary text-primary hover:bg-emerald-50 font-semibold text-xs transition-colors block text-center"
                 >
-                  Join Requests ({trip.pendingJoinRequests?.length || 2})
+                  Join Requests ({trip.pendingJoinRequests?.length ?? 0})
                 </Link>
               </div>
             ) : joinStatus === 'accepted' ? (
               <div className="w-full py-3 rounded-xl bg-emerald-50 text-primary font-semibold text-xs sm:text-sm text-center border border-emerald-200">
-                Joined ✓ (See you in Munnar!)
+                Joined ✓ (See you on the trip!)
               </div>
             ) : joinStatus === 'pending' ? (
               <div className="w-full py-3 rounded-xl bg-amber-50 text-amber-700 font-semibold text-xs sm:text-sm text-center border border-amber-200">
@@ -1324,6 +1422,114 @@ export const TripDetailsPage: React.FC = () => {
             tripTitle={trip.name || trip.destination}
           />
         </>
+      )}
+
+      {/* Itinerary Edit Modal for Trip Leader */}
+      {isItineraryModalOpen && (
+        <Modal
+          isOpen={isItineraryModalOpen}
+          onClose={() => setIsItineraryModalOpen(false)}
+          title="Plan Day-by-Day Itinerary"
+        >
+          <div className="space-y-4 text-left max-h-[70vh] overflow-y-auto pr-1">
+            <p className="text-xs text-gray-500">
+              Add daily activities, trails, viewpoints, and meeting points for your journey.
+            </p>
+
+            <div className="space-y-3">
+              {editingDays.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/70 space-y-2 relative"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                        D{idx + 1}
+                      </span>
+                      <span>Day {idx + 1} Plan</span>
+                    </span>
+                    {editingDays.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEditingDay(idx)}
+                        className="text-[11px] font-semibold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
+                      >
+                        Remove Day
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                      Day Title
+                    </label>
+                    <input
+                      type="text"
+                      value={item.title}
+                      onChange={(e) => {
+                        const copy = [...editingDays];
+                        copy[idx].title = e.target.value;
+                        setEditingDays(copy);
+                      }}
+                      placeholder={`e.g. Day ${idx + 1}: Arrival, Trekking & Sunset Point`}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                      Activity Details & Schedule
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={item.desc}
+                      onChange={(e) => {
+                        const copy = [...editingDays];
+                        copy[idx].desc = e.target.value;
+                        setEditingDays(copy);
+                      }}
+                      placeholder="Outline meeting times, route details, rest stops, or meals..."
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-y"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddEditingDay}
+              className="w-full py-2.5 rounded-xl border border-dashed border-gray-300 hover:border-primary hover:bg-emerald-50/30 text-xs font-semibold text-primary transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Another Day (Day {editingDays.length + 1})</span>
+            </button>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setIsItineraryModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveItinerary}
+                disabled={isSavingItinerary}
+                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isSavingItinerary ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Itinerary</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

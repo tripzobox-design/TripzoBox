@@ -4,10 +4,30 @@
  * with graceful fallback to cached/local data when offline.
  */
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:5000/api/v1';
+const resolveApiBaseUrl = (): string => {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '').trim();
+  const isBrowser = typeof window !== 'undefined';
+  const isLocalHost =
+    isBrowser &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0');
+
+  // If in production environment or accessing from production domains (e.g. tripzobox.com)
+  if (!isLocalHost && (import.meta.env.PROD || (isBrowser && window.location.hostname.includes('tripzobox')))) {
+    // If envUrl is explicitly provided and does NOT point to localhost, use it
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl;
+    }
+    // Production default
+    return 'https://tripzobox-api.onrender.com/api/v1';
+  }
+
+  // Local development fallback
+  return envUrl || 'http://localhost:5000/api/v1';
+};
+
+const BASE_URL = resolveApiBaseUrl();
 
 export const getBackendOrigin = (): string =>
   BASE_URL.replace(/\/api(\/v1)?\/?$/, '');

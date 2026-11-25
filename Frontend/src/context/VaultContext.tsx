@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { VaultDocument, EmergencyContact, SharedAccessRecord, SharedWithMeItem } from '../types';
-import { mockDocuments } from '../data/mockDocuments';
 import {
-  mockEmergencyContacts,
-  mockTrustedContacts,
-  mockSharedAccessRecords,
   TrustedContact,
 } from '../data/mockEmergency';
 import { useAuth } from './AuthContext';

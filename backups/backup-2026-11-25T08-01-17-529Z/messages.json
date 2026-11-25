@@ -1,0 +1,39 @@
+[
+  {
+    "_id": "6aedcaf5664176f4a11320ed",
+    "id": "msg_1",
+    "tripId": "trip_munnar_1",
+    "sender": {
+      "id": "user_priya",
+      "name": "Priya Nair",
+      "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80"
+    },
+    "text": "Welcome to Munnar group coordination everyone! Looking forward to meeting in Kochi.",
+    "timestamp": "Yesterday",
+    "readBy": [
+      "user_mubarak",
+      "user_priya"
+    ],
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.199Z",
+    "updatedAt": "2026-11-06T12:41:25.199Z"
+  },
+  {
+    "_id": "6aedcaf5664176f4a11320ee",
+    "id": "msg_2",
+    "tripId": "trip_munnar_1",
+    "sender": {
+      "id": "user_mubarak",
+      "name": "Mubarak Ali",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+    },
+    "text": "Looking forward to the local spice walk! See you all in Kochi.",
+    "timestamp": "2:40 PM",
+    "readBy": [
+      "user_mubarak"
+    ],
+    "__v": 0,
+    "createdAt": "2026-11-06T12:41:25.199Z",
+    "updatedAt": "2026-11-06T12:41:25.199Z"
+  }
+]

@@ -53,9 +53,9 @@ export const CreateTripPage: React.FC = () => {
   // =========================================================================
   // STEP 1: TRIP BASICS
   // =========================================================================
-  const [tripName, setTripName] = useState('Munnar Weekend Escape');
-  const [destination, setDestination] = useState('Munnar, Kerala');
-  const [departureCity, setDepartureCity] = useState('Bengaluru');
+  const [tripName, setTripName] = useState('');
+  const [destination, setDestination] = useState('');
+  const [departureCity, setDepartureCity] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [tripType, setTripType] = useState<'public' | 'private'>('public');
@@ -63,49 +63,23 @@ export const CreateTripPage: React.FC = () => {
   // =========================================================================
   // STEP 2: TRAVEL PREFERENCES
   // =========================================================================
-  const [budgetRange, setBudgetRange] = useState('₹5,000 – ₹10,000');
-  const [groupSize, setGroupSize] = useState('3');
-  const [maxGroupSize, setMaxGroupSize] = useState('6');
-  const [travelStyle, setTravelStyle] = useState('Solo');
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    'Adventure',
-    'Nature',
-    'Mountains',
-    'Photography',
-  ]);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([
-    'Hindi',
-    'English',
-  ]);
+  const [budgetRange, setBudgetRange] = useState('');
+  const [groupSize, setGroupSize] = useState('');
+  const [maxGroupSize, setMaxGroupSize] = useState('');
+  const [travelStyle, setTravelStyle] = useState('');
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [otherLanguages, setOtherLanguages] = useState('');
 
   // =========================================================================
   // STEP 3: FINAL DETAILS
   // =========================================================================
-  const [description, setDescription] = useState(
-    'Escape to the misty hills of Munnar! This trip is perfect for nature lovers, with scenic views, tea gardens, waterfalls and local food. We will explore the best spots, enjoy some great trekking, and capture amazing memories together.'
-  );
+  const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
-  const [itinerary, setItinerary] = useState<ItineraryItem[]>([
-    {
-      day: 1,
-      title: 'Arrival & Tea Plantations',
-      desc: 'Meet in Munnar, check into the eco-homestay, and enjoy a sunset walk through Lockhart tea hills.',
-    },
-    {
-      day: 2,
-      title: 'Waterfall Trek & Spice Trail',
-      desc: 'Trek to Attukad waterfalls, visit organic spice gardens, and try traditional Kerala dinner.',
-    },
-    {
-      day: 3,
-      title: 'Sunrise Viewpoint & Departure',
-      desc: 'Early morning sunrise view from Top Station, tea tasting session, and trip wrap-up.',
-    },
-  ]);
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   // Validation errors
@@ -189,8 +163,8 @@ export const CreateTripPage: React.FC = () => {
       ...itinerary,
       {
         day: nextDay,
-        title: `Day ${nextDay} Activity`,
-        desc: 'Describe planned trails, visits or activities.',
+        title: '',
+        desc: '',
       },
     ]);
   };
@@ -263,6 +237,16 @@ export const CreateTripPage: React.FC = () => {
         : selectedLanguages.includes('Others') ? ['Others'] : []),
     ];
 
+    const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
+      ? 15000
+      : budgetRange.includes('20,000+')
+      ? 20000
+      : budgetRange.includes('< ₹5,000')
+      ? 3500
+      : budgetRange.includes('5,000 – ₹10,000')
+      ? 7500
+      : 5000;
+
     const created = createTrip({
       name: tripName,
       destination,
@@ -270,19 +254,19 @@ export const CreateTripPage: React.FC = () => {
       startDate: startFormatted,
       endDate: endFormatted,
       durationDays: durDays,
-      budgetPerPerson: 5000,
+      budgetPerPerson: parsedBudget,
       tripType: 'group',
       roomType: visibility,
-      travelStyle,
-      languages: finalLanguages,
-      preferences: selectedInterests.length > 0 ? selectedInterests : ['Nature', 'Trekking'],
-      description: description.trim() || 'A scenic exploration journey.',
-      highlights: ['Tea Gardens', 'Waterfalls', 'Local Food', 'Trekking'],
-      inclusions: ['Transport', 'Accommodation', 'Meals (breakfast + dinner)'],
-      rules: ['Be respectful', 'No alcohol', 'Keep the group active'],
-      maxMembers: parseInt(maxGroupSize, 10) || 6,
+      travelStyle: travelStyle || 'Group',
+      languages: finalLanguages.length > 0 ? finalLanguages : ['English'],
+      preferences: selectedInterests,
+      description: description.trim(),
+      highlights: selectedInterests,
+      inclusions: [],
+      rules: [],
+      maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
       difficulty: 'medium',
-      coverImageUrl: photos[0] || 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80',
+      coverImageUrl: photos[0] || '',
       galleryImages: photos,
       itinerary,
     });
@@ -301,8 +285,8 @@ export const CreateTripPage: React.FC = () => {
 
   const handleSaveDraft = () => {
     const durDays = calculateDurationDays(startDate, endDate);
-    const startFormatted = formatDisplayDate(startDate) || '12 Dec 2025';
-    const endFormatted = formatDisplayDate(endDate) || '14 Dec 2025';
+    const startFormatted = formatDisplayDate(startDate) || '';
+    const endFormatted = formatDisplayDate(endDate) || '';
     const finalLanguages = [
       ...selectedLanguages.filter((l) => l !== 'Others'),
       ...(selectedLanguages.includes('Others') && otherLanguages.trim()
@@ -310,24 +294,34 @@ export const CreateTripPage: React.FC = () => {
         : selectedLanguages.includes('Others') ? ['Others'] : []),
     ];
 
+    const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
+      ? 15000
+      : budgetRange.includes('20,000+')
+      ? 20000
+      : budgetRange.includes('< ₹5,000')
+      ? 3500
+      : budgetRange.includes('5,000 – ₹10,000')
+      ? 7500
+      : 5000;
+
     createTrip({
-      name: tripName || 'Draft: Munnar Escape',
-      destination: destination || 'Munnar, Kerala',
-      startCity: departureCity || 'Bengaluru',
+      name: tripName || 'Draft Trip',
+      destination: destination || '',
+      startCity: departureCity || '',
       startDate: startFormatted,
       endDate: endFormatted,
       durationDays: durDays,
-      budgetPerPerson: 5000,
+      budgetPerPerson: parsedBudget,
       tripType: 'group',
       roomType: 'private',
       status: 'draft',
       languages: finalLanguages,
       preferences: selectedInterests,
-      description,
-      highlights: ['Tea Gardens', 'Local Food'],
-      maxMembers: 6,
+      description: description.trim(),
+      highlights: selectedInterests,
+      maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
       difficulty: 'easy',
-      coverImageUrl: photos[0] || 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80',
+      coverImageUrl: photos[0] || '',
     });
     success('Trip draft saved in your private vault.', 'Draft Saved');
     navigate('/app/trips');
@@ -766,6 +760,7 @@ export const CreateTripPage: React.FC = () => {
                   onChange={(e) => setBudgetRange(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                 >
+                  <option value="">Select budget range</option>
                   <option value="₹5,000 – ₹10,000">₹5,000 – ₹10,000</option>
                   <option value="< ₹5,000">&lt; ₹5,000</option>
                   <option value="₹10,000 – ₹20,000">₹10,000 – ₹20,000</option>
@@ -787,6 +782,7 @@ export const CreateTripPage: React.FC = () => {
                     onChange={(e) => setGroupSize(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                   >
+                    <option value="">Select size</option>
                     {[2, 3, 4, 5, 6, 8].map((n) => (
                       <option key={n} value={n.toString()}>
                         {n}
@@ -807,6 +803,7 @@ export const CreateTripPage: React.FC = () => {
                     onChange={(e) => setMaxGroupSize(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                   >
+                    <option value="">Select max</option>
                     {[4, 5, 6, 8, 10, 12, 16].map((n) => (
                       <option key={n} value={n.toString()}>
                         {n}
@@ -1100,10 +1097,11 @@ export const CreateTripPage: React.FC = () => {
             </div>
 
             {/* Itinerary (optional) */}
+            {/* Itinerary */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-semibold text-gray-700">
-                  Itinerary <span className="text-gray-400 font-normal">(optional)</span>
+                  Day-by-Day Plan <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <button
                   type="button"
@@ -1115,47 +1113,74 @@ export const CreateTripPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="space-y-3">
-                {itinerary.map((item, idx) => (
-                  <div
-                    key={item.day}
-                    className="p-3.5 rounded-2xl border border-gray-100 bg-gray-50/60 text-left space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-primary">Day {item.day}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setItinerary(itinerary.filter((_, i) => i !== idx))
-                        }
-                        className="text-[11px] text-gray-400 hover:text-red-500"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={item.title}
-                      onChange={(e) => {
-                        const copy = [...itinerary];
-                        copy[idx].title = e.target.value;
-                        setItinerary(copy);
-                      }}
-                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium outline-none focus:border-primary"
-                    />
-                    <input
-                      type="text"
-                      value={item.desc}
-                      onChange={(e) => {
-                        const copy = [...itinerary];
-                        copy[idx].desc = e.target.value;
-                        setItinerary(copy);
-                      }}
-                      className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 outline-none focus:border-primary"
-                    />
+              {itinerary.length === 0 ? (
+                <div className="p-6 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 text-center space-y-2">
+                  <Calendar className="w-8 h-8 text-emerald-600/60 mx-auto" />
+                  <div>
+                    <h5 className="font-semibold text-xs sm:text-sm text-gray-800">Add Day-by-Day Plan</h5>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Outline your daily schedule, meeting spots, sightseeing, and trekking routes.
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleAddDay}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors cursor-pointer mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Day 1 Plan</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {itinerary.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-2xl border border-gray-100 bg-gray-50/60 text-left space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary flex items-center gap-1">
+                          <span className="w-5 h-5 rounded-md bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                            D{idx + 1}
+                          </span>
+                          <span>Day {idx + 1}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setItinerary(itinerary.filter((_, i) => i !== idx).map((d, i) => ({ ...d, day: i + 1 })))
+                          }
+                          className="text-[11px] font-medium text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={(e) => {
+                          const copy = [...itinerary];
+                          copy[idx].title = e.target.value;
+                          setItinerary(copy);
+                        }}
+                        placeholder={`Day ${idx + 1} Title (e.g. Arrival & Basecamp Walk)`}
+                        className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium outline-none focus:border-primary"
+                      />
+                      <input
+                        type="text"
+                        value={item.desc}
+                        onChange={(e) => {
+                          const copy = [...itinerary];
+                          copy[idx].desc = e.target.value;
+                          setItinerary(copy);
+                        }}
+                        placeholder="Describe planned activities, meeting points, or trails..."
+                        className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 outline-none focus:border-primary"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Visibility */}
