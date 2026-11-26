@@ -33,6 +33,7 @@ export interface IUser extends Document {
   googleId?: string;
   isGoogleConnected: boolean;
   isAppleConnected?: boolean;
+  hasPassword?: boolean;
   // Traveller Reputation (Calculated on backend from completed trip reviews)
   reputation: {
     averageRating: number;
@@ -105,6 +106,7 @@ const UserSchema = new Schema<IUser>(
     },
     phone: { type: String, sparse: true, trim: true, index: true },
     password: { type: String, select: false },
+    hasPassword: { type: Boolean, default: false },
     avatarUrl: {
       type: String,
       default: '',
@@ -227,12 +229,16 @@ UserSchema.pre('save', async function (next) {
   if (!this.username) {
     this.username = `user_${Math.random().toString(36).substring(2, 9)}`;
   }
+  if (this.password) {
+    this.hasPassword = true;
+  }
   if (!this.isModified('password') || !this.password) {
     return next();
   }
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    this.hasPassword = true;
     next();
   } catch (err: any) {
     next(err);
@@ -253,6 +259,7 @@ UserSchema.methods.toSafeUser = function (): Record<string, any> {
   delete userObj.recoveryCodes;
   delete userObj.__v;
   delete userObj._id;
+  userObj.hasPassword = typeof this.hasPassword === 'boolean' ? this.hasPassword : Boolean(this.password);
   return userObj;
 };
 

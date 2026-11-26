@@ -141,11 +141,12 @@ export const createApp = (): Express => {
   <url><loc>https://tripzobox.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://tripzobox.com/explore</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://tripzobox.com/trips</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://tripzobox.com/stories</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://tripzobox.com/how-it-works</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tripzobox.com/safety</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tripzobox.com/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://tripzobox.com/contact</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://tripzobox.com/terms</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://tripzobox.com/privacy</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>`);
   });
 

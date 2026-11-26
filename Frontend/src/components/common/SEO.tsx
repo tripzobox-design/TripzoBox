@@ -11,10 +11,10 @@ export interface SEOProps {
   structuredData?: Record<string, any> | Array<Record<string, any>>;
 }
 
-const DEFAULT_TITLE = 'TripzoBox — Connect, Plan Trips & Discover Places Together';
+const DEFAULT_TITLE = 'TripzoBox – Explore, Plan & Manage Your Trips';
 const DEFAULT_DESCRIPTION =
-  'TripzoBox brings verified travellers together. Discover curated destinations, join shared travel groups, secure documents offline in your Travel Vault, and record memories in your Travel Diary.';
-const DEFAULT_OG_IMAGE = 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=85';
+  'Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits.';
+const DEFAULT_OG_IMAGE = 'https://tripzobox.com/logo-horizontal.png';
 const BASE_DOMAIN = 'https://tripzobox.com';
 
 export const SEO: React.FC<SEOProps> = ({

@@ -26,6 +26,30 @@ const loadScopedEntries = (userId?: string): DiaryEntry[] => {
   }
 };
 
+const DEMO_STORY_IDS = new Set(['story_varkala', 'story_munnar', 'story_1793971438921']);
+export const isDemoStory = (s: Story): boolean => {
+  if (!s) return false;
+  const slug = (s.slug || '').toLowerCase();
+  const title = (s.title || '').toLowerCase();
+  const authorName = (s.author?.name || '').toLowerCase();
+  const authorId = s.author?.id || '';
+  return (
+    DEMO_STORY_IDS.has(s.id) ||
+    slug.includes('western-ghats') ||
+    slug.includes('varkala-more-than') ||
+    slug.includes('munnar-a-weekend') ||
+    title.includes('western ghats') ||
+    title.includes('varkala – more than') ||
+    title.includes('varkala - more than') ||
+    title.includes('munnar – a weekend') ||
+    title.includes('munnar - a weekend') ||
+    authorId === 'user_priya' ||
+    authorId === 'user_arjun' ||
+    authorName.includes('priya nair') ||
+    authorName.includes('arjun mehta')
+  );
+};
+
 const DiaryContext = createContext<DiaryContextType | undefined>(undefined);
 
 export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -37,6 +61,19 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [stories, setStories] = useState<Story[]>(() => {
     try {
+      const saved = localStorage.getItem('tripzobox_stories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const clean = parsed.filter((s: Story) => !isDemoStory(s));
+          if (clean.length === 0) {
+            localStorage.removeItem('tripzobox_stories');
+          } else {
+            localStorage.setItem('tripzobox_stories', JSON.stringify(clean));
+          }
+          return clean;
+        }
+      }
       localStorage.removeItem('tripzobox_stories');
     } catch {}
     return [];
@@ -64,12 +101,13 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .getStories()
       .then((serverStories) => {
         if (active && Array.isArray(serverStories)) {
-          setStories(serverStories);
+          const cleanStories = serverStories.filter((s: Story) => !isDemoStory(s));
+          setStories(cleanStories);
           try {
-            if (serverStories.length === 0) {
+            if (cleanStories.length === 0) {
               localStorage.removeItem('tripzobox_stories');
             } else {
-              localStorage.setItem('tripzobox_stories', JSON.stringify(serverStories));
+              localStorage.setItem('tripzobox_stories', JSON.stringify(cleanStories));
             }
           } catch {}
         }

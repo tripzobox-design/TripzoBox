@@ -205,8 +205,9 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       if (user.isGoogleConnected) {
         sendError(
           res,
-          'This account signs in with Google. Please continue with Google or reset your password.',
-          401
+          'This account currently uses Google sign-in. Continue with Google or create a TripzoBox password to enable email and password login.',
+          401,
+          [{ field: 'code', message: 'GOOGLE_AUTH_ONLY' }]
         );
         return;
       }
@@ -1447,8 +1448,9 @@ export const googleOAuthCallback = async (req: Request, res: Response): Promise<
       return;
     }
 
+    const isNewGoogleUser = Boolean((user as any).isNewUser);
     const handoffCode = await createOAuthHandoffCode(user.id, redirectPath);
-    res.redirect(buildFrontendSuccessRedirect(redirectPath, handoffCode));
+    res.redirect(buildFrontendSuccessRedirect(redirectPath, handoffCode, isNewGoogleUser));
   } catch (error: any) {
     if (error instanceof GoogleOAuthError) {
       respondCallbackError(error.code, error.message, error.statusCode);
@@ -1506,12 +1508,19 @@ export const exchangeGoogleOAuthCode = async (req: Request, res: Response): Prom
 
     setAuthCookie(res, token);
 
+    const isNewUser = Boolean(
+      !user.hasPassword &&
+        user.isGoogleConnected &&
+        (!user.phone || !user.bio || (user.createdAt && Date.now() - new Date(user.createdAt).getTime() < 15 * 60 * 1000))
+    );
+
     sendSuccess(
       res,
       {
         token,
         user: user.toSafeUser(),
         redirect: redirectPath || '/app/dashboard',
+        isNewUser,
       },
       'Successfully authenticated with Google'
     );
@@ -1519,6 +1528,70 @@ export const exchangeGoogleOAuthCode = async (req: Request, res: Response): Prom
     const statusCode = error instanceof GoogleOAuthError ? error.statusCode : 400;
     const message = error.message || 'Failed to exchange authorization code';
     sendError(res, message, statusCode);
+  }
+};
+
+export const setPassword = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Unauthenticated', 401);
+      return;
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      sendError(res, 'New password must be at least 8 characters long.', 400);
+      return;
+    }
+
+    const user = await User.findOne({ id: req.user.id }).select('+password');
+    if (!user) {
+      sendError(res, 'User not found', 404);
+      return;
+    }
+
+    // If user already has a password, verify current password
+    if (user.password) {
+      if (!currentPassword) {
+        sendError(res, 'Current password is required to change password.', 400);
+        return;
+      }
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        sendError(res, 'Current password does not match.', 400);
+        return;
+      }
+    }
+
+    user.password = newPassword;
+    user.hasPassword = true;
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    await user.save();
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
+    });
+    setAuthCookie(res, token);
+
+    sendSuccess(
+      res,
+      {
+        token,
+        user: user.toSafeUser(),
+      },
+      'Password updated successfully'
+    );
+  } catch (error) {
+    next(error);
   }
 };
 

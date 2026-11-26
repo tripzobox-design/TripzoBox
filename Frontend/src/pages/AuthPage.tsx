@@ -178,6 +178,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleAuthOnlyBanner, setGoogleAuthOnlyBanner] = useState(false);
 
   // Form Inputs: Step 2 (Personal Info)
   const [signupAvatar, setSignupAvatar] = useState<string>('');
@@ -315,6 +316,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
 
     if (oauthStatus === 'google') {
       const handoffCode = searchParams.get('code');
+      const isNewParam = searchParams.get('is_new') === '1';
       setOauthError('');
       setIsLoading(true);
       const fallbackTarget = getRedirectTarget();
@@ -322,12 +324,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
       const finishGoogleLogin = async () => {
         let destination = fallbackTarget;
         let authenticatedUser: any;
+        let isNewUser = isNewParam;
 
         if (handoffCode) {
           // Exchange temporary single-use code for JWT session & profile
           const exchangeData = await authApi.exchangeGoogleCode(handoffCode);
           if (exchangeData?.redirect) {
             destination = exchangeData.redirect;
+          }
+          if (exchangeData?.isNewUser) {
+            isNewUser = true;
           }
           authenticatedUser = await completeOAuthSession(exchangeData?.user);
         } else {
@@ -344,8 +350,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
           `Welcome${authenticatedUser?.name ? `, ${authenticatedUser.name}` : ''}! Signed in with Google.`,
           'Google Login Successful'
         );
-        // Strips temporary code and redirects immediately to target dashboard
-        navigate(destination, { replace: true });
+        // If first-time Google sign-in, guide through profile & password onboarding
+        if (isNewUser) {
+          navigate('/app/onboarding', { replace: true });
+        } else {
+          navigate(destination, { replace: true });
+        }
       };
 
       finishGoogleLogin()
@@ -369,6 +379,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     setIsLoading(true);
 
     if (mode === 'login') {
+      setGoogleAuthOnlyBanner(false);
       try {
         await login(emailOrPhone, password);
         success('Welcome back to Tripzobox!', 'Logged In');
@@ -376,7 +387,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
         navigate(getRedirectTarget());
       } catch (err: any) {
         setIsLoading(false);
-        error(err.message || 'Invalid email or password', 'Login Failed');
+        const errMsg = err?.message || 'Invalid email or password';
+        const isGoogleOnly =
+          errMsg.includes('uses Google sign-in') ||
+          errMsg.includes('GOOGLE_AUTH_ONLY') ||
+          err?.errors?.some((e: any) => e.message === 'GOOGLE_AUTH_ONLY');
+        if (isGoogleOnly) {
+          setGoogleAuthOnlyBanner(true);
+        } else {
+          error(errMsg, 'Login Failed');
+        }
       }
     } else {
       // Sign Up: Advance to Step 2 (Personal Info) or Recovery Codes
@@ -1362,6 +1382,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
               <span className="flex-1 leading-relaxed">{oauthError}</span>
+            </div>
+          )}
+
+          {/* Google Auth Only Notice Banner */}
+          {googleAuthOnlyBanner && (
+            <div
+              role="alert"
+              className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-3 animate-in fade-in duration-200 text-left"
+            >
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-amber-950 text-xs sm:text-sm">Google Sign-In Account</p>
+                  <p className="text-amber-800 mt-1 leading-relaxed text-xs">
+                    This account currently uses Google sign-in. Continue with Google or create a TripzoBox password to enable email and password login.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSocialAuth('Google')}
+                className="w-full py-2.5 px-4 rounded-xl bg-white border border-amber-300 hover:bg-amber-100/70 font-semibold text-xs text-amber-950 transition-colors flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+              >
+                <Globe className="w-4 h-4 text-emerald-600" />
+                <span>Continue with Google</span>
+              </button>
             </div>
           )}
 

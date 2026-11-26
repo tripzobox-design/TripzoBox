@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Users, Compass, Search, ArrowLeft, Flag, ShieldAlert } from 'lucide-react';
-import { ChatThread } from '../data/mockMessages';
+import { ChatThread } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';

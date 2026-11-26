@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { SEO } from '../components/common/SEO';
 
 export const VaultSecurityPage: React.FC = () => {
   const securityPillars = [
@@ -67,6 +68,11 @@ export const VaultSecurityPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-14 space-y-4 lg:space-y-12">
+      <SEO
+        title="Travel Vault Security & End-to-End Encryption"
+        description="Learn how TripzoBox Travel Vault keeps your passport copies, visas, and emergency records protected with local device encryption and granular sharing."
+        canonical="https://tripzobox.com/vault-security"
+      />
       {/* 1. HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-5 sm:p-6 lg:p-12 border border-border">
         <div className="max-w-2xl">

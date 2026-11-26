@@ -16,6 +16,7 @@ import {
   oauthLogin,
   syncSession,
   exchangeGoogleOAuthCode,
+  setPassword,
 } from '../controllers/authController.js';
 import {
   requestEmailChangeOtp,
@@ -89,6 +90,7 @@ router.post('/email/verify-otp', requireAuth, verifyEmailChangeOtp);
 // OAuth / Social Login
 router.post('/oauth', authLimiter, oauthLogin);
 router.post('/google/exchange', authLimiter, exchangeGoogleOAuthCode);
+router.post('/set-password', requireAuth, authLimiter, setPassword);
 
 // Session Synchronization endpoint is disabled for security
 router.post('/session-sync', syncSession);

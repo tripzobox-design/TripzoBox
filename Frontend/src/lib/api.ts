@@ -249,7 +249,15 @@ export const authApi = {
   },
 
   exchangeGoogleCode: async (code: string) => {
-    const res = await api.post<{ token: string; user: any; redirect: string }>('/auth/google/exchange', { code });
+    const res = await api.post<{ token: string; user: any; redirect: string; isNewUser?: boolean }>('/auth/google/exchange', { code });
+    if (res.data?.token) {
+      localStorage.setItem('tripzobox_token', res.data.token);
+    }
+    return res.data;
+  },
+
+  setPassword: async (data: { currentPassword?: string; newPassword: string }) => {
+    const res = await api.post<{ token: string; user: any }>('/auth/set-password', data);
     if (res.data?.token) {
       localStorage.setItem('tripzobox_token', res.data.token);
     }

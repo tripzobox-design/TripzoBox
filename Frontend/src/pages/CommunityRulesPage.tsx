@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { SEO } from '../components/common/SEO';
 
 export const CommunityRulesPage: React.FC = () => {
   const coreRules = [
@@ -90,6 +91,11 @@ export const CommunityRulesPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-10 space-y-5 sm:space-y-6 lg:space-y-10">
+      <SEO
+        title="Community Rules & Traveller Code of Conduct"
+        description="Guidelines, safety commitments, and zero-tolerance policies that keep the TripzoBox travel community welcoming, secure, and respectful."
+        canonical="https://tripzobox.com/community-rules"
+      />
       {/* 1. HEADER HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-6 sm:p-10 border border-border grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5 lg:gap-8 lg:gap-12 items-center">
         <div className="max-w-2xl">
@@ -98,10 +104,10 @@ export const CommunityRulesPage: React.FC = () => {
             <span>Community Standards</span>
           </div>
           <h1 className="font-heading font-extrabold text-3xl sm:text-5xl text-text tracking-tight">
-            Tripzobox Community Rules
+            TripzoBox Community Rules
           </h1>
           <p className="text-sm sm:text-base text-text-muted mt-4 leading-relaxed font-body">
-            Tripzobox is founded on mutual trust and real camaraderie. These guidelines define the commitments every member makes so all journeys remain welcoming, safe, and memorable.
+            TripzoBox is founded on mutual trust and real camaraderie. These guidelines define the commitments every member makes so all journeys remain welcoming, safe, and memorable.
           </p>
         </div>
         <div className="rounded-2xl bg-white/85 border border-white p-5 sm:p-6 shadow-subtle">

@@ -636,71 +636,8 @@ const seedDatabase = async () => {
     await Destination.insertMany(destinations);
     console.log('[Seed] Destinations inserted.');
 
-    // 5. Seed Stories
-    const stories = [
-      {
-        id: 'story_varkala',
-        slug: 'varkala-more-than-just-a-beach',
-        title: 'Varkala – More Than Just a Beach',
-        destination: 'Varkala, Kerala',
-        dates: '12 - 16 May 2025',
-        summary:
-          'From cliffside cafes to peaceful beaches, this trip was a perfect mix of relaxation and adventure...',
-        coverImageUrl:
-          'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
-        author: {
-          id: otherUsers[3].id,
-          name: otherUsers[3].name,
-          avatarUrl: otherUsers[3].avatarUrl,
-        },
-        likes: 124,
-        comments: 18,
-        views: 890,
-        readTimeMins: 4,
-        badge: 'Featured',
-        days: 4,
-        photosCount: 28,
-        placesCount: 12,
-        timeAgo: '3 days ago',
-        rating: 4.8,
-        reviewCount: 124,
-        tripType: 'Solo',
-        travelStyle: ['Relaxation', 'Beaches', 'Food'],
-        languages: ['English', 'Hindi'],
-        tags: ['Beach', 'Sunset', 'Yoga'],
-      },
-      {
-        id: 'story_munnar',
-        slug: 'munnar-a-weekend-escape',
-        title: 'Munnar – A Weekend Escape',
-        destination: 'Munnar, Kerala',
-        dates: '01 - 04 May 2025',
-        summary:
-          'Cool weather, endless tea gardens and some of the best food I have ever had. Munnar truly has a different kind of magic...',
-        coverImageUrl:
-          'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80',
-        author: {
-          id: otherUsers[4].id,
-          name: otherUsers[4].name,
-          avatarUrl: otherUsers[4].avatarUrl,
-        },
-        likes: 98,
-        comments: 12,
-        views: 650,
-        readTimeMins: 3,
-        badge: 'Popular',
-        days: 3,
-        photosCount: 32,
-        placesCount: 10,
-        timeAgo: '1 week ago',
-        rating: 4.6,
-        reviewCount: 98,
-        tripType: 'Group',
-        travelStyle: ['Nature', 'Trekking', 'Photography'],
-        languages: ['Hindi', 'English'],
-        tags: ['Tea Plantation', 'Misty Hills', 'Trekking'],
-      },
-    ];
+    // 5. Seed Stories (Empty for clean client delivery)
+    const stories: any[] = [];
 
     await Story.insertMany(stories);
     console.log('[Seed] Stories inserted.');

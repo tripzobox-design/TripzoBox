@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -45,12 +45,13 @@ import { Tabs } from '../components/ui/Tabs';
 import { Avatar, AvatarGroup } from '../components/ui/Avatar';
 import { StarRating } from '../components/ui/StarRating';
 import { Modal } from '../components/ui/Modal';
+import { SEO } from '../components/common/SEO';
 import { User } from '../types';
 import { VerificationBadges } from '../components/safety/VerificationBadges';
 import { ReportModal } from '../components/safety/ReportModal';
 import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
 import { EmergencyAssistanceModal } from '../components/safety/EmergencyAssistanceModal';
-import { safetyApi, reviewsApi } from '../lib/api';
+import { safetyApi, reviewsApi, tripsApi } from '../lib/api';
 import { EcommerceImageGallery } from '../components/common/EcommerceImageGallery';
 
 export const TripDetailsPage: React.FC = () => {
@@ -81,6 +82,39 @@ export const TripDetailsPage: React.FC = () => {
   const [showRoomTypeConfirm, setShowRoomTypeConfirm] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
+  const [realPendingRequests, setRealPendingRequests] = useState<any[]>([]);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+
+  const fetchTripRequests = React.useCallback(async () => {
+    if (!trip?.id || !isLeader) return;
+    try {
+      const serverReqs = await tripsApi.getRequests(trip.id);
+      if (Array.isArray(serverReqs)) {
+        const pending = serverReqs
+          .filter((r: any) => r.status === 'pending')
+          .map((r: any) => ({
+            id: r.id,
+            user: {
+              id: r.user?.id || r.id,
+              name: r.user?.name || 'Applicant',
+              avatarUrl: r.user?.avatarUrl,
+              city: r.user?.location || r.user?.city || 'India',
+              travelInterests: r.user?.travelInterests || [],
+            },
+            message: r.message,
+            requestedAt: r.requestedAt || 'Recently',
+          }));
+        setRealPendingRequests(pending);
+        setPendingRequestsCount(pending.length);
+      }
+    } catch {
+      // ignore
+    }
+  }, [trip?.id, isLeader]);
+
+  useEffect(() => {
+    fetchTripRequests();
+  }, [fetchTripRequests]);
 
   // Itinerary Edit Modal State
   const [isItineraryModalOpen, setIsItineraryModalOpen] = useState(false);
@@ -307,6 +341,12 @@ export const TripDetailsPage: React.FC = () => {
 
   return (
     <div className={`flex flex-col gap-4 sm:gap-6 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8'}`}>
+      <SEO
+        title={`${trip.name} (${trip.destination}) — Group Trip Details`}
+        description={trip.description?.slice(0, 155) || `Join ${trip.name} to ${trip.destination}. Dates: ${trip.startDate} - ${trip.endDate}. Verified group leader and travel companions on TripzoBox.`}
+        canonical={`https://tripzobox.com/trips/${trip.id}`}
+        ogImage={trip.coverImageUrl}
+      />
       {/* 1. HERO BANNER (Matching Reference Screen 4) */}
       <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[260px] max-h-[420px] w-full bg-emerald-950 shadow-float">
         <img
@@ -478,7 +518,7 @@ export const TripDetailsPage: React.FC = () => {
                 <Users className="w-4 h-4 text-emerald-400" />
                 <span>
                   Pending Join Requests (
-                  {trip.pendingJoinRequests?.length || 0})
+                  {pendingRequestsCount})
                 </span>
               </h4>
               <span className="text-[11px] text-gray-400">
@@ -486,9 +526,9 @@ export const TripDetailsPage: React.FC = () => {
               </span>
             </div>
 
-            {trip.pendingJoinRequests && trip.pendingJoinRequests.length > 0 ? (
+            {realPendingRequests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {trip.pendingJoinRequests.map((req) => (
+                {realPendingRequests.map((req) => (
                   <div
                     key={req.id}
                     className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3"
@@ -522,9 +562,13 @@ export const TripDetailsPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
+                          try {
+                            await tripsApi.declineRequest(trip.id, req.user.id);
+                          } catch {}
                           declineJoinRequest(trip.id, req.user.id);
                           info(`Declined join request from ${req.user.name}`);
+                          fetchTripRequests();
                         }}
                         className="px-2 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
@@ -534,12 +578,16 @@ export const TripDetailsPage: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
+                          try {
+                            await tripsApi.acceptRequest(trip.id, req.user.id);
+                          } catch {}
                           acceptJoinRequest(trip.id, req.user.id);
                           success(
                             `Accepted ${req.user.name} into the trip room!`,
                             'Member Approved'
                           );
+                          fetchTripRequests();
                         }}
                         className="px-2 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                       >
@@ -1169,7 +1217,7 @@ export const TripDetailsPage: React.FC = () => {
                   to={`/app/trips/${trip.id}/requests`}
                   className="w-full py-2.5 rounded-xl border border-primary text-primary hover:bg-emerald-50 font-semibold text-xs transition-colors block text-center"
                 >
-                  Join Requests ({trip.pendingJoinRequests?.length ?? 0})
+                  Join Requests ({pendingRequestsCount})
                 </Link>
               </div>
             ) : joinStatus === 'accepted' ? (

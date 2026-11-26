@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Compass, Users, Shield, BookOpen, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { SEO } from '../components/common/SEO';
 
 export const HowItWorksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,12 +40,17 @@ export const HowItWorksPage: React.FC = () => {
 
   return (
     <div className="flex flex-col text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-12 space-y-5 lg:space-y-16">
+      <SEO
+        title="How It Works — Connect, Plan & Travel Safely"
+        description="Learn how TripzoBox helps you discover open trips, match with compatible travellers, protect documents in Travel Vault, and record travel diaries."
+        canonical="https://tripzobox.com/how-it-works"
+      />
       <div className="text-center max-w-3xl mx-auto">
         <span className="text-xs font-bold text-primary tracking-wider uppercase font-heading">
-          Simple, Transparent & Community-First
+          Simple, Transparent &amp; Community-First
         </span>
         <h1 className="font-heading font-extrabold text-3xl sm:text-5xl text-text mt-2">
-          How Tripzobox Works
+          How TripzoBox Works
         </h1>
         <p className="text-base text-text-muted mt-4 leading-relaxed">
           From finding the right trek companions to keeping your identity proofs handy offline, here is your roadmap to stress-free, memorable travel.

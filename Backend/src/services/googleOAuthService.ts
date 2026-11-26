@@ -86,7 +86,11 @@ export const buildFrontendErrorRedirect = (
   return `${frontendUrl}/login?${params.toString()}`;
 };
 
-export const buildFrontendSuccessRedirect = (redirectPath: string, handoffCode?: string): string => {
+export const buildFrontendSuccessRedirect = (
+  redirectPath: string,
+  handoffCode?: string,
+  isNewUser?: boolean
+): string => {
   const { frontendUrl } = getGoogleOAuthConfig();
   const params = new URLSearchParams({
     oauth: 'google',
@@ -94,6 +98,9 @@ export const buildFrontendSuccessRedirect = (redirectPath: string, handoffCode?:
   });
   if (handoffCode) {
     params.set('code', handoffCode);
+  }
+  if (isNewUser) {
+    params.set('is_new', '1');
   }
   return `${frontendUrl}/login?${params.toString()}`;
 };
@@ -473,6 +480,7 @@ export const authenticateGoogleUser = async (
     avatarUrl: profile.avatarUrl || '',
     googleId: profile.googleId,
     isGoogleConnected: true,
+    hasPassword: false,
     emailVerified: true,
     emailVerifiedAt: new Date(),
     phoneVerified: false,
@@ -482,6 +490,7 @@ export const authenticateGoogleUser = async (
 
   try {
     await user.save();
+    (user as any).isNewUser = true;
     return user;
   } catch (err: any) {
     // Recover cleanly if a concurrent request created the email record first

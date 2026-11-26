@@ -42,6 +42,17 @@ export const getStories = async (
       query.status = { $ne: 'draft' };
     }
 
+    // Exclude legacy mock seed stories
+    query.id = { $nin: ['story_varkala', 'story_munnar', 'story_1793971438921'] };
+    query.slug = {
+      $nin: [
+        'varkala-more-than-just-a-beach',
+        'munnar-a-weekend-escape',
+        'my-unforgettable-western-ghats-journey-8921',
+      ],
+    };
+    query['author.name'] = { $nin: ['Priya Nair', 'Arjun Mehta'] };
+
     // Search query
     const searchTerm = (search || q || '').trim();
     if (searchTerm) {

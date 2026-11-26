@@ -1,17 +1,169 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" prefix="og: https://ogp.me/ns#">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Primary Page Metadata -->
+    <title>TripzoBox – Explore, Plan &amp; Manage Your Trips</title>
+    <meta
+      name="description"
+      content="Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits."
+    />
+    <meta name="keywords" content="TripzoBox, travel community, group trips, trip planning, travel diary, travel vault, travel partners, explore destinations" />
+    <meta name="author" content="TripzoBox" />
+    <link rel="canonical" href="https://tripzobox.com/" />
+
+    <!-- Crawlers & Robots Directives -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Favicons & Platform Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo-icon.png" />
+    <meta name="theme-color" content="#0D5A46" />
+    <meta name="application-name" content="TripzoBox" />
+    <meta name="apple-mobile-web-app-title" content="TripzoBox" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Discord, WhatsApp) -->
+    <meta property="og:site_name" content="TripzoBox" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tripzobox.com/" />
+    <meta property="og:title" content="TripzoBox – Explore, Plan &amp; Manage Your Trips" />
+    <meta
+      property="og:description"
+      content="Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits."
+    />
+    <meta property="og:image" content="https://tripzobox.com/logo-horizontal.png" />
+    <meta property="og:image:secure_url" content="https://tripzobox.com/logo-horizontal.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TripzoBox – Explore, Plan &amp; Manage Your Trips" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card (X) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@tripzobox" />
+    <meta name="twitter:creator" content="@tripzobox" />
+    <meta name="twitter:title" content="TripzoBox – Explore, Plan &amp; Manage Your Trips" />
+    <meta
+      name="twitter:description"
+      content="Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits."
+    />
+    <meta name="twitter:image" content="https://tripzobox.com/logo-horizontal.png" />
+    <meta name="twitter:image:alt" content="TripzoBox – Explore, Plan &amp; Manage Your Trips" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <meta name="description" content="Tripzobox — Explore The World Without Limits. Travel community platform to discover trips, connect with compatible travellers, record memories, and share travel stories." />
-    <title>Tripzobox — Explore The World Without Limits</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- JSON-LD Structured Data: Organization & WebSite -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://tripzobox.com/#organization",
+            "name": "TripzoBox",
+            "url": "https://tripzobox.com/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://tripzobox.com/logo.png",
+              "caption": "TripzoBox"
+            },
+            "description": "TripzoBox connects verified travellers to discover curated destinations, join shared travel groups, secure documents offline in their Travel Vault, and record memories.",
+            "sameAs": [
+              "https://twitter.com/tripzobox",
+              "https://instagram.com/tripzobox",
+              "https://facebook.com/tripzobox"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://tripzobox.com/#website",
+            "url": "https://tripzobox.com/",
+            "name": "TripzoBox",
+            "description": "Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox.",
+            "publisher": {
+              "@id": "https://tripzobox.com/#organization"
+            },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://tripzobox.com/trips?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body class="bg-light-bg text-text font-body antialiased selection:bg-accent selection:text-text">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Semantic Static Fallback for Search Crawlers & No-JS Clients -->
+      <header style="padding: 1rem 2rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+        <a href="/" style="font-weight: 800; font-size: 1.5rem; color: #0D5A46; text-decoration: none;">TripzoBox</a>
+        <nav aria-label="Main Navigation">
+          <a href="/explore" style="margin-right: 1rem; color: #374151; text-decoration: none;">Explore Destinations</a>
+          <a href="/trips" style="margin-right: 1rem; color: #374151; text-decoration: none;">Find Trips</a>
+          <a href="/how-it-works" style="margin-right: 1rem; color: #374151; text-decoration: none;">How It Works</a>
+          <a href="/safety" style="margin-right: 1rem; color: #374151; text-decoration: none;">Safety</a>
+          <a href="/about" style="color: #374151; text-decoration: none;">About</a>
+        </nav>
+      </header>
+      <main style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem; text-align: left;">
+        <h1 style="font-size: 2.5rem; font-weight: 800; color: #111827; margin-bottom: 1rem;">
+          TripzoBox – Explore, Plan &amp; Manage Your Trips
+        </h1>
+        <p style="font-size: 1.125rem; color: #4b5563; line-height: 1.6; max-width: 800px; margin-bottom: 2rem;">
+          Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits.
+        </p>
+        <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+          <article style="border: 1px solid #e5e7eb; padding: 1.5rem; border-radius: 1rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #0D5A46; margin-bottom: 0.5rem;">
+              <a href="/explore" style="color: inherit; text-decoration: none;">Explore Destinations</a>
+            </h2>
+            <p style="color: #6b7280; font-size: 0.95rem; line-height: 1.5;">
+              Discover serene hill stations, coastal retreats, cultural heritage landmarks, and curated itineraries with practical budget estimates.
+            </p>
+          </article>
+          <article style="border: 1px solid #e5e7eb; padding: 1.5rem; border-radius: 1rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #0D5A46; margin-bottom: 0.5rem;">
+              <a href="/trips" style="color: inherit; text-decoration: none;">Find Trips &amp; Companions</a>
+            </h2>
+            <p style="color: #6b7280; font-size: 0.95rem; line-height: 1.5;">
+              Connect with verified travel companions, join upcoming group trips led by verified leaders, and travel with peace of mind.
+            </p>
+          </article>
+          <article style="border: 1px solid #e5e7eb; padding: 1.5rem; border-radius: 1rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #0D5A46; margin-bottom: 0.5rem;">
+              <a href="/safety" style="color: inherit; text-decoration: none;">Verified Trust &amp; Safety</a>
+            </h2>
+            <p style="color: #6b7280; font-size: 0.95rem; line-height: 1.5;">
+              Verified identity badges, emergency contacts, offline Travel Vault document protection, and community guidelines for safe travel.
+            </p>
+          </article>
+        </section>
+      </main>
+      <footer style="margin-top: 4rem; padding: 2rem; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 0.875rem;">
+        <p>&copy; 2026 TripzoBox. Explore The World Without Limits. All rights reserved.</p>
+        <p style="margin-top: 0.5rem;">
+          <a href="/terms" style="color: #0D5A46; margin-right: 1rem;">Terms of Service</a>
+          <a href="/privacy" style="color: #0D5A46; margin-right: 1rem;">Privacy Policy</a>
+          <a href="/contact" style="color: #0D5A46;">Contact Support</a>
+        </p>
+      </footer>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -78,17 +78,10 @@ export const PublicShell: React.FC = () => {
   ];
   const navLinks = publicNavLinks;
 
-  const isExpandedLayout =
-    location.pathname.includes('/account-security') ||
-    location.pathname.includes('/profile') ||
-    location.pathname.includes('/vault') ||
-    location.pathname.includes('/diary') ||
-    location.pathname.includes('/messages');
+  const isExpandedLayout = location.pathname.includes('/messages');
 
   return (
-    <div className={`min-h-screen flex flex-col bg-light-bg text-text selection:bg-accent selection:text-text ${
-      isExpandedLayout ? 'lg:h-screen lg:max-h-screen lg:overflow-hidden' : ''
-    }`}>
+    <div className="min-h-screen flex flex-col bg-light-bg text-text selection:bg-accent selection:text-text">
       {/* Top Nav: Full-width sticky light-themed navbar across all pages */}
       <header className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border transition-all duration-200 ${
         isScrolled ? 'shadow-subtle' : 'shadow-xs'
@@ -177,7 +170,7 @@ export const PublicShell: React.FC = () => {
       </header>
 
       {/* Main Page Canvas */}
-      <main className={`flex-1 min-h-0 flex flex-col ${isExpandedLayout ? 'pb-20 lg:pb-0' : ''}`}>
+      <main className={`flex-1 min-h-0 flex flex-col ${isExpandedLayout ? 'pb-20 lg:pb-0' : 'pb-20 lg:pb-12'}`}>
         <Outlet />
       </main>
 
@@ -291,7 +284,7 @@ export const PublicShell: React.FC = () => {
             { label: 'Home', path: isLoggedIn ? '/app/dashboard' : '/', icon: Home, matchPaths: ['/app/dashboard', '/'] },
             { label: 'Travel Vault', path: '/app/vault', icon: Shield, matchPaths: ['/app/vault'] },
             { label: 'Trips', path: '/trips', icon: Search, matchPaths: ['/app/trips', '/trips'] },
-            { label: 'Trip Diary', path: '/app/diary?tab=travel-stories', icon: BookOpen, matchPaths: ['/app/diary', '/stories', '/app/stories', '/diary'] },
+            { label: 'Trip Diary', path: '/app/diary', icon: BookOpen, matchPaths: ['/app/diary', '/stories', '/app/stories', '/diary'] },
             { label: 'Explore', path: '/explore', icon: Compass, matchPaths: ['/explore'] },
             { label: isLoggedIn ? 'Profile' : 'Log In', path: isLoggedIn ? '/app/profile' : '/login', icon: User, matchPaths: ['/app/profile', '/app/account-security', '/app/messages', '/app/notifications', '/login', '/signup'] },
           ].map(({ label, path, icon: Icon, matchPaths }) => {

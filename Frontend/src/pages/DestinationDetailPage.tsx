@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/ui/Button';
 import { StoryCard } from '../components/feature/StoryCard';
+import { SEO } from '../components/common/SEO';
 
 export const DestinationDetailPage: React.FC = () => {
   const { destinationSlug } = useParams<{ destinationSlug: string }>();
@@ -64,6 +65,12 @@ export const DestinationDetailPage: React.FC = () => {
 
   return (
     <div className={`flex flex-col gap-8 text-left w-full max-w-7xl 2xl:max-w-[1536px] mx-auto ${isInApp ? '' : 'px-4 sm:px-6 lg:px-8 py-8 sm:py-10'}`}>
+      <SEO
+        title={`${destination.name}, ${destination.state} — Travel Guide & Highlights`}
+        description={destination.shortDescription || destination.longDescription?.slice(0, 155) || `Plan your visit to ${destination.name}, ${destination.state}. Best time to visit, weather, budget estimates, and attractions on TripzoBox.`}
+        canonical={`https://tripzobox.com/explore/${destination.slug}`}
+        ogImage={destination.imageUrl}
+      />
       {/* Back Link & Actions */}
       <div className="flex items-center justify-between">
         <Link

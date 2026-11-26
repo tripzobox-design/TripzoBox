@@ -39,6 +39,7 @@ import { TravelDiaryPage } from './pages/TravelDiaryPage';
 import { AddExperiencePage } from './pages/AddExperiencePage';
 import { CreateStoryPage } from './pages/CreateStoryPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { StoriesPage } from './pages/StoriesPage';
@@ -145,6 +146,7 @@ export const AppRoutes: React.FC = () => (
       <Route path="/" element={<HomeEntry />} />
       <Route path="/app" element={<FeaturePageLayout />}>
         <Route index element={<Navigate to="/" replace />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="vault" element={<TravelVaultPage />} />
         <Route path="trips" element={<FindTripPage />} />

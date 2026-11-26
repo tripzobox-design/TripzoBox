@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { VaultDocument, EmergencyContact, SharedAccessRecord, SharedWithMeItem } from '../types';
-import {
-  TrustedContact,
-} from '../data/mockEmergency';
+import { VaultDocument, EmergencyContact, SharedAccessRecord, SharedWithMeItem, TrustedContact } from '../types';
 import { useAuth } from './AuthContext';
 import { saveVaultFile, deleteVaultFile, validateVaultFile } from '../lib/vaultFiles';
 import { vaultApi } from '../lib/api';

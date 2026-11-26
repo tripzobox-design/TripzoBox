@@ -91,7 +91,7 @@ describe('Task 1 – Login password enforcement', () => {
 
   beforeAll(async () => {
     const { user } = await createVerifiedUser({ password });
-    testEmail = user.email!;
+    testEmail = user.email || '';
     createdUserIds.push(user.id);
   });
 
@@ -204,7 +204,7 @@ describe('Task 2 – Password reset token enforcement', () => {
 
   beforeAll(async () => {
     const { user } = await createVerifiedUser({ password: originalPass });
-    testEmail = user.email!;
+    testEmail = user.email || '';
     userId = user.id;
     createdUserIds.push(user.id);
   });
@@ -876,7 +876,7 @@ describe('Regression – Existing auth flows still work after all fixes', () => 
 
   beforeAll(async () => {
     const { user, token } = await createVerifiedUser({ password });
-    testEmail = user.email!;
+    testEmail = user.email || '';
     createdUserIds.push(user.id);
     // Log in to get a fresh session token for /me tests
     const loginRes = await request(app)

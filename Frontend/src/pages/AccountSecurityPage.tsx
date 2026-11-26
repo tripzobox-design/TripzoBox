@@ -363,10 +363,10 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
     setModalType(null);
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -374,11 +374,26 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
       return;
     }
     setPasswordError('');
-    success('Password changed successfully!', 'Security Updated');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setModalType(null);
+
+    try {
+      await authApi.setPassword({
+        currentPassword: user.hasPassword === false ? undefined : currentPassword,
+        newPassword,
+      });
+      await refreshUser();
+      success(
+        user.hasPassword === false
+          ? 'TripzoBox password created! You can now sign in with either Google or email and password.'
+          : 'Password updated successfully!',
+        'Security Updated'
+      );
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setModalType(null);
+    } catch (err: any) {
+      setPasswordError(err?.message || 'Failed to update password. Please check your credentials.');
+    }
   };
 
   const handleUpdateSecurityQuestion = (e: React.FormEvent) => {
@@ -648,20 +663,29 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                       Password
                     </span>
                     <div>
-                      <span className="font-mono text-base text-gray-900 tracking-widest">
-                        ••••••••••
-                      </span>
+                      {user.hasPassword === false ? (
+                        <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                          Not set (Currently uses Google Sign-In)
+                        </span>
+                      ) : (
+                        <span className="font-mono text-base text-gray-900 tracking-widest">
+                          ••••••••••
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       setPasswordError('');
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
                       setModalType('password');
                     }}
                     className="self-start sm:self-center text-xs font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer"
                   >
-                    Change
+                    {user.hasPassword === false ? 'Set TripzoBox Password' : 'Change'}
                   </button>
                 </div>
 
@@ -1677,13 +1701,22 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 3: CHANGE PASSWORD */}
+      {/* MODAL 3: CHANGE / SET PASSWORD */}
       {/* ========================================================================= */}
       {modalType === 'password' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-float border border-gray-100 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="font-heading font-bold text-lg text-gray-900">Change Password</h3>
+              <div>
+                <h3 className="font-heading font-bold text-lg text-gray-900">
+                  {user.hasPassword === false ? 'Set TripzoBox Password' : 'Change Password'}
+                </h3>
+                {user.hasPassword === false && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    You currently sign in using Google. Create a password to enable email and password login.
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setModalType(null)}
@@ -1693,18 +1726,20 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
               </button>
             </div>
             <form onSubmit={handleUpdatePassword} className="space-y-3.5 pt-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none"
-                />
-              </div>
+              {user.hasPassword !== false && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   New Password
@@ -1713,7 +1748,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   required
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm outline-none"
                 />
@@ -1746,7 +1781,7 @@ export const AccountSecurityPage: React.FC<AccountSecurityPageProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-xs cursor-pointer"
                 >
-                  Update Password
+                  {user.hasPassword === false ? 'Create Password' : 'Update Password'}
                 </button>
               </div>
             </form>

@@ -25,6 +25,7 @@ export interface User {
   identityRejectionReason?: string;
   isGoogleConnected?: boolean;
   isAppleConnected?: boolean;
+  hasPassword?: boolean;
   isDeleted?: boolean;
   deletedAt?: string;
   deletionReason?: string;
@@ -359,5 +360,27 @@ export interface ModerationAuditLog {
   reason: string;
   notes?: string;
   createdAt: string;
+}
+
+export interface ChatThread {
+  id: string;
+  tripId: string;
+  tripName: string;
+  coverImage: string;
+  lastMessage: string;
+  time: string;
+  unreadCount: number;
+  membersCount: number;
+  messages: { id: string; senderName: string; avatarUrl: string; isCurrentUser: boolean; text: string; time: string }[];
+}
+
+export interface TrustedContact {
+  id: string;
+  name: string;
+  relation: string;
+  canViewVault: boolean;
+  canTrackTripLocation: boolean;
+  avatarUrl: string;
+  isTripMember?: boolean;
 }
 
