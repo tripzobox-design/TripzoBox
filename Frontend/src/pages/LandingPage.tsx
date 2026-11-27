@@ -84,8 +84,8 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="flex flex-col text-left">
       <SEO
-        title="Explore, Plan & Manage Your Trips"
-        description="Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits."
+        title="Discover Destinations, Plan Group Trips & Connect with Travellers"
+        description="Discover destinations, explore group trips, connect with fellow travellers, share travel experiences and manage important travel documents securely with TripzoBox."
         canonical="https://tripzobox.com/"
       />
       {/* 1. HERO SECTION (Dark Background Image Carousel) */}

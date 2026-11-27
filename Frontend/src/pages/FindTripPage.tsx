@@ -961,8 +961,9 @@ export const FindTripPage: React.FC = () => {
   return (
     <div className="w-full text-left bg-light-bg min-h-screen">
       <SEO
-        title="Find Trips & Group Travel Expeditions"
-        description="Browse confirmed upcoming group trips, weekend treks, and road trips. Connect with verified leaders and travel companions."
+        title="Find Group Trips & Travel Companions in India"
+        description="Browse upcoming group trips, weekend treks, and road trips across India. Connect with travel companions, review itineraries, and plan your journey with TripzoBox."
+        canonical="https://tripzobox.com/trips"
       />
       {/* ========================================================================= */}
       {/* 1. PANORAMIC HERO BANNER WITH DOODLE & EMBEDDED SEARCH BAR */}

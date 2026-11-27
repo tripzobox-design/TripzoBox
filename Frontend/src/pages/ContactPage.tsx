@@ -66,6 +66,7 @@ export const ContactPage: React.FC = () => {
       <SEO
         title="Contact & Support — Get in Touch"
         description="Need help with a trip, group booking, or verified profile? Contact the TripzoBox support team. We reply within 2 hours."
+        canonical="https://tripzobox.com/contact"
       />
       {/* 1. HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-5 sm:p-6 lg:p-12 border border-border">

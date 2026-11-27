@@ -7,6 +7,7 @@ export const TermsPage: React.FC = () => {
       <SEO
         title="Terms of Service & User Agreement"
         description="Read TripzoBox's Terms of Service governing community participation, trip coordination, and platform conduct."
+        canonical="https://tripzobox.com/terms"
       />
       <div>
         <h1 className="font-heading font-extrabold text-3xl text-text">

@@ -11,9 +11,9 @@ export interface SEOProps {
   structuredData?: Record<string, any> | Array<Record<string, any>>;
 }
 
-const DEFAULT_TITLE = 'TripzoBox – Explore, Plan & Manage Your Trips';
+const DEFAULT_TITLE = 'TripzoBox – Discover Destinations, Plan Group Trips & Connect with Travellers';
 const DEFAULT_DESCRIPTION =
-  'Discover exciting destinations, explore travel experiences, plan your journeys and organize your travel details with TripzoBox. Explore the world without limits.';
+  'Discover destinations, explore group trips, connect with fellow travellers, share travel experiences and manage important travel documents securely with TripzoBox.';
 const DEFAULT_OG_IMAGE = 'https://tripzobox.com/logo-horizontal.png';
 const BASE_DOMAIN = 'https://tripzobox.com';
 
@@ -81,11 +81,6 @@ export const SEO: React.FC<SEOProps> = ({
         url: BASE_DOMAIN,
         logo: `${BASE_DOMAIN}/logo.png`,
         description: DEFAULT_DESCRIPTION,
-        sameAs: [
-          'https://twitter.com/tripzobox',
-          'https://instagram.com/tripzobox',
-          'https://facebook.com/tripzobox',
-        ],
       },
       {
         '@context': 'https://schema.org',

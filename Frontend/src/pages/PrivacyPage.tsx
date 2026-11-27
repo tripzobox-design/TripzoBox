@@ -7,6 +7,7 @@ export const PrivacyPage: React.FC = () => {
       <SEO
         title="Privacy Policy & Data Protection"
         description="Learn how TripzoBox safeguards your personal information, Travel Vault documents, and encryption keys with privacy-by-design architecture."
+        canonical="https://tripzobox.com/privacy"
       />
       <div>
         <h1 className="font-heading font-extrabold text-3xl text-text">

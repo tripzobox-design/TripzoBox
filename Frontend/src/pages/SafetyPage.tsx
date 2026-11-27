@@ -57,6 +57,7 @@ export const SafetyPage: React.FC = () => {
       <SEO
         title="Trust & Safety Guidelines"
         description="Learn how TripzoBox protects travellers with multi-factor identity verification, peer reputation reviews, offline document vaults, and emergency contact integration."
+        canonical="https://tripzobox.com/safety"
       />
       {/* 1. HERO */}
       <div className="relative bg-gradient-to-br from-primary/10 via-accent/20 to-light-bg rounded-3xl p-4 sm:p-6 lg:p-12 border border-border">

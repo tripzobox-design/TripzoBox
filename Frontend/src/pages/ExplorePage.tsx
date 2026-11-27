@@ -297,8 +297,9 @@ export const ExplorePage: React.FC = () => {
   return (
     <div className="w-full text-left bg-light-bg min-h-screen">
       <SEO
-        title="Explore Hidden Destinations & Secret Travel Spots"
-        description="Discover uncrowded hill stations, secret beaches, scenic mountain passes, and authentic local guides curated by the TripzoBox community."
+        title="Explore Destinations & Travel Highlights in India"
+        description="Discover uncrowded hill stations, scenic mountain trails, coastal beaches, and hidden travel spots curated by the TripzoBox travel community."
+        canonical="https://tripzobox.com/explore"
       />
       {/* ========================================================================= */}
       {/* 1. PANORAMIC HERO BANNER WITH DOODLE & SEARCH BOX */}

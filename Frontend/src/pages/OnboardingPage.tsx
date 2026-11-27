@@ -109,6 +109,7 @@ export const OnboardingPage: React.FC = () => {
       <SEO
         title="Welcome to TripzoBox — Complete Your Profile"
         description="Finish setting up your TripzoBox profile to start exploring trips and connecting with verified travellers."
+        noIndex={true}
       />
 
       <div className="w-full max-w-xl bg-white rounded-3xl border border-gray-200 shadow-float p-6 sm:p-8 text-left space-y-6">

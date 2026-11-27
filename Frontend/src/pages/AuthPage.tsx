@@ -45,6 +45,7 @@ import { RecoveryCodesGrid } from '../components/auth/RecoveryCodesGrid';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { authApi, configApi, getBackendOrigin } from '../lib/api';
+import { SEO } from '../components/common/SEO';
 
 export interface AuthPageProps {
   initialMode?: 'signup' | 'login';
@@ -1208,6 +1209,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-x-hidden">
+      <SEO
+        title={mode === 'signup' ? 'Create an Account' : 'Log In'}
+        description="Access your TripzoBox account to plan group trips and manage your travel documents."
+        noIndex={true}
+      />
       {/* ========================================================================= */}
       {/* LEFT COLUMN: Visual Brand Pane */}
       {/* Matches Screen 1 for Sign Up, Screen 5 for Login */}
