@@ -1453,18 +1453,14 @@ export const updateJoinRequestStatus = async (
       }
 
       const now = new Date();
-      if (trip.startDate) {
-        const tripStartDate = new Date(trip.startDate);
-        if (!isNaN(tripStartDate.getTime()) && tripStartDate <= now) {
-          sendError(res, 'Cannot approve request: this trip has already started or departed', 409);
-          return;
-        }
-      }
       if (trip.endDate) {
         const tripEndDate = new Date(trip.endDate);
-        if (!isNaN(tripEndDate.getTime()) && tripEndDate <= now) {
-          sendError(res, 'Cannot approve request: this trip has already completed', 409);
-          return;
+        if (!isNaN(tripEndDate.getTime())) {
+          const tripEndDeadline = new Date(tripEndDate.getTime() + 24 * 60 * 60 * 1000);
+          if (tripEndDeadline <= now) {
+            sendError(res, 'Cannot approve request: this trip is closed or has already completed', 409);
+            return;
+          }
         }
       }
 

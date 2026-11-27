@@ -904,13 +904,15 @@ export const acceptJoinRequest = async (
     }
 
     const now = new Date();
-    if (trip.startDate && new Date(trip.startDate) <= now) {
-      sendError(res, 'Cannot approve request: this trip has already started or departed', 409);
-      return;
-    }
-    if (trip.endDate && new Date(trip.endDate) <= now) {
-      sendError(res, 'Cannot approve request: this trip has already completed', 409);
-      return;
+    if (trip.endDate) {
+      const tripEndDate = new Date(trip.endDate);
+      if (!isNaN(tripEndDate.getTime())) {
+        const tripEndDeadline = new Date(tripEndDate.getTime() + 24 * 60 * 60 * 1000);
+        if (tripEndDeadline <= now) {
+          sendError(res, 'Cannot approve request: this trip has already completed', 409);
+          return;
+        }
+      }
     }
 
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(requestId);
