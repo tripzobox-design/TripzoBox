@@ -16,12 +16,16 @@ import {
   Sparkles,
   Plus,
   SlidersHorizontal,
+  DoorOpen,
+  KeyRound,
+  Loader2,
 } from 'lucide-react';
 import { useTrips } from '../context/TripsContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { TripCard } from '../components/feature/TripCard';
 import { SEO } from '../components/common/SEO';
+import { tripsApi } from '../lib/api';
 
 const TRIP_TYPES = ['All', 'Group Trip', 'Solo Friendly', 'Couple', 'Family', 'Women Only'] as const;
 
@@ -191,6 +195,61 @@ export const FindTripPage: React.FC = () => {
   const handleCreateTrip = () => {
     const targetPath = isLoggedIn ? '/app/trips/create' : '/trips/create';
     navigate(targetPath);
+  };
+
+  // Join by Room Code State
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [roomCodeError, setRoomCodeError] = useState('');
+  const [isSubmittingCode, setIsSubmittingCode] = useState(false);
+
+  const handleJoinByCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = roomCodeInput.trim();
+    if (!code) {
+      setRoomCodeError('Please enter a valid room code');
+      return;
+    }
+    setIsSubmittingCode(true);
+    setRoomCodeError('');
+
+    try {
+      if (isLoggedIn) {
+        // Direct join with room code
+        const result = await tripsApi.joinTripByRoomCode(code);
+        const joinedTrip = result?.trip || result;
+        if (joinedTrip?.id) {
+          success(
+            result?.alreadyMember
+              ? `Entering trip room for "${joinedTrip.name}"`
+              : `Joined "${joinedTrip.name}" successfully! 🎉`,
+            'Room Access Granted'
+          );
+          setIsJoinModalOpen(false);
+          const normalizedCode = joinedTrip.roomCode || code;
+          navigate(`/app/trips/${joinedTrip.id}?code=${encodeURIComponent(normalizedCode)}&tab=chat`);
+          return;
+        }
+      }
+
+      // If not logged in or joining anonymously, lookup the room and open it
+      const foundTrip = await tripsApi.getTripByRoomCode(code);
+      if (foundTrip?.id) {
+        success(`Trip room found: "${foundTrip.name}"`, 'Entering Room');
+        setIsJoinModalOpen(false);
+        const normalizedCode = foundTrip.roomCode || code;
+        const targetUrl = isLoggedIn
+          ? `/app/trips/${foundTrip.id}?code=${encodeURIComponent(normalizedCode)}&tab=chat`
+          : `/trips/${foundTrip.id}?code=${encodeURIComponent(normalizedCode)}`;
+        navigate(targetUrl);
+      } else {
+        setRoomCodeError(`No trip room found for code "${code}". Please check and try again.`);
+      }
+    } catch (err: any) {
+      setRoomCodeError(err?.message || 'Invalid room code or trip not found. Please verify the code.');
+    } finally {
+      setIsSubmittingCode(false);
+    }
   };
 
   // Active filter count for badge
@@ -1167,6 +1226,21 @@ export const FindTripPage: React.FC = () => {
               )}
             </button>
 
+            {/* Join Trip Button with Room Code (matching red circle in screenshot) */}
+            <button
+              type="button"
+              onClick={() => {
+                setRoomCodeInput('');
+                setRoomCodeError('');
+                setIsJoinModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100/90 active:scale-[0.98] text-[#0D5A46] border border-emerald-600/30 text-xs font-bold py-2 px-3 sm:px-3.5 rounded-full transition-all shadow-2xs hover:shadow-xs cursor-pointer whitespace-nowrap"
+            >
+              <DoorOpen className="w-3.5 h-3.5 text-[#0D5A46] stroke-[2.5]" />
+              <span className="hidden xs:inline">Join Trip</span>
+              <span className="xs:hidden">Join</span>
+            </button>
+
             {/* Create Trip Button matching red circle in screenshot */}
             <button
               type="button"
@@ -1532,6 +1606,107 @@ export const FindTripPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Join Trip by Room Code Modal */}
+      {isJoinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => {
+              if (!isSubmittingCode) setIsJoinModalOpen(false);
+            }}
+          />
+
+          {/* Modal Card */}
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header with decorative emerald styling */}
+            <div className="bg-gradient-to-br from-emerald-900 to-[#0D5A46] p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setIsJoinModalOpen(false)}
+                disabled={isSubmittingCode}
+                className="absolute top-4 right-4 text-emerald-200 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md text-emerald-100 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <DoorOpen className="w-6 h-6 stroke-[2.2]" />
+              </div>
+              <h3 className="font-heading font-extrabold text-xl text-white">Join a Trip Room</h3>
+              <p className="text-xs text-emerald-100/90 mt-1 max-w-xs mx-auto">
+                Enter the private or public Room Code shared by your trip leader to enter the trip room.
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleJoinByCode} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2 text-left">
+                  Trip Room Code
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <KeyRound className="w-4 h-4 text-emerald-700" />
+                  </div>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={roomCodeInput}
+                    onChange={(e) => {
+                      setRoomCodeInput(e.target.value.toUpperCase());
+                      setRoomCodeError('');
+                    }}
+                    placeholder="e.g. ROOM-9795"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 text-center font-mono font-bold text-base sm:text-lg tracking-wider text-gray-900 uppercase transition-all shadow-inner placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal placeholder:text-sm"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5 text-left">
+                  💡 Tip: Room codes are generated by trip leaders (e.g. ROOM-XXXX).
+                </p>
+              </div>
+
+              {roomCodeError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium text-left flex items-start gap-2">
+                  <X className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                  <span>{roomCodeError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsJoinModalOpen(false)}
+                  disabled={isSubmittingCode}
+                  className="w-1/2 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-xs hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCode || !roomCodeInput.trim()}
+                  className="w-1/2 py-2.5 rounded-xl bg-[#0D5A46] hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isSubmittingCode ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Entering...</span>
+                    </>
+                  ) : (
+                    <>
+                      <DoorOpen className="w-4 h-4 stroke-[2.5]" />
+                      <span>Enter Room</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

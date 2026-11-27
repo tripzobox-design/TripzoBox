@@ -333,6 +333,143 @@ export const getTripById = async (
   }
 };
 
+export const getTripByRoomCode = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const rawCode = (req.params.code || '').trim();
+    if (!rawCode) {
+      sendError(res, 'Room code is required', 400);
+      return;
+    }
+
+    const upperCode = rawCode.toUpperCase();
+    const normalized = upperCode.startsWith('ROOM-') ? upperCode : `ROOM-${upperCode}`;
+    const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const trip = await Trip.findOne({
+      $or: [
+        { roomCode: new RegExp(`^${escapeRx(rawCode)}$`, 'i') },
+        { roomCode: new RegExp(`^${escapeRx(normalized)}$`, 'i') },
+        { roomCode: new RegExp(`^ROOM-${escapeRx(rawCode.replace(/^ROOM-/i, ''))}$`, 'i') },
+        { id: rawCode },
+      ],
+    });
+
+    if (!trip) {
+      sendError(res, `No trip room found with code "${rawCode}". Please check the code and try again.`, 404);
+      return;
+    }
+
+    sendSuccess(res, trip, 'Trip found for room code');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const joinTripByRoomCode = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'Authentication required to join a trip room', 401);
+      return;
+    }
+
+    const currentUser = req.user;
+    const rawCode = (req.body.code || '').trim();
+    if (!rawCode) {
+      sendError(res, 'Room code is required', 400);
+      return;
+    }
+
+    const upperCode = rawCode.toUpperCase();
+    const normalized = upperCode.startsWith('ROOM-') ? upperCode : `ROOM-${upperCode}`;
+    const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const trip = await Trip.findOne({
+      $or: [
+        { roomCode: new RegExp(`^${escapeRx(rawCode)}$`, 'i') },
+        { roomCode: new RegExp(`^${escapeRx(normalized)}$`, 'i') },
+        { roomCode: new RegExp(`^ROOM-${escapeRx(rawCode.replace(/^ROOM-/i, ''))}$`, 'i') },
+        { id: rawCode },
+      ],
+    });
+
+    if (!trip) {
+      sendError(res, `No trip room found with code "${rawCode}". Please check and try again.`, 404);
+      return;
+    }
+
+    const isLeader = trip.leader.id === currentUser.id;
+    const isMember = trip.members.some((m) => m.id === currentUser.id);
+
+    if (isLeader || isMember) {
+      sendSuccess(res, { trip, alreadyMember: true }, 'You are already a participant in this trip room');
+      return;
+    }
+
+    if (trip.members.length >= trip.maxMembers) {
+      sendError(res, 'This trip room has already reached maximum capacity', 409);
+      return;
+    }
+
+    const updatedTrip = await Trip.findOneAndUpdate(
+      {
+        id: trip.id,
+        'members.id': { $ne: currentUser.id },
+        $expr: { $lt: [{ $size: '$members' }, '$maxMembers'] },
+      },
+      {
+        $push: {
+          members: {
+            id: currentUser.id,
+            name: currentUser.name,
+            avatarUrl: currentUser.avatarUrl || '',
+            role: 'Member',
+            city: currentUser.city || 'Traveler',
+          },
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedTrip) {
+      sendError(res, 'This trip room has reached maximum capacity', 409);
+      return;
+    }
+
+    updatedTrip.spotsLeft = Math.max(0, updatedTrip.maxMembers - updatedTrip.members.length);
+    if (updatedTrip.members.length >= updatedTrip.maxMembers && updatedTrip.status === 'open') {
+      updatedTrip.status = 'full';
+    }
+    await updatedTrip.save();
+
+    // Announce in room chat
+    try {
+      await Message.create({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        tripId: trip.id,
+        sender: {
+          id: currentUser.id,
+          name: currentUser.name,
+          avatarUrl: currentUser.avatarUrl || '',
+        },
+        text: `👋 Entered and joined the trip room with Room Code #${trip.roomCode || rawCode}!`,
+        timestamp: 'Just now',
+      });
+    } catch {}
+
+    sendSuccess(res, { trip: updatedTrip, alreadyMember: false }, 'Successfully entered and joined the trip room');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createTrip = async (
   req: AuthRequest,
   res: Response,

@@ -313,6 +313,16 @@ export const tripsApi = {
     return res.data;
   },
 
+  getTripByRoomCode: async (code: string) => {
+    const res = await api.get(`/trips/code/${encodeURIComponent(code)}`);
+    return res.data;
+  },
+
+  joinTripByRoomCode: async (code: string) => {
+    const res = await api.post('/trips/join-by-code', { code });
+    return res.data;
+  },
+
   createTrip: async (tripData: any) => {
     const res = await api.post('/trips', tripData);
     return res.data;

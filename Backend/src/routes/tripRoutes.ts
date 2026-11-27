@@ -5,6 +5,8 @@ import {
   getSavedTrips,
   toggleSaveTrip,
   getTripById,
+  getTripByRoomCode,
+  joinTripByRoomCode,
   createTrip,
   updateTrip,
   deleteTrip,
@@ -27,6 +29,10 @@ router.get('/', optionalAuth, getTrips);
 router.get('/my', requireAuth, getMyTrips);
 router.get('/saved', requireAuth, getSavedTrips);
 router.post('/saved/:id/toggle', requireAuth, toggleSaveTrip);
+
+// Room Code access
+router.get('/code/:code', optionalAuth, getTripByRoomCode);
+router.post('/join-by-code', requireAuth, joinTripByRoomCode);
 
 router.get('/:id', optionalAuth, getTripById);
 router.post('/', requireAuth, validateRequest({ body: createTripSchema }), createTrip);

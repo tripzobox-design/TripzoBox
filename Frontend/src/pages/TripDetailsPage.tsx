@@ -46,7 +46,7 @@ import { Avatar, AvatarGroup } from '../components/ui/Avatar';
 import { StarRating } from '../components/ui/StarRating';
 import { Modal } from '../components/ui/Modal';
 import { SEO } from '../components/common/SEO';
-import { User } from '../types';
+import { User, Trip } from '../types';
 import { VerificationBadges } from '../components/safety/VerificationBadges';
 import { ReportModal } from '../components/safety/ReportModal';
 import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
@@ -74,10 +74,47 @@ export const TripDetailsPage: React.FC = () => {
   const { user, isLoggedIn } = useAuth();
   const { success, info, error } = useToast();
 
-  const trip = getTripById(tripId || '');
+  const queryParams = new URLSearchParams(location.search);
+  const codeParam = queryParams.get('code') || undefined;
+  const tabParam = queryParams.get('tab');
+
+  const contextTrip = getTripById(tripId || '');
+  const [remoteTrip, setRemoteTrip] = useState<Trip | null>(null);
+  const [isLoadingTrip, setIsLoadingTrip] = useState<boolean>(false);
+
+  const trip = contextTrip || remoteTrip;
+
+  useEffect(() => {
+    if (tripId && !contextTrip) {
+      setIsLoadingTrip(true);
+      tripsApi
+        .getTripById(tripId, codeParam)
+        .then((data) => {
+          if (data) {
+            setRemoteTrip(data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setIsLoadingTrip(false);
+        });
+    }
+  }, [tripId, codeParam, contextTrip]);
+
   const isLeader = Boolean(user && trip && trip.leader.id === user.id);
 
-  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact' | 'rate'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact' | 'rate'>(() => {
+    if (tabParam && ['about', 'itinerary', 'members', 'chat', 'reviews', 'images', 'contact', 'rate'].includes(tabParam)) {
+      return tabParam as any;
+    }
+    return 'about';
+  });
+
+  useEffect(() => {
+    if (tabParam && ['about', 'itinerary', 'members', 'chat', 'reviews', 'images', 'contact', 'rate'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
   const [infoTab, setInfoTab] = useState<'reviews' | 'images' | 'contact'>('reviews');
   const [selectedTraveller, setSelectedTraveller] = useState<User | null>(null);
   const [showRoomTypeConfirm, setShowRoomTypeConfirm] = useState(false);
@@ -271,6 +308,15 @@ export const TripDetailsPage: React.FC = () => {
       targetType === 'private' ? 'Switched to Private Room' : 'Switched to Public Space'
     );
   };
+
+  if (isLoadingTrip && !trip) {
+    return (
+      <div className="py-24 text-center">
+        <div className="w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-gray-500 font-medium">Entering trip room...</p>
+      </div>
+    );
+  }
 
   if (!trip) {
     return (
