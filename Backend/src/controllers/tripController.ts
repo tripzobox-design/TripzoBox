@@ -3,8 +3,11 @@ import { Trip, ITrip } from '../models/Trip.js';
 import { JoinRequest } from '../models/JoinRequest.js';
 import { Notification } from '../models/Notification.js';
 import { UserBlock } from '../models/UserBlock.js';
+import { Message } from '../models/Message.js';
+import { User } from '../models/User.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendTripAcceptedEmail } from '../services/emailService.js';
 
 export const getTrips = async (
   req: AuthRequest,
@@ -719,9 +722,15 @@ export const acceptJoinRequest = async (
       return;
     }
 
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(requestId);
     const joinReq = await JoinRequest.findOne({
-      $or: [{ id: requestId }, { _id: requestId.match(/^[0-9a-fA-F]{24}$/) ? requestId : null }],
       tripId: id,
+      $or: [
+        { id: requestId },
+        ...(isObjectId ? [{ _id: requestId }] : []),
+        { userId: requestId, status: 'pending' },
+        { 'user.id': requestId, status: 'pending' },
+      ],
     });
     if (!joinReq) {
       sendError(res, 'Join request not found', 404);
@@ -751,7 +760,7 @@ export const acceptJoinRequest = async (
           members: {
             id: applicantId,
             name: joinReq.user.name,
-            avatarUrl: joinReq.user.avatarUrl,
+            avatarUrl: joinReq.user.avatarUrl || '',
             role: 'Member',
             city: joinReq.user.city || 'Traveler',
           },
@@ -775,17 +784,55 @@ export const acceptJoinRequest = async (
     joinReq.status = 'approved';
     await joinReq.save();
 
-    // Create notification for accepted applicant
+    // 1. Create in-app notification for accepted applicant
     await Notification.create({
       id: `notif_${Date.now()}`,
-      userId: joinReq.userId,
+      userId: applicantId,
       type: 'trip_invite',
       title: 'Your join request was accepted! 🎉',
-      message: `${trip.leader.name} confirmed your spot in ${trip.name}.`,
+      message: `${trip.leader.name} confirmed your spot in ${trip.name}. Welcome to the trip!`,
       timestamp: 'Just now',
       read: false,
-      link: `/app/trips/${trip.id}`,
+      link: `/app/trips/${trip.id}?tab=chat`,
     });
+
+    // 2. Announce in the Trip Room Chat
+    try {
+      await Message.create({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        tripId: id,
+        sender: {
+          id: trip.leader.id,
+          name: trip.leader.name,
+          avatarUrl: trip.leader.avatarUrl || '',
+        },
+        text: `👋 Welcome ${joinReq.user.name} to the trip room!`,
+        timestamp: 'Just now',
+      });
+    } catch (msgErr) {
+      console.warn('[TripController] Non-fatal chat announcement error:', msgErr);
+    }
+
+    // 3. Dispatch transactional email to applicant
+    try {
+      const applicantUser = await User.findOne({
+        $or: [{ id: applicantId }, ...(isObjectId ? [{ _id: applicantId }] : [])],
+      });
+      const applicantEmail = applicantUser?.email || (joinReq as any).email;
+      if (applicantEmail && applicantEmail.includes('@')) {
+        sendTripAcceptedEmail(
+          applicantEmail,
+          joinReq.user.name || applicantUser?.name || 'Traveller',
+          trip.name,
+          trip.id,
+          trip.leader.name
+        ).catch((err) => {
+          console.warn('[TripController] Failed to send acceptance email:', err);
+        });
+      }
+    } catch (emailErr) {
+      console.warn('[TripController] Non-fatal email error:', emailErr);
+    }
 
     sendSuccess(res, { request: joinReq, trip: updatedTrip }, 'Applicant accepted into trip');
   } catch (error) {
@@ -817,9 +864,15 @@ export const declineJoinRequest = async (
       return;
     }
 
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(requestId);
     const joinReq = await JoinRequest.findOne({
-      $or: [{ id: requestId }, { _id: requestId.match(/^[0-9a-fA-F]{24}$/) ? requestId : null }],
       tripId: id,
+      $or: [
+        { id: requestId },
+        ...(isObjectId ? [{ _id: requestId }] : []),
+        { userId: requestId, status: 'pending' },
+        { 'user.id': requestId, status: 'pending' },
+      ],
     });
     if (!joinReq) {
       sendError(res, 'Join request not found', 404);
@@ -829,16 +882,18 @@ export const declineJoinRequest = async (
     joinReq.status = 'rejected';
     await joinReq.save();
 
+    const applicantId = joinReq.userId || joinReq.user.id;
+
     // Send notification to applicant
     await Notification.create({
       id: `notif_${Date.now()}`,
-      userId: joinReq.userId,
+      userId: applicantId,
       type: 'trip_update',
       title: 'Join request update',
       message: `Your request to join "${trip.name}" was declined by the trip leader.`,
       timestamp: 'Just now',
       read: false,
-      link: `/find-trip`,
+      link: `/trips`,
     });
 
     sendSuccess(res, joinReq, 'Join request declined');

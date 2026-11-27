@@ -11,8 +11,8 @@ interface TripsContextType {
   isTripSaved: (tripId: string) => boolean;
   requestJoinTrip: (tripId: string) => void;
   createTrip: (tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> & Partial<Pick<Trip, 'roomType' | 'roomCode' | 'status'>>) => Trip;
-  acceptJoinRequest: (tripId: string, applicantId: string) => void;
-  declineJoinRequest: (tripId: string, applicantId: string) => void;
+  acceptJoinRequest: (tripId: string, applicantId: string, applicantUser?: any, requestId?: string) => void;
+  declineJoinRequest: (tripId: string, applicantId: string, requestId?: string) => void;
   updateTripRoomType: (tripId: string, roomType: 'public' | 'private') => void;
   updateTripDetails: (tripId: string, updates: Partial<Trip>) => Promise<void>;
   getTripById: (tripId: string) => Trip | undefined;
@@ -219,25 +219,25 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newTrip;
   };
 
-  const acceptJoinRequest = (tripId: string, applicantId: string) => {
+  const acceptJoinRequest = (tripId: string, applicantId: string, applicantUser?: any, requestId?: string) => {
     setTrips((prevTrips) =>
       prevTrips.map((t) => {
         if (t.id === tripId) {
-          if (t.leader.id !== user.id || t.members.length >= t.maxMembers) return t;
-          const req = t.pendingJoinRequests?.find((r) => r.user.id === applicantId);
-          const applicant = req?.user;
+          if (t.leader.id !== user?.id || t.members.length >= t.maxMembers) return t;
+          const req = t.pendingJoinRequests?.find((r) => r.user.id === applicantId || r.id === requestId);
+          const applicant = req?.user || applicantUser;
           const remainingReqs =
-            t.pendingJoinRequests?.filter((r) => r.user.id !== applicantId) || [];
+            t.pendingJoinRequests?.filter((r) => r.user.id !== applicantId && r.id !== requestId) || [];
           const updatedMembers =
-            applicant && !t.members.some((m) => m.id === applicant.id)
-              ? [...t.members, applicant]
+            applicant && !t.members.some((m) => m.id === (applicant.id || applicantId))
+              ? [...t.members, { ...applicant, id: applicant.id || applicantId, role: 'Member' }]
               : t.members;
 
           const welcomeMsg = applicant
             ? {
                 id: `m_${Date.now()}`,
                 sender: applicant,
-                text: `Thanks for accepting me into the room, @${user.name}! Can't wait for this adventure!`,
+                text: `Thanks for accepting me into the room, @${user?.name || 'Leader'}! Can't wait for this adventure!`,
                 time: 'Just now',
               }
             : null;
@@ -245,6 +245,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return {
             ...t,
             members: updatedMembers,
+            spotsLeft: Math.max(0, t.maxMembers - updatedMembers.length),
             pendingJoinRequests: remainingReqs,
             chatMessages: welcomeMsg
               ? [...(t.chatMessages || []), welcomeMsg]
@@ -255,25 +256,25 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
-    tripsApi.acceptRequest(tripId, applicantId).catch(() => {});
+    tripsApi.acceptRequest(tripId, requestId || applicantId).catch(() => {});
   };
 
-  const declineJoinRequest = (tripId: string, applicantId: string) => {
+  const declineJoinRequest = (tripId: string, applicantId: string, requestId?: string) => {
     setTrips((prevTrips) =>
       prevTrips.map((t) => {
         if (t.id === tripId) {
-          if (t.leader.id !== user.id) return t;
+          if (t.leader.id !== user?.id) return t;
           return {
             ...t,
             pendingJoinRequests:
-              t.pendingJoinRequests?.filter((r) => r.user.id !== applicantId) || [],
+              t.pendingJoinRequests?.filter((r) => r.user.id !== applicantId && r.id !== requestId) || [],
           };
         }
         return t;
       })
     );
 
-    tripsApi.declineRequest(tripId, applicantId).catch(() => {});
+    tripsApi.declineRequest(tripId, requestId || applicantId).catch(() => {});
   };
 
   const updateTripRoomType = (tripId: string, roomType: 'public' | 'private') => {

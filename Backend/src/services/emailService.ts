@@ -647,3 +647,54 @@ export const sendAccountDeletionConfirmationEmail = async (
     emailType: 'Account deletion confirmation',
   });
 };
+
+export const sendTripAcceptedEmail = async (
+  email: string,
+  name: string,
+  tripName: string,
+  tripId: string,
+  leaderName: string
+): Promise<EmailResult> => {
+  const cleanEmail = email.toLowerCase().trim();
+  const safeName = escapeHtml(name || 'Traveller');
+  const safeTrip = escapeHtml(tripName);
+  const safeLeader = escapeHtml(leaderName);
+  const tripUrl = `${config.frontendUrl}/app/trips/${encodeURIComponent(tripId)}?tab=chat`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 36px 28px; border: 1px solid #d1fae5; border-radius: 20px; background-color: #ffffff; box-shadow: 0 4px 14px rgba(16,185,129,0.08);">
+      <div style="margin-bottom: 24px;">
+        <h1 style="color: #064e3b; font-size: 26px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.5px;">Tripzobox</h1>
+        <p style="color: #059669; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">Spot Confirmed! 🎉</p>
+      </div>
+      <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin-bottom: 12px;">You're in! Welcome to ${safeTrip}</h2>
+      <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+        Hi <strong>${safeName}</strong>, great news! Trip leader <strong>${safeLeader}</strong> has officially accepted your join request for <strong>${safeTrip}</strong>.
+      </p>
+      <div style="background-color: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 14px; padding: 18px 20px; margin: 24px 0;">
+        <p style="color: #166534; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">Next steps with your group:</p>
+        <ul style="color: #15803d; font-size: 13px; margin: 0; padding-left: 18px; line-height: 1.6;">
+          <li>Say hello to the crew in the trip room chat</li>
+          <li>Review the shared itinerary and packing checklist</li>
+          <li>Coordinate departure timings and shared plans</li>
+        </ul>
+      </div>
+      <div style="margin: 32px 0; text-align: center;">
+        <a href="${tripUrl}" style="display: inline-block; background-color: #059669; color: #ffffff; padding: 14px 36px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
+          Open Trip Room &amp; Chat 💬
+        </a>
+      </div>
+      <p style="color: #6b7280; font-size: 12px; line-height: 1.5; text-align: center; margin-top: 24px; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+        Have questions? You can access your trip details and emergency help anytime at <a href="${tripUrl}" style="color: #059669;">${tripUrl}</a>.
+      </p>
+    </div>
+  `;
+
+  return dispatchTransactionalEmail({
+    to: cleanEmail,
+    name,
+    subject: `🎉 You're accepted to join "${safeTrip}" on TripzoBox!`,
+    html,
+    emailType: 'Trip acceptance confirmation',
+  });
+};

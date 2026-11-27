@@ -69,9 +69,10 @@ export const TripDetailsPage: React.FC = () => {
     declineJoinRequest,
     updateTripRoomType,
     updateTripDetails,
+    refreshTrips,
   } = useTrips();
   const { user, isLoggedIn } = useAuth();
-  const { success, info } = useToast();
+  const { success, info, error } = useToast();
 
   const trip = getTripById(tripId || '');
   const isLeader = Boolean(user && trip && trip.leader.id === user.id);
@@ -84,6 +85,25 @@ export const TripDetailsPage: React.FC = () => {
   const [localMessages, setLocalMessages] = useState(trip?.chatMessages || []);
   const [realPendingRequests, setRealPendingRequests] = useState<any[]>([]);
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
+  const formatRequestDate = (dateStr?: string) => {
+    if (!dateStr) return 'Recently';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const now = Date.now();
+      const diffMs = now - d.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const fetchTripRequests = React.useCallback(async () => {
     if (!trip?.id || !isLeader) return;
@@ -95,14 +115,14 @@ export const TripDetailsPage: React.FC = () => {
           .map((r: any) => ({
             id: r.id,
             user: {
-              id: r.user?.id || r.id,
+              id: r.user?.id || r.userId || r.id,
               name: r.user?.name || 'Applicant',
               avatarUrl: r.user?.avatarUrl,
-              city: r.user?.location || r.user?.city || 'India',
+              city: r.user?.location || r.user?.city || '',
               travelInterests: r.user?.travelInterests || [],
             },
             message: r.message,
-            requestedAt: r.requestedAt || 'Recently',
+            requestedAt: r.requestedAt || r.createdAt || 'Recently',
           }));
         setRealPendingRequests(pending);
         setPendingRequestsCount(pending.length);
@@ -528,75 +548,110 @@ export const TripDetailsPage: React.FC = () => {
 
             {realPendingRequests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {realPendingRequests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar
-                        src={req.user.avatarUrl}
-                        name={req.user.name}
-                        size="sm"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-1">
-                          <h5 className="font-semibold text-xs sm:text-sm text-white truncate">
-                            {req.user.name}
-                          </h5>
-                          <span className="text-[10px] text-gray-400">
-                            {req.requestedAt}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-gray-300">
-                          {req.user.city} · {req.user.travelInterests?.join(', ')}
-                        </p>
-                        {req.message && (
-                          <p className="text-xs text-gray-200 mt-1 italic bg-black/20 p-2 rounded-lg border border-white/5">
-                            "{req.message}"
+                {realPendingRequests.map((req) => {
+                  const isProcessing = processingRequestId === req.id;
+                  const applicantCity = req.user.city && req.user.city !== 'Not specified' ? req.user.city : '';
+                  const interests = req.user.travelInterests?.length ? req.user.travelInterests.join(', ') : '';
+                  const subtitle = [applicantCity, interests].filter(Boolean).join(' · ') || 'Traveller';
+
+                  return (
+                    <div
+                      key={req.id}
+                      className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar
+                          src={req.user.avatarUrl}
+                          name={req.user.name}
+                          size="sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-1">
+                            <h5 className="font-semibold text-xs sm:text-sm text-white truncate">
+                              {req.user.name}
+                            </h5>
+                            <span className="text-[10px] text-gray-400">
+                              {formatRequestDate(req.requestedAt)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-300">
+                            {subtitle}
                           </p>
-                        )}
+                          {req.message && (
+                            <p className="text-xs text-gray-200 mt-1 italic bg-black/20 p-2 rounded-lg border border-white/5">
+                              "{req.message}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={async () => {
+                            const targetReqId = req.id || req.user.id;
+                            setProcessingRequestId(req.id);
+                            try {
+                              await tripsApi.declineRequest(trip.id, targetReqId);
+                              declineJoinRequest(trip.id, req.user.id, req.id);
+                              setRealPendingRequests((prev) =>
+                                prev.filter((r) => r.id !== req.id && r.user.id !== req.user.id)
+                              );
+                              setPendingRequestsCount((prev) => Math.max(0, prev - 1));
+                              info(`Declined join request from ${req.user.name}`);
+                              await fetchTripRequests();
+                              await refreshTrips();
+                            } catch (err: any) {
+                              error(err?.message || 'Failed to decline request');
+                            } finally {
+                              setProcessingRequestId(null);
+                            }
+                          }}
+                          className="px-2 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>{isProcessing ? 'Updating...' : 'Decline'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={async () => {
+                            const targetReqId = req.id || req.user.id;
+                            setProcessingRequestId(req.id);
+                            try {
+                              await tripsApi.acceptRequest(trip.id, targetReqId);
+                              acceptJoinRequest(trip.id, req.user.id, req.user, req.id);
+
+                              // Optimistically remove from pending requests list
+                              setRealPendingRequests((prev) =>
+                                prev.filter((r) => r.id !== req.id && r.user.id !== req.user.id)
+                              );
+                              setPendingRequestsCount((prev) => Math.max(0, prev - 1));
+
+                              success(
+                                `Accepted ${req.user.name} into the trip room! Notification and email confirmation sent.`,
+                                'Member Approved 🎉'
+                              );
+
+                              await fetchTripRequests();
+                              await refreshTrips();
+                            } catch (err: any) {
+                              error(err?.message || 'Failed to accept request. Please try again.');
+                            } finally {
+                              setProcessingRequestId(null);
+                            }
+                          }}
+                          className="px-2 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{isProcessing ? 'Accepting...' : 'Accept to Room'}</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await tripsApi.declineRequest(trip.id, req.user.id);
-                          } catch {}
-                          declineJoinRequest(trip.id, req.user.id);
-                          info(`Declined join request from ${req.user.name}`);
-                          fetchTripRequests();
-                        }}
-                        className="px-2 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-red-500/20 text-gray-300 hover:text-red-300 border border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>Decline</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await tripsApi.acceptRequest(trip.id, req.user.id);
-                          } catch {}
-                          acceptJoinRequest(trip.id, req.user.id);
-                          success(
-                            `Accepted ${req.user.name} into the trip room!`,
-                            'Member Approved'
-                          );
-                          fetchTripRequests();
-                        }}
-                        className="px-2 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Accept to Room</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-4 rounded-xl bg-white/5 border border-dashed border-white/15 text-center text-xs text-gray-300">
