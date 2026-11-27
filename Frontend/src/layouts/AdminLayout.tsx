@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { AdminGlobalSearchModal } from '../components/admin/AdminGlobalSearchModal';
+import { AdminChangePasswordModal } from '../components/admin/AdminChangePasswordModal';
 import { Logo } from '../components/ui/Logo';
 import { SEO } from '../components/common/SEO';
 
@@ -49,6 +50,7 @@ export const AdminLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState<boolean>(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState<boolean>(false);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -173,6 +175,9 @@ export const AdminLayout: React.FC = () => {
       <SEO title="Administration Control Panel" noIndex={true} />
       {/* Global Search Modal */}
       <AdminGlobalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Admin Change Password Modal */}
+      <AdminChangePasswordModal isOpen={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
 
       {/* Main Layout Container */}
       <div className="flex flex-1 min-h-screen relative">
@@ -404,6 +409,18 @@ export const AdminLayout: React.FC = () => {
                       <Sliders className="w-4 h-4 text-slate-400" />
                       Platform Settings
                     </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        setChangePasswordOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition text-left"
+                    >
+                      <KeyRound className="w-4 h-4 text-slate-400" />
+                      Change Password
+                    </button>
 
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
