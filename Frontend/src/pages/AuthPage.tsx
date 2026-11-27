@@ -522,9 +522,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     }
   }, [resendCooldown]);
 
+  const isCompletingVerificationRef = useRef(false);
+
   // Handle auto-completion when email is verified
   const handleVerificationComplete = React.useCallback(
     async (opts?: { skipApi?: boolean }) => {
+      if (isCompletingVerificationRef.current) return;
+      isCompletingVerificationRef.current = true;
+
       if (!opts?.skipApi) {
         try {
           await authApi.verifyEmail(undefined, emailOrPhone);
@@ -542,17 +547,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
       } catch {
         // BroadcastChannel unsupported fallback
       }
-      localStorage.setItem('tripzobox_email_verified_at', Date.now().toString());
 
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 80,
+        spread: 60,
         origin: { y: 0.5 },
       });
-      success('Email verified successfully! Opening your dashboard...', 'Verified');
+      success('Email verified successfully! Welcome to TripzoBox.', 'Account Activated');
       setTimeout(() => {
-        navigate(getRedirectTarget());
-      }, 400);
+        navigate(getRedirectTarget(), { replace: true });
+      }, 350);
     },
     [emailOrPhone, updateProfile, success, navigate, getRedirectTarget]
   );
@@ -576,7 +580,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
     try {
       channel = new BroadcastChannel('tripzobox_auth_channel');
       channel.onmessage = (event) => {
-        if (event.data?.type === 'EMAIL_VERIFIED') {
+        if (event.data?.type === 'EMAIL_VERIFIED' && !isCompletingVerificationRef.current) {
           handleVerificationComplete({ skipApi: true });
         }
       };
@@ -586,12 +590,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
 
     // B. Storage event listener (fallback cross-tab communication)
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'tripzobox_email_verified_at' || e.key === 'tripzobox_user') {
+      if (isCompletingVerificationRef.current) return;
+      if (e.key === 'tripzobox_user') {
         try {
           const stored = localStorage.getItem('tripzobox_user');
           if (stored) {
             const parsed = JSON.parse(stored);
-            if (parsed.emailVerified) {
+            if (parsed.emailVerified && !isCompletingVerificationRef.current) {
               handleVerificationComplete({ skipApi: true });
             }
           }
@@ -604,7 +609,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
 
     // Initial check on mount/enter step
     const targetEmail = emailOrPhone || user?.email;
-    if (targetEmail && targetEmail.includes('@')) {
+    if (targetEmail && targetEmail.includes('@') && !isCompletingVerificationRef.current) {
       authApi
         .checkVerificationStatus(targetEmail)
         .then((res: any) => {
@@ -615,7 +620,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
               previewUrl: res.previewUrl,
               verificationLink: res.verificationLink,
             });
-            if (res.emailVerified) {
+            if (res.emailVerified && !isCompletingVerificationRef.current) {
               handleVerificationComplete({ skipApi: true });
             }
           }
@@ -625,6 +630,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
 
     // C. Periodic Polling check (every 2.5 seconds)
     const pollTimer = setInterval(async () => {
+      if (isCompletingVerificationRef.current) {
+        clearInterval(pollTimer);
+        return;
+      }
       if (user?.emailVerified) {
         clearInterval(pollTimer);
         handleVerificationComplete({ skipApi: true });
@@ -635,7 +644,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
       if (activeEmail && activeEmail.includes('@')) {
         try {
           const res: any = await authApi.checkVerificationStatus(activeEmail);
-          if (res?.emailVerified) {
+          if (res?.emailVerified && !isCompletingVerificationRef.current) {
             clearInterval(pollTimer);
             handleVerificationComplete({ skipApi: true });
             return;
@@ -708,12 +717,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
       error('Please enter all 6 digits of the code sent to your email.');
       return;
     }
+    if (isVerifyingEmailOtp || isCompletingVerificationRef.current) return;
     setIsVerifyingEmailOtp(true);
     try {
       const emailToVerify = (emailOrPhone || user?.email || '').trim().toLowerCase();
       await authApi.verifyEmail(undefined, emailToVerify, fullCode);
-      success('Email verified successfully! Welcome to TripzoBox.', 'Account Activated');
-      handleVerificationComplete();
+      handleVerificationComplete({ skipApi: true });
     } catch (err: any) {
       error(err?.response?.data?.message || err?.message || 'Invalid or expired verification code');
     } finally {
