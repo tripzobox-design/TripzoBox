@@ -14,6 +14,9 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
   let superadminToken: string;
   let moderatorToken: string;
   let supportToken: string;
+  let superadmin: any;
+  let moderator: any;
+  let support: any;
   let leaderUser: any;
   let leaderToken: string;
   let applicant1: any;
@@ -24,14 +27,16 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
   let fullTrip: any;
   let completedTrip: any;
   let raceTrip: any;
+  let leaderTrip: any;
+  let timestamp: number;
 
   beforeAll(async () => {
     await connectDB();
 
-    const timestamp = Date.now();
+    timestamp = Date.now();
 
     // 1. Create Super Admin
-    const superadmin = await User.create({
+    superadmin = await User.create({
       id: `sa_${timestamp}`,
       name: 'Super Admin',
       username: `sa_${timestamp}`,
@@ -49,7 +54,7 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
     superadminToken = saLogin.body.data.token;
 
     // 2. Create Moderator
-    const moderator = await User.create({
+    moderator = await User.create({
       id: `mod_${timestamp}`,
       name: 'Safety Moderator',
       username: `mod_${timestamp}`,
@@ -67,7 +72,7 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
     moderatorToken = modLogin.body.data.token;
 
     // 3. Create Support Staff (Unauthorized for moderator overrides)
-    const support = await User.create({
+    support = await User.create({
       id: `supp_${timestamp}`,
       name: 'Customer Support',
       username: `supp_${timestamp}`,
@@ -323,23 +328,6 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
       tags: ['Desert'],
       savedBy: [],
     });
-  });
-
-  afterAll(async () => {
-    try {
-      const tripIds = [normalTrip?.id, fullTrip?.id, completedTrip?.id, raceTrip?.id, ldrTestTrip?.id].filter(Boolean);
-      const userIds = [superadmin?.id, moderator?.id, supportUser?.id, leaderUser?.id, applicant1?.id, applicant2?.id, applicant3?.id].filter(Boolean);
-      await Trip.deleteMany({ id: { $in: tripIds } });
-      await User.deleteMany({ id: { $in: userIds } });
-      await JoinRequest.deleteMany({
-        $or: [
-          { tripId: { $in: tripIds } },
-          { userId: { $in: userIds } },
-        ],
-      });
-      await Notification.deleteMany({ userId: { $in: userIds } });
-    } catch {}
-    await disconnectDB();
   });
 
   // TEST 1: Admin approval of a pending request
@@ -722,6 +710,41 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
 
     const freshLeaderTrip = await Trip.findOne({ id: leaderTrip.id });
     expect(freshLeaderTrip?.members.some((m) => m.id === applicant3.id)).toBe(true);
+  });
+
+  afterAll(async () => {
+    try {
+      const userIds = [
+        superadmin?.id,
+        moderator?.id,
+        support?.id,
+        leaderUser?.id,
+        applicant1?.id,
+        applicant2?.id,
+        applicant3?.id,
+      ].filter(Boolean);
+
+      if (leaderUser?.id) {
+        await Trip.deleteMany({ 'leader.id': leaderUser.id });
+      }
+      await Trip.deleteMany({ 'leader.name': 'Trip Leader Ron' });
+      if (timestamp) {
+        await Trip.deleteMany({ id: { $regex: new RegExp(String(timestamp)) } });
+      }
+      if (userIds.length > 0) {
+        await User.deleteMany({ id: { $in: userIds } });
+        await JoinRequest.deleteMany({ userId: { $in: userIds } });
+        await Notification.deleteMany({ userId: { $in: userIds } });
+      }
+      await JoinRequest.deleteMany({
+        $or: [
+          { id: { $regex: /^(req_case|req_race|req_ldr)/ } },
+          { 'user.name': { $in: ['Alice Applicant', 'Bob Applicant', 'Charlie Applicant'] } },
+        ],
+      });
+      await AdminAuditLog.deleteMany({ 'actor.email': { $regex: /@tripzobox\.com$/ } });
+    } catch {}
+    await disconnectDB();
   });
 });
 

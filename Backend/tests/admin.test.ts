@@ -16,6 +16,7 @@ describe('TripzoBox Admin Control Panel — Integration & Security Tests', () =>
   let adminToken: string;
   let userToken: string;
   let testUserId: string;
+  let adminUserId: string;
   let testTripId: string;
 
   beforeAll(async () => {
@@ -54,6 +55,7 @@ describe('TripzoBox Admin Control Panel — Integration & Security Tests', () =>
       languages: ['English'],
       bio: 'Administrator',
     });
+    adminUserId = adminUser.id;
 
     // Login via admin endpoint
     const adminLoginRes = await request(app).post('/api/v1/admin/auth/login').send({
@@ -93,11 +95,11 @@ describe('TripzoBox Admin Control Panel — Integration & Security Tests', () =>
       if (testTripId) {
         await Trip.deleteOne({ id: testTripId });
       }
-      if (adminUser?.id) {
-        await User.deleteOne({ id: adminUser.id });
+      if (adminUserId) {
+        await User.deleteOne({ id: adminUserId });
       }
-      if (regularUser?.id) {
-        await User.deleteOne({ id: regularUser.id });
+      if (testUserId) {
+        await User.deleteOne({ id: testUserId });
       }
     } catch {}
     await disconnectDB();
