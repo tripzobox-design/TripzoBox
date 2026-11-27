@@ -1090,81 +1090,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode }) => {
                 <p className="text-[11px] text-gray-500 mb-3.5">
                   Enter the code sent to {emailOrPhone || user?.email || 'your email'}
                 </p>
-                <div className="flex justify-center mb-3.5">
+                <div className="flex justify-center mb-1">
                   <OtpInputGroup
                     value={emailOtp}
                     onChange={setEmailOtp}
                     onComplete={(code) => handleVerifyEmailOtp(code)}
                   />
                 </div>
-                {devEmailOtp && (
-                  <p className="text-[11px] text-emerald-700 font-medium mb-3">
-                    💡 Backup Code: <span className="font-mono font-bold">{devEmailOtp}</span>
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={isVerifyingEmailOtp}
-                  onClick={() => handleVerifyEmailOtp()}
-                  className="w-full max-w-xs mx-auto py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
-                >
-                  {isVerifyingEmailOtp ? 'Verifying Code...' : 'Verify Code & Open Dashboard'}
-                </button>
               </div>
 
-              {/* Local / Development Mode Diagnostic Card */}
-              {(!verificationInfo.hasSmtpConfigured || import.meta.env.DEV || true) && (
-                <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 sm:p-5 mb-6 text-left shadow-2xs">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <div className="flex-1 space-y-2.5">
-                      <div>
-                        <h4 className="text-xs font-bold text-amber-950">
-                          Email not arriving in your inbox?
-                        </h4>
-                        <p className="text-[11px] sm:text-xs text-amber-800 leading-relaxed mt-0.5">
-                          Your server is running in local development mode without an external SMTP gateway in <code className="bg-amber-100/90 px-1.5 py-0.5 rounded font-mono text-amber-900 text-[11px]">Backend/.env</code>.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleVerificationComplete()}
-                          className="py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Verify & Open Dashboard Now</span>
-                        </button>
-
-                        {verificationInfo.previewUrl && (
-                          <a
-                            href={verificationInfo.previewUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="py-2.5 px-3 rounded-xl bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5 text-amber-700" />
-                            <span>View Test Email</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons: Resend Email & Verify Button */}
+              {/* Action Buttons: Verify & Resend */}
               <div className="max-w-xs mx-auto space-y-3">
                 <button
                   type="button"
-                  onClick={() => handleVerificationComplete()}
-                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  disabled={isVerifyingEmailOtp}
+                  onClick={() => {
+                    const fullCode = emailOtp.join('');
+                    if (fullCode.length === 6) {
+                      handleVerifyEmailOtp(fullCode);
+                    } else {
+                      handleVerificationComplete();
+                    }
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>Verify Email & Open Dashboard</span>
+                  <span>{isVerifyingEmailOtp ? 'Verifying Code...' : 'Verify Email & Open Dashboard'}</span>
                 </button>
 
                 <button
