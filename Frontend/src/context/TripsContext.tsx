@@ -15,6 +15,7 @@ interface TripsContextType {
   declineJoinRequest: (tripId: string, applicantId: string, requestId?: string) => void;
   updateTripRoomType: (tripId: string, roomType: 'public' | 'private') => void;
   updateTripDetails: (tripId: string, updates: Partial<Trip>) => Promise<void>;
+  deleteTrip: (tripId: string) => Promise<void>;
   getTripById: (tripId: string) => Trip | undefined;
   myTrips: Trip[];
   refreshTrips: () => Promise<void>;
@@ -293,6 +294,16 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {}
   };
 
+  const deleteTrip = async (tripId: string) => {
+    try {
+      await tripsApi.deleteTrip(tripId);
+    } catch (e: any) {
+      throw e;
+    } finally {
+      setTrips((prev) => prev.filter((t) => t.id !== tripId));
+    }
+  };
+
   const getTripById = (tripId: string) => {
     return trips.find((t) => t.id === tripId);
   };
@@ -318,6 +329,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         declineJoinRequest,
         updateTripRoomType,
         updateTripDetails,
+        deleteTrip,
         getTripById,
         myTrips,
         refreshTrips,

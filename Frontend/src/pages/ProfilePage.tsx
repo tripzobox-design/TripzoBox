@@ -32,10 +32,11 @@ import { Input, Textarea, Select } from '../components/ui/Input';
 import { TravellerRatingsCard } from '../components/feature/TravellerRatingsCard';
 import { SubmitReviewModal } from '../components/feature/SubmitReviewModal';
 import { DeleteAccountModal } from '../components/feature/DeleteAccountModal';
+import { Trip } from '../types';
 
 export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly = false }) => {
   const { user, updateProfile } = useAuth();
-  const { trips, savedTripIds } = useTrips();
+  const { trips, savedTripIds, deleteTrip, refreshTrips } = useTrips();
   const { stories } = useDiary();
   const { success, error: toastError } = useToast();
   const { documents } = useVault();
@@ -50,6 +51,28 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
+  const [isDeletingTrip, setIsDeletingTrip] = useState(false);
+
+  const handleConfirmDeleteTrip = async () => {
+    if (!tripToDelete) return;
+    setIsDeletingTrip(true);
+    try {
+      await deleteTrip(tripToDelete.id);
+      success(`Trip "${tripToDelete.name}" was permanently deleted.`, 'Trip Removed');
+      setTripToDelete(null);
+      await refreshTrips();
+      if (user?.stats?.trips) {
+        updateProfile({
+          stats: { ...user.stats, trips: Math.max(0, user.stats.trips - 1) },
+        });
+      }
+    } catch (err: any) {
+      toastError?.(err?.message || 'Failed to delete trip. Please try again.');
+    } finally {
+      setIsDeletingTrip(false);
+    }
+  };
 
   // Avatar changing refs & state
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -340,7 +363,14 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
             {myTrips.length > 0 ? (
               <div className="space-y-3 sm:space-y-3.5">
                 {visibleTrips.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} variant="horizontal" />
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    variant="horizontal"
+                    showDeleteButton={trip.leader.id === user.id}
+                    onDelete={(t) => setTripToDelete(t)}
+                    isDeleting={isDeletingTrip && tripToDelete?.id === trip.id}
+                  />
                 ))}
               </div>
             ) : (
@@ -378,7 +408,14 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
             {savedTrips.length > 0 ? (
               <div className="space-y-3 sm:space-y-3.5">
                 {savedTrips.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} variant="horizontal" />
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    variant="horizontal"
+                    showDeleteButton={trip.leader.id === user.id}
+                    onDelete={(t) => setTripToDelete(t)}
+                    isDeleting={isDeletingTrip && tripToDelete?.id === trip.id}
+                  />
                 ))}
               </div>
             ) : (
@@ -733,6 +770,47 @@ export const ProfilePage: React.FC<{ settingsOnly?: boolean }> = ({ settingsOnly
           setActiveTab('reviews');
         }}
       />
+
+      {/* DELETE TRIP CONFIRMATION MODAL */}
+      {tripToDelete && (
+        <Modal
+          isOpen={Boolean(tripToDelete)}
+          onClose={() => {
+            if (!isDeletingTrip) setTripToDelete(null);
+          }}
+          title="Delete Trip"
+          maxWidth="sm"
+        >
+          <div className="space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-2 border border-red-100">
+              <Trash2 className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+              Are you sure you want to delete <strong className="text-gray-900 font-bold">"{tripToDelete.name}"</strong>?
+            </p>
+            <p className="text-[11px] text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
+              ⚠️ This will permanently remove the trip room, all join requests, and room chat history. This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="secondary"
+                className="w-1/2 border border-gray-200"
+                disabled={isDeletingTrip}
+                onClick={() => setTripToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="w-1/2 !bg-red-600 hover:!bg-red-700 !text-white font-bold border-transparent"
+                disabled={isDeletingTrip}
+                onClick={handleConfirmDeleteTrip}
+              >
+                {isDeletingTrip ? 'Deleting...' : 'Yes, Delete'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -574,7 +574,7 @@ export const deleteTrip = async (
       return;
     }
 
-    if (trip.leader.id !== req.user.id && req.user.role !== 'admin') {
+    if (trip.leader.id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       sendError(res, 'Only the trip leader can delete this trip', 403);
       return;
     }
@@ -597,8 +597,11 @@ export const deleteTrip = async (
       );
     }
 
-    await Trip.deleteOne({ id });
-    await JoinRequest.deleteMany({ tripId: id });
+    await Promise.all([
+      Trip.deleteOne({ id }),
+      JoinRequest.deleteMany({ tripId: id }),
+      Message.deleteMany({ tripId: id }),
+    ]);
 
     sendSuccess(res, null, 'Trip cancelled and removed');
   } catch (error) {

@@ -11,14 +11,20 @@ import {
   ArrowRight,
   Compass,
   CheckCircle2,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Trip } from '../../types';
 import { useTrips } from '../../context/TripsContext';
+import { useAuth } from '../../context/AuthContext';
 
 export interface TripCardProps {
   trip: Trip;
   showSaveButton?: boolean;
   variant?: 'vertical' | 'horizontal';
+  showDeleteButton?: boolean;
+  onDelete?: (trip: Trip) => void;
+  isDeleting?: boolean;
 }
 
 export const formatTripDate = (dateStr?: string) => {
@@ -42,13 +48,20 @@ export const TripCard: React.FC<TripCardProps> = ({
   trip,
   showSaveButton = true,
   variant = 'vertical',
+  showDeleteButton = false,
+  onDelete,
+  isDeleting = false,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isTripSaved, toggleSaveTrip } = useTrips();
+  const { user } = useAuth();
   const saved = isTripSaved(trip.id);
   const isInApp = location.pathname.startsWith('/app');
   const targetPath = isInApp ? `/app/trips/${trip.id}` : `/trips/${trip.id}`;
+
+  const isMyTrip = Boolean(user && (trip.leader?.id === user.id || trip.leader?.email === user.email));
+  const canShowDelete = Boolean(showDeleteButton || (onDelete && isMyTrip));
 
   const badgeText = trip.badge || (trip.tripType === 'solo' ? 'Solo Friendly' : trip.tripType === 'couple' ? 'Couple Friendly' : 'Group Trip');
   const ratingValue = trip.rating || 4.8;
@@ -157,7 +170,7 @@ export const TripCard: React.FC<TripCardProps> = ({
           </div>
         </div>
 
-        {/* Row 5: Price & Compact Action Button */}
+        {/* Row 5: Price & Action Buttons */}
         <div className="flex items-center justify-between gap-2 mt-1.5 pt-1 border-t border-gray-100">
           <div className="flex items-baseline gap-0.5">
             <span className="font-heading font-extrabold text-xs text-gray-900">
@@ -166,17 +179,35 @@ export const TripCard: React.FC<TripCardProps> = ({
             <span className="text-[9px] text-gray-400 font-normal">/person</span>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(targetPath);
-            }}
-            className="inline-flex items-center gap-1 bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-[10px] py-1 px-2.5 rounded-lg transition-all shadow-2xs active:scale-95 cursor-pointer"
-          >
-            <span>View Trip</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {canShowDelete && (
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(trip);
+                }}
+                className="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-[10px] py-1 px-2 rounded-lg transition-all border border-red-200/80 active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Delete this trip"
+              >
+                {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                <span className="hidden xs:inline">Delete</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(targetPath);
+              }}
+              className="inline-flex items-center gap-1 bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-[10px] py-1 px-2.5 rounded-lg transition-all shadow-2xs active:scale-95 cursor-pointer"
+            >
+              <span>View Trip</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -344,7 +375,7 @@ export const TripCard: React.FC<TripCardProps> = ({
         </div>
 
         {/* Action & Price Footer (Desktop: Right column, Mobile: Bottom row) */}
-        <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0 sm:min-w-[130px]">
+        <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0 sm:min-w-[150px]">
           <div className="flex items-baseline gap-1">
             <span className="font-heading font-extrabold text-sm sm:text-base text-gray-900">
               ₹{trip.budgetPerPerson.toLocaleString()}
@@ -352,17 +383,39 @@ export const TripCard: React.FC<TripCardProps> = ({
             <span className="text-[10px] text-gray-400 font-normal">/person</span>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(targetPath);
-            }}
-            className="inline-flex items-center justify-center gap-1.5 bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95"
-          >
-            <span>View Trip</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {canShowDelete && (
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(trip);
+                }}
+                className="inline-flex items-center justify-center gap-1 text-red-600 hover:text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200/90 font-semibold text-xs py-2 px-3 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+                title="Delete this trip"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Delete</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(targetPath);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-95"
+            >
+              <span>View Trip</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
       </>
@@ -497,17 +550,35 @@ export const TripCard: React.FC<TripCardProps> = ({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(targetPath);
-            }}
-            className="bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-[11px] sm:text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl flex items-center justify-center gap-1 transition-all shadow-2xs w-full sm:w-auto shrink-0 cursor-pointer"
-          >
-            <span>View Trip</span>
-            <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0 justify-end">
+            {canShowDelete && (
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(trip);
+                }}
+                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 font-semibold text-[11px] sm:text-xs py-1.5 sm:py-2 px-2.5 rounded-lg sm:rounded-xl flex items-center justify-center gap-1 transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                title="Delete this trip"
+              >
+                {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                <span className="hidden xs:inline">Delete</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(targetPath);
+              }}
+              className="bg-[#0D5A46] hover:bg-emerald-800 text-white font-semibold text-[11px] sm:text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl flex items-center justify-center gap-1 transition-all shadow-2xs w-full sm:w-auto shrink-0 cursor-pointer"
+            >
+              <span>View Trip</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
