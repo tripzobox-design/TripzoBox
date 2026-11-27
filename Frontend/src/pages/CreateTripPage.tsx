@@ -78,6 +78,7 @@ export const CreateTripPage: React.FC = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
@@ -226,105 +227,138 @@ export const CreateTripPage: React.FC = () => {
     }
   };
 
-  const handlePublishTrip = () => {
-    const durDays = calculateDurationDays(startDate, endDate);
-    const startFormatted = formatDisplayDate(startDate) || '12 Dec 2025';
-    const endFormatted = formatDisplayDate(endDate) || '14 Dec 2025';
-    const finalLanguages = [
-      ...selectedLanguages.filter((l) => l !== 'Others'),
-      ...(selectedLanguages.includes('Others') && otherLanguages.trim()
-        ? otherLanguages.split(',').map((s) => s.trim()).filter(Boolean)
-        : selectedLanguages.includes('Others') ? ['Others'] : []),
-    ];
-
-    const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
-      ? 15000
-      : budgetRange.includes('20,000+')
-      ? 20000
-      : budgetRange.includes('< ₹5,000')
-      ? 3500
-      : budgetRange.includes('5,000 – ₹10,000')
-      ? 7500
-      : 5000;
-
-    const created = createTrip({
-      name: tripName,
-      destination,
-      startCity: departureCity,
-      startDate: startFormatted,
-      endDate: endFormatted,
-      durationDays: durDays,
-      budgetPerPerson: parsedBudget,
-      tripType: 'group',
-      roomType: visibility,
-      travelStyle: travelStyle || 'Group',
-      languages: finalLanguages.length > 0 ? finalLanguages : ['English'],
-      preferences: selectedInterests,
-      description: description.trim(),
-      highlights: selectedInterests,
-      inclusions: [],
-      rules: [],
-      maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
-      difficulty: 'medium',
-      coverImageUrl: photos[0] || '',
-      galleryImages: photos,
-      itinerary,
-    });
+  const handlePublishTrip = async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
 
     try {
-      confetti({
-        particleCount: 90,
-        spread: 65,
-        origin: { y: 0.55 },
-      });
-    } catch (e) {}
+      const durDays = calculateDurationDays(startDate, endDate);
+      const startFormatted = formatDisplayDate(startDate) || '12 Dec 2025';
+      const endFormatted = formatDisplayDate(endDate) || '14 Dec 2025';
+      const finalLanguages = [
+        ...selectedLanguages.filter((l) => l !== 'Others'),
+        ...(selectedLanguages.includes('Others') && otherLanguages.trim()
+          ? otherLanguages.split(',').map((s) => s.trim()).filter(Boolean)
+          : selectedLanguages.includes('Others') ? ['Others'] : []),
+      ];
 
-    success(`"${tripName}" published successfully!`, 'Trip Published 🎉');
-    navigate(`/app/trips/${created.id}`);
+      const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
+        ? 15000
+        : budgetRange.includes('20,000+')
+        ? 20000
+        : budgetRange.includes('< ₹5,000')
+        ? 3500
+        : budgetRange.includes('5,000 – ₹10,000')
+        ? 7500
+        : 5000;
+
+      const fallbackCover =
+        'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80';
+      const coverImageUrl =
+        photos.length > 0 && photos[0].trim() ? photos[0].trim() : fallbackCover;
+      const finalDescription =
+        description.trim() || 'An unforgettable adventure waiting to be explored with fellow travellers.';
+
+      const created = await createTrip({
+        name: tripName,
+        destination,
+        startCity: departureCity,
+        startDate: startFormatted,
+        endDate: endFormatted,
+        durationDays: durDays,
+        budgetPerPerson: parsedBudget,
+        tripType: 'group',
+        roomType: visibility,
+        travelStyle: travelStyle || 'Group',
+        languages: finalLanguages.length > 0 ? finalLanguages : ['English'],
+        preferences: selectedInterests,
+        description: finalDescription,
+        highlights: selectedInterests,
+        inclusions: [],
+        rules: [],
+        maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
+        difficulty: 'medium',
+        coverImageUrl,
+        galleryImages: photos,
+        itinerary,
+      });
+
+      try {
+        confetti({
+          particleCount: 90,
+          spread: 65,
+          origin: { y: 0.55 },
+        });
+      } catch (e) {}
+
+      success(`"${tripName}" published successfully!`, 'Trip Published 🎉');
+      navigate(`/app/trips/${created.id}`);
+    } catch (err: any) {
+      error(err?.message || 'Failed to publish trip. Please try again.', 'Publish Failed');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
-  const handleSaveDraft = () => {
-    const durDays = calculateDurationDays(startDate, endDate);
-    const startFormatted = formatDisplayDate(startDate) || '';
-    const endFormatted = formatDisplayDate(endDate) || '';
-    const finalLanguages = [
-      ...selectedLanguages.filter((l) => l !== 'Others'),
-      ...(selectedLanguages.includes('Others') && otherLanguages.trim()
-        ? otherLanguages.split(',').map((s) => s.trim()).filter(Boolean)
-        : selectedLanguages.includes('Others') ? ['Others'] : []),
-    ];
+  const handleSaveDraft = async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
 
-    const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
-      ? 15000
-      : budgetRange.includes('20,000+')
-      ? 20000
-      : budgetRange.includes('< ₹5,000')
-      ? 3500
-      : budgetRange.includes('5,000 – ₹10,000')
-      ? 7500
-      : 5000;
+    try {
+      const durDays = calculateDurationDays(startDate, endDate);
+      const startFormatted = formatDisplayDate(startDate) || '';
+      const endFormatted = formatDisplayDate(endDate) || '';
+      const finalLanguages = [
+        ...selectedLanguages.filter((l) => l !== 'Others'),
+        ...(selectedLanguages.includes('Others') && otherLanguages.trim()
+          ? otherLanguages.split(',').map((s) => s.trim()).filter(Boolean)
+          : selectedLanguages.includes('Others') ? ['Others'] : []),
+      ];
 
-    createTrip({
-      name: tripName || 'Draft Trip',
-      destination: destination || '',
-      startCity: departureCity || '',
-      startDate: startFormatted,
-      endDate: endFormatted,
-      durationDays: durDays,
-      budgetPerPerson: parsedBudget,
-      tripType: 'group',
-      roomType: 'private',
-      status: 'draft',
-      languages: finalLanguages,
-      preferences: selectedInterests,
-      description: description.trim(),
-      highlights: selectedInterests,
-      maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
-      difficulty: 'easy',
-      coverImageUrl: photos[0] || '',
-    });
-    success('Trip draft saved in your private vault.', 'Draft Saved');
-    navigate('/app/trips');
+      const parsedBudget = budgetRange.includes('10,000 – ₹20,000')
+        ? 15000
+        : budgetRange.includes('20,000+')
+        ? 20000
+        : budgetRange.includes('< ₹5,000')
+        ? 3500
+        : budgetRange.includes('5,000 – ₹10,000')
+        ? 7500
+        : 5000;
+
+      const fallbackCover =
+        'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80';
+      const coverImageUrl =
+        photos.length > 0 && photos[0].trim() ? photos[0].trim() : fallbackCover;
+      const finalDescription =
+        description.trim() || 'Trip draft saved in private vault.';
+
+      await createTrip({
+        name: tripName || 'Draft Trip',
+        destination: destination || '',
+        startCity: departureCity || '',
+        startDate: startFormatted,
+        endDate: endFormatted,
+        durationDays: durDays,
+        budgetPerPerson: parsedBudget,
+        tripType: 'group',
+        roomType: 'private',
+        status: 'draft',
+        languages: finalLanguages,
+        preferences: selectedInterests,
+        description: finalDescription,
+        highlights: selectedInterests,
+        maxMembers: parseInt(maxGroupSize, 10) || parseInt(groupSize, 10) || 6,
+        difficulty: 'easy',
+        coverImageUrl,
+        galleryImages: photos,
+      });
+      success('Trip draft saved in your private vault.', 'Draft Saved');
+      navigate('/app/trips');
+    } catch (err: any) {
+      error(err?.message || 'Failed to save trip draft. Please try again.', 'Save Failed');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const INTEREST_OPTIONS = [
@@ -1239,17 +1273,26 @@ export const CreateTripPage: React.FC = () => {
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
+                  disabled={isPublishing}
                   onClick={handleSaveDraft}
-                  className="px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer min-h-[44px]"
+                  className="px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer min-h-[44px] disabled:opacity-50"
                 >
                   Save Draft
                 </button>
                 <button
                   type="button"
+                  disabled={isPublishing}
                   onClick={handlePublishTrip}
-                  className="px-5 sm:px-7 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer min-h-[44px]"
+                  className="px-5 sm:px-7 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer min-h-[44px] disabled:opacity-60 flex items-center gap-1.5"
                 >
-                  Publish Trip
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Publish Trip</span>
+                  )}
                 </button>
               </div>
             </div>

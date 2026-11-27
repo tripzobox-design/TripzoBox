@@ -10,7 +10,10 @@ interface TripsContextType {
   toggleSaveTrip: (tripId: string) => void;
   isTripSaved: (tripId: string) => boolean;
   requestJoinTrip: (tripId: string) => void;
-  createTrip: (tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> & Partial<Pick<Trip, 'roomType' | 'roomCode' | 'status'>>) => Trip;
+  createTrip: (
+    tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> &
+      Partial<Pick<Trip, 'id' | 'roomType' | 'roomCode' | 'status'>>
+  ) => Promise<Trip>;
   acceptJoinRequest: (tripId: string, applicantId: string, applicantUser?: any, requestId?: string) => void;
   declineJoinRequest: (tripId: string, applicantId: string, requestId?: string) => void;
   updateTripRoomType: (tripId: string, roomType: 'public' | 'private') => void;
@@ -39,10 +42,7 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user, isLoggedIn } = useAuth();
 
   const [trips, setTrips] = useState<Trip[]>(() => {
-    try {
-      localStorage.removeItem('tripzobox_trips');
-    } catch {}
-    return [];
+    return readStored<Trip[]>('tripzobox_trips', []);
   });
 
   const [savedTripIds, setSavedTripIds] = useState<string[]>(() => {
@@ -159,17 +159,33 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
   };
 
-  const createTrip = (
+  const createTrip = async (
     tripData: Omit<Trip, 'id' | 'leader' | 'members' | 'status'> &
-      Partial<Pick<Trip, 'roomType' | 'roomCode' | 'status'>>
-  ): Trip => {
+      Partial<Pick<Trip, 'id' | 'roomType' | 'roomCode' | 'status'>>
+  ): Promise<Trip> => {
     const isPublic = tripData.roomType !== 'private';
     const roomCode =
       tripData.roomCode || `ROOM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tripId =
+      tripData.id || `trip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const fallbackCover =
+      'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80';
+    const coverImageUrl =
+      tripData.coverImageUrl && tripData.coverImageUrl.trim()
+        ? tripData.coverImageUrl.trim()
+        : fallbackCover;
+
+    const description =
+      tripData.description && tripData.description.trim()
+        ? tripData.description.trim()
+        : 'An unforgettable journey with fellow travellers.';
 
     const newTrip: Trip = {
       ...tripData,
-      id: `trip_${Date.now()}`,
+      id: tripId,
+      coverImageUrl,
+      description,
       leader: user,
       members: [user],
       status: tripData.status || 'open',
@@ -177,28 +193,31 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       roomCode,
       compatibilityScore: 98,
       pendingJoinRequests: [],
-      itinerary: tripData.itinerary || [
-        {
-          day: 1,
-          title: 'Arrival & Squad Welcome Meetup',
-          desc: `Meet up with fellow travellers in ${tripData.startCity || 'base hub'}. Evening icebreaker dinner and route briefing with Trip Leader.`,
-        },
-        {
-          day: 2,
-          title: 'Scenic Exploration & Trails',
-          desc: `Full day adventure exploring top attractions, local viewpoints, and photography stops across ${tripData.destination}.`,
-        },
-        {
-          day: 3,
-          title: 'Culture, Local Delights & Sunset',
-          desc: 'Immersive village walk, traditional lunch, and sunset viewpoint celebration.',
-        },
-        {
-          day: 4,
-          title: 'Farewell & Memory Exchange',
-          desc: 'Shared group breakfast, contact exchange, and return journey.',
-        },
-      ],
+      itinerary:
+        tripData.itinerary && tripData.itinerary.length > 0
+          ? tripData.itinerary
+          : [
+              {
+                day: 1,
+                title: 'Arrival & Squad Welcome Meetup',
+                desc: `Meet up with fellow travellers in ${tripData.startCity || 'base hub'}. Evening icebreaker dinner and route briefing with Trip Leader.`,
+              },
+              {
+                day: 2,
+                title: 'Scenic Exploration & Trails',
+                desc: `Full day adventure exploring top attractions, local viewpoints, and photography stops across ${tripData.destination}.`,
+              },
+              {
+                day: 3,
+                title: 'Culture, Local Delights & Sunset',
+                desc: 'Immersive village walk, traditional lunch, and sunset viewpoint celebration.',
+              },
+              {
+                day: 4,
+                title: 'Farewell & Memory Exchange',
+                desc: 'Shared group breakfast, contact exchange, and return journey.',
+              },
+            ],
       chatMessages: [
         {
           id: 'm_welcome',
@@ -209,15 +228,29 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ],
     };
 
-    setTrips((prev) => [newTrip, ...prev]);
-    setJoinRequests((prev) => ({ ...prev, [newTrip.id]: 'accepted' }));
+    let savedTrip: Trip = newTrip;
 
-    // Send to backend
-    tripsApi.createTrip(newTrip).catch((err) => {
-      console.warn('[TripsContext] Server createTrip sync failed:', err);
-    });
+    // Send to backend and persist
+    try {
+      const serverCreated = await tripsApi.createTrip(newTrip);
+      if (serverCreated && serverCreated.id) {
+        savedTrip = { ...newTrip, ...serverCreated };
+      }
+    } catch (err: any) {
+      console.warn('[TripsContext] Server createTrip warning:', err?.message || err);
+    }
 
-    return newTrip;
+    setTrips((prev) => [savedTrip, ...prev.filter((t) => t.id !== savedTrip.id)]);
+    setJoinRequests((prev) => ({ ...prev, [savedTrip.id]: 'accepted' }));
+
+    // Persist immediately in localStorage so browser refresh retains it
+    try {
+      const existing = readStored<Trip[]>('tripzobox_trips', []);
+      const updated = [savedTrip, ...existing.filter((t) => t.id !== savedTrip.id)];
+      localStorage.setItem('tripzobox_trips', JSON.stringify(updated));
+    } catch {}
+
+    return savedTrip;
   };
 
   const acceptJoinRequest = (tripId: string, applicantId: string, applicantUser?: any, requestId?: string) => {

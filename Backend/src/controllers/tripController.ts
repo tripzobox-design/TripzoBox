@@ -483,10 +483,61 @@ export const createTrip = async (
 
     const body = req.body;
     const roomCode = body.roomCode || `ROOM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tripId =
+      body.id && typeof body.id === 'string' && body.id.trim()
+        ? body.id.trim()
+        : `trip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const coverImageUrl =
+      body.coverImageUrl && typeof body.coverImageUrl === 'string' && body.coverImageUrl.trim()
+        ? body.coverImageUrl.trim()
+        : 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=1200&q=80';
+
+    const description =
+      body.description && typeof body.description === 'string' && body.description.trim()
+        ? body.description.trim()
+        : 'An unforgettable journey with fellow travellers.';
+
+    const durationDays =
+      typeof body.durationDays === 'number' && body.durationDays >= 1
+        ? body.durationDays
+        : 1;
+
+    const defaultItinerary = [
+      {
+        day: 1,
+        title: 'Arrival & Squad Welcome Meetup',
+        desc: `Meet up with fellow travellers in ${body.startCity || 'base hub'}. Evening icebreaker dinner and route briefing with Trip Leader.`,
+      },
+      {
+        day: 2,
+        title: 'Scenic Exploration & Trails',
+        desc: `Full day adventure exploring top attractions, local viewpoints, and photography stops across ${body.destination || 'destination'}.`,
+      },
+      {
+        day: 3,
+        title: 'Culture, Local Delights & Sunset',
+        desc: 'Immersive village walk, traditional lunch, and sunset viewpoint celebration.',
+      },
+      {
+        day: 4,
+        title: 'Farewell & Memory Exchange',
+        desc: 'Shared group breakfast, contact exchange, and return journey.',
+      },
+    ];
+
+    const itinerary =
+      Array.isArray(body.itinerary) && body.itinerary.length > 0
+        ? body.itinerary
+        : defaultItinerary;
 
     const newTrip = new Trip({
       ...body,
-      id: `trip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: tripId,
+      coverImageUrl,
+      description,
+      durationDays,
+      itinerary,
       leader: {
         id: req.user.id,
         name: req.user.name,
