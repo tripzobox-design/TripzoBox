@@ -128,13 +128,47 @@ describe('TripzoBox Admin Control Panel — Integration & Security Tests', () =>
     expect(typeof res.body.data.counts.totalUsers).toBe('number');
   });
 
-  it('4. Admin can list users with pagination and search', async () => {
+  it('4. Admin can list users with pagination and search (excludes staff/admin accounts)', async () => {
     const res = await request(app)
       .get('/api/v1/admin/users?limit=10')
       .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.users).toBeInstanceOf(Array);
     expect(res.body.data.pagination).toHaveProperty('total');
+
+    // Verification: Staff accounts must NEVER appear in traveller management listing
+    const returnedUserIds = res.body.data.users.map((u: any) => u.id);
+    expect(returnedUserIds).not.toContain(adminUserId);
+    expect(res.body.data.users.every((u: any) => !['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(u.role))).toBe(true);
+
+    // Client-supplied role query parameter must never bypass staff exclusion
+    const bypassRes = await request(app)
+      .get('/api/v1/admin/users?role=superadmin')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(bypassRes.status).toBe(200);
+    expect(bypassRes.body.data.users.some((u: any) => u.id === adminUserId)).toBe(false);
+
+    // Staff accounts must remain accessible through Staff Management
+    const staffRes = await request(app)
+      .get('/api/v1/admin/admins')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(staffRes.status).toBe(200);
+    expect(staffRes.body.data.admins.some((a: any) => a.id === adminUserId)).toBe(true);
+  });
+
+  it('4b. Traveller endpoints reject operations on administrative accounts', async () => {
+    // Attempting to inspect admin via traveller endpoint returns 404
+    const inspectRes = await request(app)
+      .get(`/api/v1/admin/users/${adminUserId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(inspectRes.status).toBe(404);
+
+    // Attempting to suspend admin via traveller endpoint returns 403
+    const suspendAdminRes = await request(app)
+      .patch(`/api/v1/admin/users/${adminUserId}/suspend`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isSuspended: true, reason: 'Invalid attempt' });
+    expect(suspendAdminRes.status).toBe(403);
   });
 
   it('5. Admin can suspend and reactivate a user account', async () => {

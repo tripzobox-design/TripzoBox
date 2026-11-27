@@ -255,6 +255,14 @@ export const changeAdminPassword = async (
 // 2. DASHBOARD ANALYTICS & STATS
 // ============================================================================
 
+// Recognized Administrative and Staff Roles
+export const ADMIN_STAFF_ROLES = ['superadmin', 'admin', 'moderator', 'support', 'content_manager'] as const;
+export const TRAVELLER_ROLES = ['user'] as const;
+
+// Helper to filter out administrative staff accounts from traveller listings
+export const travellerRoleQuery = { role: { $nin: ['superadmin', 'admin', 'moderator', 'support', 'content_manager'] } };
+export const staffRoleQuery = { role: { $in: ['superadmin', 'admin', 'moderator', 'support', 'content_manager'] } };
+
 export const getDashboardStats = async (
   req: AuthRequest,
   res: Response,
@@ -289,7 +297,7 @@ export const getDashboardStats = async (
 
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : now;
 
-    // 1. Comprehensive Database Counts
+    // 1. Comprehensive Database Counts (Traveller accounts strictly segregated from Staff accounts)
     const [
       totalUsers,
       activeUsers,
@@ -321,13 +329,13 @@ export const getDashboardStats = async (
       recentAuditLogs,
       participantsAggregate,
     ] = await Promise.all([
-      User.countDocuments(),
-      User.countDocuments({ isSuspended: false, isDeleted: { $ne: true } }),
-      User.countDocuments({ isSuspended: true, isDeleted: { $ne: true } }),
-      User.countDocuments({ isDeleted: true }),
-      User.countDocuments({ emailVerified: true }),
-      User.countDocuments({ phoneVerified: true }),
-      User.countDocuments({ identityVerificationStatus: 'VERIFIED' }),
+      User.countDocuments(travellerRoleQuery),
+      User.countDocuments({ ...travellerRoleQuery, isSuspended: false, isDeleted: { $ne: true } }),
+      User.countDocuments({ ...travellerRoleQuery, isSuspended: true, isDeleted: { $ne: true } }),
+      User.countDocuments({ ...travellerRoleQuery, isDeleted: true }),
+      User.countDocuments({ ...travellerRoleQuery, emailVerified: true }),
+      User.countDocuments({ ...travellerRoleQuery, phoneVerified: true }),
+      User.countDocuments({ ...travellerRoleQuery, identityVerificationStatus: 'VERIFIED' }),
       Trip.countDocuments(),
       Trip.countDocuments({ status: 'open' }),
       Trip.countDocuments({ status: 'full' }),
@@ -341,11 +349,11 @@ export const getDashboardStats = async (
       UserReport.countDocuments({ status: { $in: ['OPEN', 'UNDER_REVIEW'] } }),
       Story.countDocuments(),
       UserBlock.countDocuments(),
-      User.countDocuments({ role: { $in: ['admin', 'superadmin', 'moderator', 'support', 'content_manager'] } }),
-      User.countDocuments({ createdAt: { $gte: filterDate, $lte: endDate } }),
+      User.countDocuments(staffRoleQuery),
+      User.countDocuments({ ...travellerRoleQuery, createdAt: { $gte: filterDate, $lte: endDate } }),
       Trip.countDocuments({ createdAt: { $gte: filterDate, $lte: endDate } }),
       UserReport.countDocuments({ createdAt: { $gte: filterDate, $lte: endDate } }),
-      User.find()
+      User.find(travellerRoleQuery)
         .sort({ createdAt: -1 })
         .limit(6)
         .select('id name username email avatarUrl role isSuspended emailVerified phoneVerified identityVerificationStatus createdAt'),
@@ -372,7 +380,7 @@ export const getDashboardStats = async (
     // 2. Real Aggregations for Charts
     const [userGrowthRaw, tripGrowthRaw, tripStatusRaw, verificationRaw] = await Promise.all([
       User.aggregate([
-        { $match: { createdAt: { $gte: filterDate, $lte: endDate } } },
+        { $match: { createdAt: { $gte: filterDate, $lte: endDate }, ...travellerRoleQuery } },
         {
           $group: {
             _id: { $dateToString: { format: groupFormat, date: '$createdAt' } },
@@ -400,6 +408,7 @@ export const getDashboardStats = async (
         },
       ]),
       User.aggregate([
+        { $match: travellerRoleQuery },
         {
           $project: {
             emailVerified: '$emailVerified',
@@ -504,7 +513,11 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
     const verification = (req.query.verification as string) || '';
     const sortBy = (req.query.sortBy as string) || 'newest';
 
-    const filter: Record<string, any> = {};
+    const filter: Record<string, any> = {
+      // STRICT: Exclude all administrative/staff roles at database level.
+      // Traveller & User Management only displays genuine traveller accounts.
+      role: { $nin: ['superadmin', 'admin', 'moderator', 'support', 'content_manager'] },
+    };
 
     if (search) {
       const regex = new RegExp(search, 'i');
@@ -517,8 +530,10 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
       ];
     }
 
-    if (role && ['user', 'admin', 'superadmin', 'moderator', 'support', 'content_manager'].includes(role)) {
-      filter.role = role;
+    // Never allow client-supplied role query to bypass administrative exclusion.
+    // Only allow legitimate traveller roles.
+    if (role && role === 'user') {
+      filter.role = 'user';
     }
 
     if (status === 'deleted') {
@@ -581,10 +596,11 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
     const { id } = req.params;
     const user = await User.findOne({
       $or: [{ id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }],
+      role: { $nin: ['superadmin', 'admin', 'moderator', 'support', 'content_manager'] },
     }).select('-password -securityAnswer -recoveryCodes');
 
     if (!user) {
-      sendError(res, 'User record not found', 404);
+      sendError(res, 'Traveller user record not found', 404);
       return;
     }
 
@@ -648,6 +664,11 @@ export const requireUserPasswordReset = async (
       return;
     }
 
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
+      return;
+    }
+
     if (user.isDeleted) {
       sendError(
         res,
@@ -690,6 +711,11 @@ export const revokeUserSessions = async (
       return;
     }
 
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
+      return;
+    }
+
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
@@ -728,6 +754,11 @@ export const addUserModerationNote = async (
       return;
     }
 
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
+      return;
+    }
+
     if (!user.internalNotes) {
       user.internalNotes = [];
     }
@@ -761,6 +792,11 @@ export const updateUser = async (req: AuthRequest, res: Response, next: NextFunc
 
     if (!user) {
       sendError(res, 'User not found', 404);
+      return;
+    }
+
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
       return;
     }
 
@@ -818,6 +854,11 @@ export const toggleUserSuspension = async (
 
     if (!user) {
       sendError(res, 'User not found', 404);
+      return;
+    }
+
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
       return;
     }
 
@@ -882,6 +923,11 @@ export const deleteUser = async (req: AuthRequest, res: Response, next: NextFunc
 
     if (!user) {
       sendError(res, 'User not found', 404);
+      return;
+    }
+
+    if (user.role && ['superadmin', 'admin', 'moderator', 'support', 'content_manager'].includes(user.role as any)) {
+      sendError(res, 'Forbidden: Administrative and staff accounts must be managed through Staff Management.', 403);
       return;
     }
 
@@ -2075,7 +2121,7 @@ export const deleteFlaggedMessage = async (
 
 export const getAllAdmins = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const admins = await User.find({ role: { $in: ['admin', 'superadmin'] } }).select(
+    const admins = await User.find({ role: { $in: ['admin', 'superadmin', 'moderator', 'support', 'content_manager'] } }).select(
       'id name email role avatarUrl createdAt isSuspended'
     );
     sendSuccess(res, { admins });

@@ -29,6 +29,9 @@ import { AdminConfirmModal } from '../../components/admin/AdminConfirmModal';
 import { AdminTableSkeleton, AdminEmptyState } from '../../components/admin/AdminEmptyState';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 
+const ADMIN_STAFF_ROLES = ['superadmin', 'admin', 'moderator', 'support', 'content_manager'];
+const isTraveller = (u: User) => !ADMIN_STAFF_ROLES.includes(u.role || '');
+
 export const AdminUsersPage: React.FC = () => {
   const { role, hasPermission } = useAdminAuth();
 
@@ -59,7 +62,8 @@ export const AdminUsersPage: React.FC = () => {
         status: statusFilter,
         verification: verificationFilter,
       });
-      setUsers(Array.isArray(res?.users) ? res.users : []);
+      const travellerOnly = Array.isArray(res?.users) ? res.users.filter(isTraveller) : [];
+      setUsers(travellerOnly);
       setTotalPages(res?.pagination?.pages || 1);
       setTotalCount(res?.pagination?.total || 0);
     } catch (e: any) {
@@ -82,6 +86,14 @@ export const AdminUsersPage: React.FC = () => {
 
   const handleConfirmAction = async (reason: string) => {
     if (!selectedUser || !modalType) return;
+
+    if (!isTraveller(selectedUser)) {
+      setFeedbackMessage({ type: 'error', text: 'Administrative accounts must be managed through Staff Management.' });
+      setModalType(null);
+      setSelectedUser(null);
+      return;
+    }
+
     setActionLoading(true);
 
     try {
@@ -112,15 +124,16 @@ export const AdminUsersPage: React.FC = () => {
   };
 
   const exportCSV = () => {
-    if (users.length === 0) return;
+    const exportable = users.filter(isTraveller);
+    if (exportable.length === 0) return;
     const headers = ['ID', 'Name', 'Username', 'Email', 'Phone', 'Role', 'Status', 'EmailVerified', 'PhoneVerified', 'Created'];
-    const rows = users.map((u) => [
+    const rows = exportable.map((u) => [
       u.id,
       `"${u.name}"`,
       u.username,
       u.email || '',
       u.phone || '',
-      u.role || 'user',
+      'Traveller',
       u.isDeleted ? 'Deleted' : u.isSuspended ? 'Suspended' : 'Active',
       u.emailVerified ? 'Yes' : 'No',
       u.phoneVerified ? 'Yes' : 'No',
@@ -131,7 +144,7 @@ export const AdminUsersPage: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `tripzobox_users_${Date.now()}.csv`);
+    link.setAttribute('download', `tripzobox_travellers_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -212,13 +225,8 @@ export const AdminUsersPage: React.FC = () => {
               }}
               className="px-3 py-2 text-xs font-semibold rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="">All Roles</option>
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-              <option value="superadmin">Superadmin</option>
-              <option value="moderator">Moderator</option>
-              <option value="support">Support</option>
-              <option value="content_manager">Content Manager</option>
+              <option value="">All Travellers</option>
+              <option value="user">Standard Travellers</option>
             </select>
 
             <select
@@ -262,7 +270,7 @@ export const AdminUsersPage: React.FC = () => {
               <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
                   <th className="py-3.5 px-4">User</th>
-                  <th className="py-3.5 px-4">Role</th>
+                  <th className="py-3.5 px-4">Type</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Trust & Verification</th>
                   <th className="py-3.5 px-4">Registered</th>
@@ -297,10 +305,10 @@ export const AdminUsersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Role */}
+                      {/* Type */}
                       <td className="py-3 px-4">
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                          {u.role || 'user'}
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Traveller
                         </span>
                       </td>
 
