@@ -89,6 +89,17 @@ describe('TripzoBox Admin Control Panel — Integration & Security Tests', () =>
   });
 
   afterAll(async () => {
+    try {
+      if (testTripId) {
+        await Trip.deleteOne({ id: testTripId });
+      }
+      if (adminUser?.id) {
+        await User.deleteOne({ id: adminUser.id });
+      }
+      if (regularUser?.id) {
+        await User.deleteOne({ id: regularUser.id });
+      }
+    } catch {}
     await disconnectDB();
   });
 

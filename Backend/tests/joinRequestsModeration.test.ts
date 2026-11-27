@@ -326,6 +326,19 @@ describe('TripzoBox Admin → Trip Join Requests & Participation Moderation Test
   });
 
   afterAll(async () => {
+    try {
+      const tripIds = [normalTrip?.id, fullTrip?.id, completedTrip?.id, raceTrip?.id, ldrTestTrip?.id].filter(Boolean);
+      const userIds = [superadmin?.id, moderator?.id, supportUser?.id, leaderUser?.id, applicant1?.id, applicant2?.id, applicant3?.id].filter(Boolean);
+      await Trip.deleteMany({ id: { $in: tripIds } });
+      await User.deleteMany({ id: { $in: userIds } });
+      await JoinRequest.deleteMany({
+        $or: [
+          { tripId: { $in: tripIds } },
+          { userId: { $in: userIds } },
+        ],
+      });
+      await Notification.deleteMany({ userId: { $in: userIds } });
+    } catch {}
     await disconnectDB();
   });
 
