@@ -59,25 +59,26 @@ export const Avatar: React.FC<AvatarProps> = ({
 };
 
 export interface AvatarGroupProps {
-  users: User[];
+  users?: User[];
   max?: number;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
 export const AvatarGroup: React.FC<AvatarGroupProps> = ({
-  users,
+  users = [],
   max = 4,
   size = 'sm',
   className = '',
 }) => {
-  const visible = users.slice(0, max);
-  const remaining = users.length - max;
+  const safeUsers = Array.isArray(users) ? users.filter(Boolean) : [];
+  const visible = safeUsers.slice(0, max);
+  const remaining = Math.max(0, safeUsers.length - max);
 
   return (
     <div className={`flex items-center -space-x-2 overflow-hidden ${className}`}>
-      {visible.map((u) => (
-        <Avatar key={u.id} src={u.avatarUrl} name={u.name} size={size} />
+      {visible.map((u, idx) => (
+        <Avatar key={u?.id || idx} src={u?.avatarUrl} name={u?.name || 'Traveler'} size={size} />
       ))}
       {remaining > 0 && (
         <div

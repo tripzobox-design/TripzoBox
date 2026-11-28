@@ -16,12 +16,24 @@ export const MobileHeroShowcase: React.FC<{ liked: boolean; onToggleLike: () => 
     activeRef.current = index;
     setActive(index);
     const container = row.current;
-    const card = container?.children[index] as HTMLElement | undefined;
-    if (container && card) container.scrollTo({ left: card.offsetLeft - (container.clientWidth - card.clientWidth) / 2, behavior: smooth && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    if (!container || !container.children || index < 0 || index >= container.children.length) return;
+    const card = container.children[index] as HTMLElement | undefined;
+    if (container && card && typeof card.offsetLeft === 'number') {
+      container.scrollTo({
+        left: card.offsetLeft - (container.clientWidth - card.clientWidth) / 2,
+        behavior: smooth && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto',
+      });
+    }
   };
   useEffect(() => {
-    moveTo(activeRef.current, false);
-    const observer = new ResizeObserver(() => moveTo(activeRef.current, false));
+    if (row.current && row.current.children.length > 0) {
+      moveTo(activeRef.current, false);
+    }
+    const observer = new ResizeObserver(() => {
+      if (row.current && row.current.children.length > 0) {
+        moveTo(activeRef.current, false);
+      }
+    });
     if (row.current) observer.observe(row.current);
     return () => observer.disconnect();
   }, []);
@@ -30,16 +42,22 @@ export const MobileHeroShowcase: React.FC<{ liked: boolean; onToggleLike: () => 
       <div className="flex items-center justify-between gap-2"><h2 className="font-heading font-bold text-lg sm:text-xl">Trending Destinations</h2><Link to="/explore" className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-emerald-300">View All <ArrowRight className="w-4 h-4" /></Link></div>
       <div ref={row} onScroll={() => {
         const container = row.current;
-        if (!container) return;
+        if (!container || !container.children || container.children.length === 0) return;
         const center = container.scrollLeft + container.clientWidth / 2;
         let nearest = 0;
         Array.from(container.children).forEach((child, index) => {
-          const card = child as HTMLElement;
-          const previous = container.children[nearest] as HTMLElement;
-          if (Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < Math.abs(previous.offsetLeft + previous.clientWidth / 2 - center)) nearest = index;
+          const card = child as HTMLElement | undefined;
+          const previous = container.children[nearest] as HTMLElement | undefined;
+          if (card && previous && typeof card.offsetLeft === 'number' && typeof previous.offsetLeft === 'number') {
+            if (Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < Math.abs(previous.offsetLeft + previous.clientWidth / 2 - center)) {
+              nearest = index;
+            }
+          }
         });
-        activeRef.current = nearest;
-        setActive(nearest);
+        if (activeRef.current !== nearest) {
+          activeRef.current = nearest;
+          setActive(nearest);
+        }
       }} className="relative flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory px-[16%] py-3 no-scrollbar" aria-label="Trending destination carousel">
         {places.map((place, index) => <article key={place.slug} className={`relative w-full min-w-full shrink-0 snap-center h-[220px] sm:h-[290px] rounded-3xl overflow-hidden border border-white/70 shadow-xl transition-transform duration-300 ${active === index ? 'scale-100' : 'scale-[.9]'}`}>
           <Link to="/explore" className="absolute inset-0">

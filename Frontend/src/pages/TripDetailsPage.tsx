@@ -101,7 +101,7 @@ export const TripDetailsPage: React.FC = () => {
     }
   }, [tripId, codeParam, contextTrip]);
 
-  const isLeader = Boolean(user && trip && trip.leader.id === user.id);
+  const isLeader = Boolean(user?.id && trip?.leader?.id && trip.leader.id === user.id);
 
   const [activeTab, setActiveTab] = useState<'about' | 'itinerary' | 'members' | 'chat' | 'reviews' | 'images' | 'contact' | 'rate'>(() => {
     if (tabParam && ['about', 'itinerary', 'members', 'chat', 'reviews', 'images', 'contact', 'rate'].includes(tabParam)) {
@@ -332,7 +332,8 @@ export const TripDetailsPage: React.FC = () => {
 
   const isSaved = isTripSaved(trip.id);
   const currentRequest = joinRequests[trip.id] as ('pending' | 'accepted' | undefined);
-  const joinStatus: 'pending' | 'accepted' | 'none' = trip.members.some((m) => m.id === user.id)
+  const membersList = Array.isArray(trip.members) ? trip.members.filter(Boolean) : [];
+  const joinStatus: 'pending' | 'accepted' | 'none' = Boolean(user?.id && membersList.some((m) => m?.id === user.id))
     ? 'accepted'
     : currentRequest || 'none';
 
@@ -375,13 +376,15 @@ export const TripDetailsPage: React.FC = () => {
     (trip.status as string) === 'completed' ||
     trip.status === 'closed' ||
     (trip.endDate && !isNaN(new Date(trip.endDate).getTime()) && new Date(trip.endDate) <= new Date());
-  const isUserParticipant =
-    trip.leader.id === user.id || trip.members.some((m) => m.id === user.id);
+  const isUserParticipant = Boolean(
+    (user?.id && trip?.leader?.id && trip.leader.id === user.id) ||
+    (user?.id && membersList.some((m) => m?.id === user.id))
+  );
 
   const tabs = [
     { id: 'about', label: 'About' },
     { id: 'itinerary', label: 'Itinerary' },
-    { id: 'members', label: `Members (${trip.members.length}/${trip.maxMembers})` },
+    { id: 'members', label: `Members (${membersList.length}/${trip.maxMembers ?? 1})` },
     ...(isTripCompleted && isUserParticipant
       ? [{ id: 'rate', label: `Rate Travellers (${eligibilityData?.canReviewCount ?? 0})` }]
       : []),
@@ -492,10 +495,10 @@ export const TripDetailsPage: React.FC = () => {
             </div>
             <div>
               <span className="text-xs sm:text-sm font-bold text-gray-900 block">
-                {trip.members.length} of {trip.maxMembers} joined
+                {(trip.members || []).length} of {trip.maxMembers} joined
               </span>
               <span className="text-xs text-gray-500 font-medium">
-                ({Math.max(0, trip.maxMembers - trip.members.length)} spots left)
+                ({Math.max(0, trip.maxMembers - (trip.members || []).length)} spots left)
               </span>
             </div>
           </div>
@@ -507,7 +510,7 @@ export const TripDetailsPage: React.FC = () => {
             </div>
             <div>
               <span className="text-xs sm:text-sm font-bold text-gray-900 block">
-                ₹{trip.budgetPerPerson.toLocaleString()}
+                ₹{(trip.budgetPerPerson ?? 0).toLocaleString()}
               </span>
               <span className="text-xs text-gray-500 font-medium">per person</span>
             </div>
@@ -588,7 +591,7 @@ export const TripDetailsPage: React.FC = () => {
                 </span>
               </h4>
               <span className="text-[11px] text-gray-400">
-                {trip.maxMembers - trip.members.length} spots remaining in room
+                {Math.max(0, trip.maxMembers - (trip.members || []).length)} spots remaining in room
               </span>
             </div>
 
@@ -596,8 +599,9 @@ export const TripDetailsPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {realPendingRequests.map((req) => {
                   const isProcessing = processingRequestId === req.id;
-                  const applicantCity = req.user.city && req.user.city !== 'Not specified' ? req.user.city : '';
-                  const interests = req.user.travelInterests?.length ? req.user.travelInterests.join(', ') : '';
+                  const reqUser = req.user || {};
+                  const applicantCity = reqUser.city && reqUser.city !== 'Not specified' ? reqUser.city : '';
+                  const interests = reqUser.travelInterests?.length ? reqUser.travelInterests.join(', ') : '';
                   const subtitle = [applicantCity, interests].filter(Boolean).join(' · ') || 'Traveller';
 
                   return (
@@ -723,7 +727,7 @@ export const TripDetailsPage: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="font-heading font-bold text-xs sm:text-base lg:text-lg text-text truncate">
-                  {trip.members.length}/{trip.maxMembers}
+                  {(trip.members || []).length}/{trip.maxMembers}
                 </div>
                 <div className="text-[11px] sm:text-xs text-text-muted font-medium">Members</div>
               </div>
@@ -1011,12 +1015,12 @@ export const TripDetailsPage: React.FC = () => {
                   {(eligibilityData?.participants && eligibilityData.participants.length > 0
                     ? eligibilityData.participants
                     : [
-                        ...(trip.leader.id !== user.id
-                          ? [{ id: trip.leader.id, name: trip.leader.name, avatarUrl: trip.leader.avatarUrl, role: 'leader', hasReviewed: false }]
+                        ...(trip?.leader && user?.id && trip.leader.id !== user.id
+                          ? [{ id: trip.leader.id, name: trip.leader.name || 'Trip Leader', avatarUrl: trip.leader.avatarUrl || '', role: 'leader', hasReviewed: false }]
                           : []),
-                        ...trip.members
-                          .filter((m) => m.id !== user.id)
-                          .map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl, role: 'member', hasReviewed: false })),
+                        ...(trip?.members || [])
+                          .filter((m) => m && user?.id && m.id !== user.id)
+                          .map((m) => ({ id: m.id, name: m.name || 'Traveler', avatarUrl: m.avatarUrl || '', role: 'member', hasReviewed: false })),
                       ]
                   ).map((comp: any) => {
                     const hasSubmitted = comp.hasReviewed;
@@ -1102,28 +1106,31 @@ export const TripDetailsPage: React.FC = () => {
             {activeTab === 'chat' && (
               <div className="pt-3 sm:pt-4 lg:pt-6 space-y-4">
                 <div className="bg-light-bg rounded-xl p-4 border border-border h-64 overflow-y-auto space-y-3 flex flex-col">
-                  {localMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col max-w-[80%] ${
-                        msg.sender.id === user.id ? 'self-end items-end' : 'self-start items-start'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 text-[11px] text-text-muted mb-0.5">
-                        <span className="font-semibold text-text">{msg.sender.name}</span>
-                        <span>· {msg.time}</span>
-                      </div>
+                  {localMessages.map((msg) => {
+                    const isCurrentUser = Boolean(user?.id && msg?.sender?.id && msg.sender.id === user.id);
+                    return (
                       <div
-                        className={`p-3 rounded-2xl text-xs sm:text-sm ${
-                          msg.sender.id === user.id
-                            ? 'bg-primary text-white rounded-tr-none'
-                            : 'bg-white text-text border border-border rounded-tl-none'
+                        key={msg.id}
+                        className={`flex flex-col max-w-[80%] ${
+                          isCurrentUser ? 'self-end items-end' : 'self-start items-start'
                         }`}
                       >
-                        {msg.text}
+                        <div className="flex items-center gap-1.5 text-[11px] text-text-muted mb-0.5">
+                          <span className="font-semibold text-text">{msg?.sender?.name || 'Traveler'}</span>
+                          <span>· {msg.time || 'Just now'}</span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-2xl text-xs sm:text-sm ${
+                            isCurrentUser
+                              ? 'bg-primary text-white rounded-tr-none'
+                              : 'bg-white text-text border border-border rounded-tl-none'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Chat Input */}
@@ -1197,10 +1204,10 @@ export const TripDetailsPage: React.FC = () => {
                 <h4 className="font-heading font-semibold text-base text-text">Contact Information</h4>
                 <div className="rounded-xl bg-light-bg border border-border p-4 space-y-4">
                   <div className="flex items-center gap-3">
-                    <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
+                    <Avatar src={trip.leader?.avatarUrl || ''} name={trip.leader?.name || 'Trip Leader'} size="md" />
                     <div>
-                      <p className="font-semibold text-sm text-text">{trip.leader.name}</p>
-                      <p className="text-xs text-text-muted">Trip leader · {trip.leader.city}, {trip.leader.country || 'India'}</p>
+                      <p className="font-semibold text-sm text-text">{trip.leader?.name || 'Trip Leader'}</p>
+                      <p className="text-xs text-text-muted">Trip leader · {trip.leader?.city || 'India'}, {trip.leader?.country || 'India'}</p>
                     </div>
                   </div>
                   {trip.contactInformation?.email && (
@@ -1229,20 +1236,20 @@ export const TripDetailsPage: React.FC = () => {
               Trip Organizer
             </h4>
             <div className="flex items-center gap-3">
-              <Avatar src={trip.leader.avatarUrl} name={trip.leader.name} size="md" />
+              <Avatar src={trip.leader?.avatarUrl || ''} name={trip.leader?.name || 'Trip Leader'} size="md" />
               <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-sm text-text truncate">{trip.leader.name}</h5>
+                <h5 className="font-bold text-sm text-text truncate">{trip.leader?.name || 'Trip Leader'}</h5>
                 <p className="text-xs text-text-muted mt-0.5">
-                  Trip Leader · {trip.leader.stats?.trips || 4} trips
+                  Trip Leader · {trip.leader?.stats?.trips || 1} trips
                 </p>
                 <div className="mt-1.5">
-                  <VerificationBadges user={trip.leader} size="xs" />
+                  <VerificationBadges user={trip.leader || {}} size="xs" />
                 </div>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setSelectedTraveller(trip.leader)}
+              onClick={() => trip.leader && setSelectedTraveller(trip.leader)}
               className="w-full mt-3.5 py-2 px-3 rounded-xl border border-gray-200 hover:border-primary text-xs font-semibold text-text hover:text-primary transition-colors cursor-pointer text-center"
             >
               View Profile & Badges
@@ -1357,14 +1364,14 @@ export const TripDetailsPage: React.FC = () => {
           <div className="bg-white rounded-2xl border border-border p-5 shadow-card text-left">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
               <h4 className="font-heading font-bold text-sm text-text">
-                Members ({trip.members.length}/{trip.maxMembers})
+                Members ({(trip.members || []).length}/{trip.maxMembers})
               </h4>
               <span className="text-xs font-semibold text-primary">
-                {Math.max(0, trip.maxMembers - trip.members.length)} spots left
+                {Math.max(0, trip.maxMembers - (trip.members || []).length)} spots left
               </span>
             </div>
 
-            <AvatarGroup users={trip.members} max={5} size="md" className="py-1" />
+            <AvatarGroup users={trip.members || []} max={5} size="md" className="py-1" />
           </div>
         </div>
       </div>

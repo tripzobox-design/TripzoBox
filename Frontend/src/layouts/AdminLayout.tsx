@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import {
   LayoutDashboard,
   Users,
@@ -439,7 +440,9 @@ export const AdminLayout: React.FC = () => {
 
           {/* Page Content Outlet */}
           <main className="flex-1 p-4 sm:p-6 w-full">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>

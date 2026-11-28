@@ -89,20 +89,26 @@ export const MobileNavigation: React.FC<{ isOpen: boolean; onClose: () => void }
       closeLabel="Close navigation"
       panelClassName="w-[86vw] sm:w-[360px]"
       footer={
-        isLoggedIn ? (
+        isLoggedIn && user ? (
           <div className="flex items-center gap-2">
             <Link
               to="/app/profile"
               onClick={onClose}
               className="flex flex-1 min-w-0 items-center gap-2 rounded-xl bg-light-bg p-2 hover:bg-emerald-50"
             >
-              <img
-                src={user.avatarUrl}
-                alt=""
-                className="w-9 h-9 rounded-full object-cover shrink-0"
-              />
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt=""
+                  className="w-9 h-9 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                  {(user.name || 'T').charAt(0).toUpperCase()}
+                </div>
+              )}
               <span className="min-w-0">
-                <span className="block text-sm font-bold text-text truncate">{user.name}</span>
+                <span className="block text-sm font-bold text-text truncate">{user.name || 'Traveler'}</span>
                 <span className="block text-[10px] text-text-muted">View profile</span>
               </span>
             </Link>

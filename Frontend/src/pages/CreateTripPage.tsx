@@ -283,6 +283,10 @@ export const CreateTripPage: React.FC = () => {
         itinerary,
       });
 
+      if (!created || !created.id) {
+        throw new Error('Trip was created but received an invalid response from the server.');
+      }
+
       try {
         confetti({
           particleCount: 90,

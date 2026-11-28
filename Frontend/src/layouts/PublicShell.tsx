@@ -21,6 +21,7 @@ import { AccountNav } from '../components/common/AccountNav';
 import { MobileNavigation } from '../components/common/MobileNavigation';
 import { NotificationBell } from '../components/common/NotificationBell';
 import { useNotifications } from '../context/NotificationsContext';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 // Mobile bottom navigation items for authenticated users
 const MOBILE_NAV_ITEMS = [
@@ -51,8 +52,16 @@ export const PublicShell: React.FC = () => {
   };
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrolled = window.scrollY > 20;
+          setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -83,7 +92,7 @@ export const PublicShell: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-light-bg text-text selection:bg-accent selection:text-text">
       {/* Top Nav: Full-width sticky light-themed navbar across all pages */}
-      <header className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border transition-all duration-200 ${
+      <header className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-border transition-all duration-200 transform-gpu will-change-transform ${
         isScrolled ? 'shadow-subtle' : 'shadow-xs'
       }`}>
         <div className="w-full max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
@@ -171,7 +180,9 @@ export const PublicShell: React.FC = () => {
 
       {/* Main Page Canvas */}
       <main className={`flex-1 min-h-0 flex flex-col ${isExpandedLayout ? 'pb-20 lg:pb-0' : 'pb-20 lg:pb-12'}`}>
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       {/* Public Footer */}
@@ -277,7 +288,7 @@ export const PublicShell: React.FC = () => {
       {/* ── Mobile Bottom Navigation (Hidden on lg+) ── */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-2px_16px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]"
+        className="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-2px_16px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)] transform-gpu will-change-transform"
       >
         <div className="flex items-stretch h-16 min-h-[48px]">
           {[

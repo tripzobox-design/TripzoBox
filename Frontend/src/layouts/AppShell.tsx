@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import {
   LayoutDashboard,
   Shield,
@@ -268,7 +269,9 @@ export const AppShell: React.FC = () => {
 
         {/* App Main View Outlet */}
         <main className="flex-1 p-4 pb-28 sm:p-6 sm:pb-12 lg:p-8 max-w-7xl mx-auto w-full">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

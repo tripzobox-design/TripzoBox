@@ -13,7 +13,7 @@ import {
 import { User } from '../../types';
 
 interface VerificationBadgesProps {
-  user: Partial<User>;
+  user?: Partial<User> | null;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   showLabels?: boolean;
   showDetails?: boolean;
@@ -29,10 +29,11 @@ export const VerificationBadges: React.FC<VerificationBadgesProps> = ({
 }) => {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  const isEmailVerified = Boolean(user.emailVerified);
-  const isPhoneVerified = Boolean(user.phoneVerified);
-  const isGoogleConnected = Boolean(user.isGoogleConnected);
-  const idStatus = user.identityVerificationStatus || 'NOT_STARTED';
+  const safeUser = user || {};
+  const isEmailVerified = Boolean(safeUser.emailVerified);
+  const isPhoneVerified = Boolean(safeUser.phoneVerified);
+  const isGoogleConnected = Boolean(safeUser.isGoogleConnected);
+  const idStatus = safeUser.identityVerificationStatus || 'NOT_STARTED';
   const isIdVerified = idStatus === 'VERIFIED';
   const isIdPending = idStatus === 'PENDING';
 

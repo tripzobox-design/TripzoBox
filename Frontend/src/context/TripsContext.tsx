@@ -237,7 +237,12 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         savedTrip = { ...newTrip, ...serverCreated };
       }
     } catch (err: any) {
-      console.warn('[TripsContext] Server createTrip warning:', err?.message || err);
+      console.error('[TripsContext] Server createTrip error:', err?.message || err);
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to save trip to the server. Please check your connection and try again.';
+      throw new Error(message);
     }
 
     setTrips((prev) => [savedTrip, ...prev.filter((t) => t.id !== savedTrip.id)]);

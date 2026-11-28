@@ -564,7 +564,10 @@ export const createTrip = async (
     await newTrip.save();
 
     // Increment user's trips stat
-    req.user.stats.trips += 1;
+    if (!req.user.stats) {
+      req.user.stats = { trips: 0, stories: 0, followers: 0, following: 0 };
+    }
+    req.user.stats.trips = (req.user.stats.trips || 0) + 1;
     await req.user.save();
 
     sendSuccess(res, newTrip, 'Trip created successfully', 201);

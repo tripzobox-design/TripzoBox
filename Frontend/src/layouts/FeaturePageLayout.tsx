@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 // Private tools keep their own URLs and share the site's top navigation.
 export const FeaturePageLayout: React.FC = () => {
@@ -27,7 +28,9 @@ export const FeaturePageLayout: React.FC = () => {
             : 'max-w-7xl 2xl:max-w-[1536px] px-4 sm:px-6 lg:px-8'
         } mx-auto`}
       >
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </div>
     </div>
   );
