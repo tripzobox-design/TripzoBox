@@ -683,6 +683,14 @@ export const requestDocumentOtp = async (
 
     const user = (await User.findOne({ $or: [{ id: req.user.id }, { _id: req.user._id }] })) || req.user;
 
+    const candidateUserIds = [
+      user?.id,
+      user?._id ? String(user._id) : null,
+      req.user.id,
+      req.user._id ? String(req.user._id) : null,
+      req.userId,
+    ].filter((id): id is string => Boolean(id));
+
     let targetIdentifier = '';
     if (channel === 'phone') {
       const authSettings = await getAuthSettings();
@@ -714,8 +722,10 @@ export const requestDocumentOtp = async (
 
     // Cooldown check (60s rate limit)
     const recentOtp = await OTPVerification.findOne({
-      userId: user.id,
-      identifier: targetIdentifier,
+      $or: [
+        { userId: { $in: candidateUserIds }, identifier: targetIdentifier },
+        { identifier: targetIdentifier },
+      ],
       type: 'document_verification',
       resendAvailableAt: { $gt: new Date() },
       consumed: false,
@@ -738,13 +748,20 @@ export const requestDocumentOtp = async (
 
     // Invalidate prior pending document OTPs for this user
     await OTPVerification.updateMany(
-      { userId: user.id, type: 'document_verification', consumed: false },
+      {
+        $or: [
+          { userId: { $in: candidateUserIds } },
+          { identifier: targetIdentifier },
+        ],
+        type: 'document_verification',
+        consumed: false,
+      },
       { $set: { consumed: true } }
     );
 
     // Create OTP record
     await OTPVerification.create({
-      userId: user.id,
+      userId: user.id || req.user.id,
       identifier: targetIdentifier,
       type: 'document_verification',
       hashedOtp,
@@ -822,17 +839,60 @@ export const verifyDocumentOtp = async (
       return;
     }
 
-    const cleanIdentifier = String(identifier).trim().toLowerCase();
+    const cleanIdentifier = String(identifier || '').trim().toLowerCase();
+
+    const user = (await User.findOne({ $or: [{ id: req.user.id }, { _id: req.user._id }] })) || req.user;
+
+    const candidateUserIds = [
+      user?.id,
+      user?._id ? String(user._id) : null,
+      req.user.id,
+      req.user._id ? String(req.user._id) : null,
+      req.userId,
+    ].filter((id): id is string => Boolean(id));
+
+    // Match conditions for finding active, unconsumed document verification OTP
+    const searchConditions: any[] = [];
+    if (cleanIdentifier) {
+      searchConditions.push({ identifier: cleanIdentifier });
+    }
+    if (user?.email) {
+      searchConditions.push({ identifier: user.email.toLowerCase() });
+    }
+    if (req.user.email) {
+      searchConditions.push({ identifier: req.user.email.toLowerCase() });
+    }
+    if (user?.phone) {
+      searchConditions.push({ identifier: user.phone });
+    }
+    if (req.user.phone) {
+      searchConditions.push({ identifier: req.user.phone });
+    }
+    if (candidateUserIds.length > 0) {
+      searchConditions.push({ userId: { $in: candidateUserIds } });
+    }
 
     const otpRecord = await OTPVerification.findOne({
-      userId: req.user.id,
-      identifier: cleanIdentifier,
+      $or: searchConditions,
       type: 'document_verification',
       consumed: false,
     }).sort({ createdAt: -1 });
 
     if (!otpRecord) {
       sendError(res, 'No active verification code found. Please request a new code.', 400);
+      return;
+    }
+
+    // Safety authorization check: ensure the record belongs to the authenticated user
+    const belongsToUser =
+      (otpRecord.userId && candidateUserIds.includes(otpRecord.userId)) ||
+      (user?.email && otpRecord.identifier === user.email.toLowerCase()) ||
+      (user?.phone && otpRecord.identifier === user.phone) ||
+      (req.user.email && otpRecord.identifier === req.user.email.toLowerCase()) ||
+      (req.user.phone && otpRecord.identifier === req.user.phone);
+
+    if (!belongsToUser) {
+      sendError(res, 'Verification code does not belong to this account', 403);
       return;
     }
 
@@ -869,7 +929,10 @@ export const verifyDocumentOtp = async (
     // If documentId is provided, mark it verified in MongoDB
     let verifiedDoc = null;
     if (documentId) {
-      verifiedDoc = await VaultDocument.findOne({ id: documentId, userId: req.user.id });
+      verifiedDoc = await VaultDocument.findOne({
+        id: documentId,
+        $or: [{ userId: { $in: candidateUserIds } }, { userId: req.user.id }],
+      });
       if (verifiedDoc) {
         verifiedDoc.isVerified = true;
         await verifiedDoc.save();

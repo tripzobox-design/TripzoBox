@@ -47,6 +47,7 @@ export const DocumentOtpModal: React.FC<DocumentOtpModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [devOtp, setDevOtp] = useState<string | undefined>(undefined);
   const [maskedIdentifier, setMaskedIdentifier] = useState('');
+  const [sentIdentifier, setSentIdentifier] = useState('');
 
   // Default to phone if user has verified phone, else email
   useEffect(() => {
@@ -55,6 +56,7 @@ export const DocumentOtpModal: React.FC<DocumentOtpModalProps> = ({
       setErrorMsg('');
       setDevOtp(undefined);
       setOtpSent(false);
+      setSentIdentifier('');
 
       if (user?.phone && user.phoneVerified) {
         setChannel('phone');
@@ -94,6 +96,9 @@ export const DocumentOtpModal: React.FC<DocumentOtpModalProps> = ({
       setOtpSent(true);
       setCooldown(res.data?.resendCooldownSeconds || 60);
       setMaskedIdentifier(res.data?.maskedIdentifier || (selectedChannel === 'phone' ? user?.phone || '' : user?.email || ''));
+      if (res.data?.identifier) {
+        setSentIdentifier(res.data.identifier);
+      }
       if (res.data?.devOtp) {
         setDevOtp(res.data.devOtp);
       }
@@ -122,15 +127,17 @@ export const DocumentOtpModal: React.FC<DocumentOtpModalProps> = ({
     setErrorMsg('');
 
     try {
-      const targetIdentifier = channel === 'phone' ? user?.phone : user?.email;
+      const targetIdentifier = sentIdentifier || (channel === 'phone' ? user?.phone : user?.email) || '';
       const res = await vaultApi.verifyDocumentOtp({
-        identifier: targetIdentifier || '',
+        identifier: targetIdentifier,
         otp: cleanOtp,
         documentId,
         documentType,
       });
 
-      if (res.data?.isVerified) {
+      const isVerified = Boolean(res?.data?.isVerified || res?.isVerified || res?.success);
+
+      if (isVerified) {
         success(
           `Document verified! ${documentName} is now confirmed with OTP and secured in your Travel Vault.`,
           'Verification Complete 🎉'
@@ -140,6 +147,8 @@ export const DocumentOtpModal: React.FC<DocumentOtpModalProps> = ({
         }
         onVerified();
         onClose();
+      } else {
+        throw new Error(res?.message || 'Verification could not be confirmed.');
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Invalid or expired OTP code';
