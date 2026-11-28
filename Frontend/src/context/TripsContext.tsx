@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trip } from '../types';
 import { useAuth } from './AuthContext';
 import { tripsApi } from '../lib/api';
+import { safeStorage } from '../lib/storage';
 
 interface TripsContextType {
   trips: Trip[];
@@ -30,12 +31,7 @@ const scopedTripsKey = (base: string, userId?: string): string =>
   userId ? `${base}:${userId}` : base;
 
 const readStored = <T,>(key: string, fallback: T): T => {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? (JSON.parse(saved) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+  return safeStorage.getJSON<T>(key, fallback);
 };
 
 export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -63,13 +59,11 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const serverTrips = await tripsApi.getTrips();
       if (Array.isArray(serverTrips)) {
         setTrips(serverTrips);
-        try {
-          if (serverTrips.length === 0) {
-            localStorage.removeItem('tripzobox_trips');
-          } else {
-            localStorage.setItem('tripzobox_trips', JSON.stringify(serverTrips));
-          }
-        } catch {}
+        if (serverTrips.length === 0) {
+          safeStorage.removeItem('tripzobox_trips');
+        } else {
+          safeStorage.setJSON('tripzobox_trips', serverTrips);
+        }
       }
     } catch (e) {
       // Backend offline or unreachable, keep cached trips
@@ -112,22 +106,22 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isLoggedIn, user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_trips', JSON.stringify(trips));
+    safeStorage.setJSON('tripzobox_trips', trips);
   }, [trips]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedTripsKey('tripzobox_saved_trips', user.id),
-      JSON.stringify(savedTripIds)
+      savedTripIds
     );
   }, [savedTripIds, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedTripsKey('tripzobox_join_requests', user.id),
-      JSON.stringify(joinRequests)
+      joinRequests
     );
   }, [joinRequests, isLoggedIn, user?.id]);
 
@@ -248,11 +242,11 @@ export const TripsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTrips((prev) => [savedTrip, ...prev.filter((t) => t.id !== savedTrip.id)]);
     setJoinRequests((prev) => ({ ...prev, [savedTrip.id]: 'accepted' }));
 
-    // Persist immediately in localStorage so browser refresh retains it
+    // Persist immediately in safeStorage so browser refresh retains it
     try {
       const existing = readStored<Trip[]>('tripzobox_trips', []);
       const updated = [savedTrip, ...existing.filter((t) => t.id !== savedTrip.id)];
-      localStorage.setItem('tripzobox_trips', JSON.stringify(updated));
+      safeStorage.setJSON('tripzobox_trips', updated);
     } catch {}
 
     return savedTrip;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { safeStorage } from '../lib/storage';
 import {
   LayoutDashboard,
   Users,
@@ -73,7 +74,7 @@ export const AdminLayout: React.FC = () => {
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {
       const next = !prev;
-      localStorage.setItem('tripzobox_admin_sidebar_collapsed', String(next));
+      safeStorage.setItem('tripzobox_admin_sidebar_collapsed', String(next));
       return next;
     });
   };

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DiaryEntry, Story } from '../types';
 import { useAuth } from './AuthContext';
 import { diaryApi, storiesApi } from '../lib/api';
+import { safeStorage } from '../lib/storage';
 
 interface DiaryContextType {
   entries: DiaryEntry[];
@@ -67,9 +68,9 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (Array.isArray(parsed)) {
           const clean = parsed.filter((s: Story) => !isDemoStory(s));
           if (clean.length === 0) {
-            localStorage.removeItem('tripzobox_stories');
+            safeStorage.removeItem('tripzobox_stories');
           } else {
-            localStorage.setItem('tripzobox_stories', JSON.stringify(clean));
+            safeStorage.setJSON('tripzobox_stories', clean);
           }
           return clean;
         }
@@ -103,13 +104,11 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (active && Array.isArray(serverStories)) {
           const cleanStories = serverStories.filter((s: Story) => !isDemoStory(s));
           setStories(cleanStories);
-          try {
-            if (cleanStories.length === 0) {
-              localStorage.removeItem('tripzobox_stories');
-            } else {
-              localStorage.setItem('tripzobox_stories', JSON.stringify(cleanStories));
-            }
-          } catch {}
+          if (cleanStories.length === 0) {
+            safeStorage.removeItem('tripzobox_stories');
+          } else {
+            safeStorage.setJSON('tripzobox_stories', cleanStories);
+          }
         }
       })
       .catch(() => {});
@@ -121,11 +120,11 @@ export const DiaryProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(scopedDiaryKey(user.id), JSON.stringify(entries));
+    safeStorage.setJSON(scopedDiaryKey(user.id), entries);
   }, [entries, isLoggedIn, user?.id]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_stories', JSON.stringify(stories));
+    safeStorage.setJSON('tripzobox_stories', stories);
   }, [stories]);
 
   const addEntry = (entryData: Omit<DiaryEntry, 'id' | 'userId' | 'isPublished'>): DiaryEntry => {

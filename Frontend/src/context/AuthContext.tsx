@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { authApi } from '../lib/api';
+import { safeStorage } from '../lib/storage';
 
 interface AuthContextType {
   user: User;
@@ -119,11 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_user', JSON.stringify(user));
+    safeStorage.setJSON('tripzobox_user', user);
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('tripzobox_auth_status', isLoggedIn ? 'true' : 'false');
+    safeStorage.setItem('tripzobox_auth_status', isLoggedIn ? 'true' : 'false');
   }, [isLoggedIn]);
 
   const login = async (emailOrPhone?: string, password?: string): Promise<boolean> => {
@@ -169,8 +170,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem('tripzobox_token');
-    localStorage.setItem('tripzobox_auth_status', 'false');
+    safeStorage.removeItem('tripzobox_token');
+    safeStorage.setItem('tripzobox_auth_status', 'false');
     setIsLoggedIn(false);
     setUser(emptyUser);
     authApi.logout().catch(() => {});
@@ -212,8 +213,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sanitized = sanitizeUser(resolvedUser);
     setUser(sanitized);
     setIsLoggedIn(true);
-    localStorage.setItem('tripzobox_user', JSON.stringify(sanitized));
-    localStorage.setItem('tripzobox_auth_status', 'true');
+    safeStorage.setJSON('tripzobox_user', sanitized);
+    safeStorage.setItem('tripzobox_auth_status', 'true');
     return sanitized;
   };
 

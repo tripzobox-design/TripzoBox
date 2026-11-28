@@ -3,6 +3,7 @@ import { NotificationItem } from '../types';
 import { useAuth } from './AuthContext';
 import { useTrips } from './TripsContext';
 import { notificationsApi } from '../lib/api';
+import { safeStorage } from '../lib/storage';
 
 interface NotificationsState {
   notifications: NotificationItem[];
@@ -50,45 +51,47 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [isLoggedIn, user.id]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(readByUser));
-    } catch {
-      /* Read state still works if storage is unavailable. */
-    }
+    safeStorage.setJSON(storageKey, readByUser);
   }, [readByUser]);
 
-  const readIds = new Set(Array.isArray(readByUser[user.id]) ? readByUser[user.id] : []);
+  const readIds = new Set(
+    user?.id && Array.isArray(readByUser[user.id]) ? readByUser[user.id] : []
+  );
 
-  const requests: NotificationItem[] = trips
-    .filter((trip) => trip.leader.id === user.id)
-    .flatMap((trip) =>
-      (trip.pendingJoinRequests || []).map((request) => ({
-        id: `request:${trip.id}:${request.id}`,
-        type: 'join_request' as const,
-        title: `${request.user.name} wants to join`,
-        message: `${trip.name}: ${request.message || 'Review this traveller’s request to join your room.'}`,
-        timestamp: request.requestedAt,
-        read: false,
-        link: `/app/trips/${trip.id}/requests`,
-      }))
-    );
-
-  const joins: NotificationItem[] = Object.entries(joinRequests).flatMap(([id, status]) => {
-    const trip = trips.find((item) => item.id === id);
-    return trip
-      ? [
-          {
-            id: `join:${id}:${status}`,
-            type: 'trip_invite' as const,
-            title: status === 'accepted' ? 'Your join request was accepted' : 'Join request sent',
-            message: trip.name,
-            timestamp: 'Trip activity',
+  const requests: NotificationItem[] = !isLoggedIn || !user?.id
+    ? []
+    : (trips || [])
+        .filter((trip) => Boolean(trip?.leader?.id && trip.leader.id === user.id))
+        .flatMap((trip) =>
+          (trip.pendingJoinRequests || []).map((request) => ({
+            id: `request:${trip.id}:${request?.id || ''}`,
+            type: 'join_request' as const,
+            title: `${request?.user?.name || 'A traveller'} wants to join`,
+            message: `${trip.name || 'Trip'}: ${request?.message || 'Review this traveller’s request to join your room.'}`,
+            timestamp: request?.requestedAt || '',
             read: false,
-            link: `/app/trips/${id}`,
-          },
-        ]
-      : [];
-  });
+            link: `/app/trips/${trip.id}/requests`,
+          }))
+        );
+
+  const joins: NotificationItem[] = !isLoggedIn
+    ? []
+    : Object.entries(joinRequests || {}).flatMap(([id, status]) => {
+        const trip = (trips || []).find((item) => item?.id === id);
+        return trip
+          ? [
+              {
+                id: `join:${id}:${status}`,
+                type: 'trip_invite' as const,
+                title: status === 'accepted' ? 'Your join request was accepted' : 'Join request sent',
+                message: trip.name || 'Trip',
+                timestamp: 'Trip activity',
+                read: false,
+                link: `/app/trips/${id}`,
+              },
+            ]
+          : [];
+      });
 
   const notifications = isLoggedIn
     ? [...requests, ...joins, ...serverNotifications].map((item) => ({
@@ -98,6 +101,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     : [];
 
   const markRead = (id: string) => {
+    if (!user?.id) return;
     setReadByUser((previous) => ({
       ...previous,
       [user.id]: [...new Set([...(Array.isArray(previous[user.id]) ? previous[user.id] : []), id])],
@@ -106,6 +110,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const markAllRead = () => {
+    if (!user?.id) return;
     setReadByUser((previous) => ({
       ...previous,
       [user.id]: [

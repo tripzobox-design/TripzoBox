@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home, Search } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, Search, Trash2 } from 'lucide-react';
+import { safeStorage } from '../../lib/storage';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -27,6 +28,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[TripzoBox ErrorBoundary] Uncaught runtime exception:', error, errorInfo);
     this.setState({ errorInfo });
+
+    // Auto-heal storage quota errors
+    if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+      safeStorage.clearAppCache();
+    }
   }
 
   public handleReset = (): void => {
@@ -40,11 +46,20 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     window.location.reload();
   };
 
+  public handleClearCacheAndReload = (): void => {
+    safeStorage.clearAppCache();
+    window.location.reload();
+  };
+
   public render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
+
+      const isQuotaError =
+        this.state.error?.name === 'QuotaExceededError' ||
+        Boolean(this.state.error?.message?.includes('quota'));
 
       return (
         <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6 bg-[#F5FBF8]">
@@ -61,26 +76,42 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               We encountered a display issue while rendering this section. Your account, bookings, and data are safe.
             </p>
 
-            {import.meta.env.DEV && this.state.error && (
-              <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-left text-xs text-red-800 font-mono overflow-auto max-h-40">
-                <p className="font-bold">{this.state.error.toString()}</p>
-                {this.state.errorInfo?.componentStack && (
-                  <pre className="text-[10px] mt-2 whitespace-pre-wrap">
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                )}
-              </div>
+            {this.state.error && (
+              <details className="mb-6 text-left">
+                <summary className="text-xs font-semibold text-gray-500 cursor-pointer hover:text-emerald-700 select-none">
+                  View technical error details
+                </summary>
+                <div className="mt-2 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 font-mono overflow-auto max-h-48 whitespace-pre-wrap">
+                  <p className="font-bold">{this.state.error.toString()}</p>
+                  {this.state.errorInfo?.componentStack && (
+                    <pre className="text-[10px] mt-2 text-red-600">
+                      {this.state.errorInfo.componentStack}
+                    </pre>
+                  )}
+                </div>
+              </details>
             )}
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={this.handleReload}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Reload Page
-              </button>
+              {isQuotaError ? (
+                <button
+                  type="button"
+                  onClick={this.handleClearCacheAndReload}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear Cache & Reload
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={this.handleReload}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Reload Page
+                </button>
+              )}
 
               <a
                 href="/"

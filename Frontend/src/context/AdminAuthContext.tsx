@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AdminUser, AdminRole } from '../types/admin';
 import { adminApi, AdminApiError } from '../lib/adminApi';
+import { safeStorage } from '../lib/storage';
 
 interface AdminAuthContextType {
   admin: AdminUser | null;
@@ -89,7 +90,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const fetchedAdmin = await adminApi.auth.getMe();
       if (fetchedAdmin) {
         setAdmin(fetchedAdmin);
-        localStorage.setItem('tripzobox_admin_user', JSON.stringify(fetchedAdmin));
+        safeStorage.setJSON('tripzobox_admin_user', fetchedAdmin);
       } else {
         logout();
       }

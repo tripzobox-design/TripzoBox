@@ -3,6 +3,7 @@ import { VaultDocument, EmergencyContact, SharedAccessRecord, SharedWithMeItem, 
 import { useAuth } from './AuthContext';
 import { saveVaultFile, deleteVaultFile, validateVaultFile } from '../lib/vaultFiles';
 import { vaultApi } from '../lib/api';
+import { safeStorage } from '../lib/storage';
 
 export interface EmergencyAccessConfig {
   includedDocTypes: string[];
@@ -232,54 +233,54 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(scopedKey('tripzobox_vault_documents', user.id), JSON.stringify(documents));
+    safeStorage.setJSON(scopedKey('tripzobox_vault_documents', user.id), documents);
   }, [documents, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_emergency_contacts', user.id),
-      JSON.stringify(emergencyContacts)
+      emergencyContacts
     );
   }, [emergencyContacts, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_trusted_contacts', user.id),
-      JSON.stringify(trustedContacts)
+      trustedContacts
     );
   }, [trustedContacts, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_shared_access', user.id),
-      JSON.stringify(sharedAccessRecords)
+      sharedAccessRecords
     );
   }, [sharedAccessRecords, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_emergency_config', user.id),
-      JSON.stringify(emergencyAccessConfig)
+      emergencyAccessConfig
     );
   }, [emergencyAccessConfig, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_vault_security_settings', user.id),
-      JSON.stringify(securitySettings)
+      securitySettings
     );
   }, [securitySettings, isLoggedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.id) return;
-    localStorage.setItem(
+    safeStorage.setJSON(
       scopedKey('tripzobox_offline_access_settings', user.id),
-      JSON.stringify(offlineAccessSettings)
+      offlineAccessSettings
     );
   }, [offlineAccessSettings, isLoggedIn, user?.id]);
 
